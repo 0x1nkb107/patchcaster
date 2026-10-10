@@ -5,8 +5,11 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"time"
+
+	z "github.com/Oudwins/zog"
 )
 
 // CLI is the kong root. Running bare "patchcaster" serves.
@@ -37,36 +40,72 @@ type ServeCmd struct {
 	LogLevel        string        `flag:"" default:"info" env:"PATCHCASTER_LOG_LEVEL" help:"Log level: debug|info|warn|error."`
 }
 
-// Validate enforces the startup invariants. kong calls it on the selected
-// command after parsing, before Run.
-func (c *ServeCmd) Validate() error {
-	if len(c.SigningSecrets) == 0 {
-		return fmt.Errorf("--signing-secret must carry at least one secret")
-	}
-	for i, s := range c.SigningSecrets {
-		if s == "" {
-			return fmt.Errorf("--signing-secret entry %d is empty", i+1)
-		}
-	}
-	switch c.LogLevel {
-	case "debug", "info", "warn", "error":
-	default:
-		return fmt.Errorf("--log-level %q is not debug|info|warn|error", c.LogLevel)
-	}
-	if c.DrainTimeout <= 0 {
-		return fmt.Errorf("--drain-timeout must be positive")
-	}
-	if c.EventMaxAge <= 0 {
-		return fmt.Errorf("--event-max-age must be positive")
-	}
-	if c.ClaimLease <= 0 {
-		return fmt.Errorf("--claim-lease must be positive")
-	}
-	// The replay loop closes only while dedupe outlives the freshness cap:
-	// a redelivery either still dedupes or is now old enough to discard
-	// (SYSREQ-013/014).
+// serveSchema asserts the semantic constraints on kong-parsed values
+// (ADR-012). Keys are ServeCmd field names; validationIssues renders them
+// back into operator-facing flag names.
+var serveSchema = z.Struct(z.Shape{
+	"SigningSecrets": z.Slice(z.String().Min(1)).Required(),
+	"LogLevel":       z.String().OneOf([]string{"debug", "info", "warn", "error"}),
+	"DrainTimeout":   positiveDuration(),
+	"EventMaxAge":    positiveDuration(),
+	"SeenRetention":  positiveDuration(),
+	"ClaimLease":     positiveDuration(),
+})
+
+// replayLoopSchema keeps the replay loop closed: dedupe must outlive the
+// freshness cap, or a redelivery is neither suppressed nor expired
+// (SYSREQ-013/014). v0.23 has no struct-level tests (ADR-012), so the rule is
+// a whole-struct custom schema that attaches its issue to SeenRetention.
+var replayLoopSchema = z.CustomFunc(func(c *ServeCmd, ctx z.Ctx) bool {
 	if c.SeenRetention <= c.EventMaxAge {
-		return fmt.Errorf("--seen-retention (%s) must exceed --event-max-age (%s)", c.SeenRetention, c.EventMaxAge)
+		ctx.AddIssue(ctx.Issue().
+			SetPath([]string{"SeenRetention"}).
+			SetMessage(fmt.Sprintf("must exceed --event-max-age (%s)", c.EventMaxAge)))
 	}
-	return nil
+	// Always true: the manual issue is the report; returning false would add
+	// a redundant generic auto-issue on top of it.
+	return true
+})
+
+// positiveDuration asserts > 0; v0.23 ships no native duration schema.
+func positiveDuration() *z.Custom[time.Duration] {
+	return z.CustomFunc(func(d *time.Duration, _ z.Ctx) bool {
+		return *d > 0
+	}, z.Message("must be a positive duration"))
+}
+
+// flagNames renders schema field paths as the flags operators typed.
+var flagNames = map[string]string{
+	"SigningSecrets": "--signing-secret",
+	"LogLevel":       "--log-level",
+	"DrainTimeout":   "--drain-timeout",
+	"EventMaxAge":    "--event-max-age",
+	"SeenRetention":  "--seen-retention",
+	"ClaimLease":     "--claim-lease",
+}
+
+// Validate enforces the startup invariants; kong calls it on the selected
+// command after parsing, before Run. Every violation is reported at once
+// (ADR-012), so a misconfigured first deploy names all offending options.
+func (c *ServeCmd) Validate() error {
+	issues := append(serveSchema.Validate(c), replayLoopSchema.Validate(c)...)
+	if len(issues) == 0 {
+		return nil
+	}
+	errs := make([]error, 0, len(issues))
+	for _, issue := range issues {
+		errs = append(errs, fmt.Errorf("%s: %s", flagName(issue.Path), issue.Message))
+	}
+	return errors.Join(errs...)
+}
+
+func flagName(path []string) string {
+	field := "configuration"
+	if len(path) > 0 {
+		field = path[0]
+	}
+	if flag, ok := flagNames[field]; ok {
+		return flag
+	}
+	return field
 }

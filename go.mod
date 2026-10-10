@@ -3,6 +3,7 @@ module github.com/0x5a17ed/patchcaster
 go 1.26.2
 
 require (
+	github.com/Oudwins/zog v0.23.0
 	github.com/alecthomas/kong v1.16.1
 	github.com/cenkalti/backoff/v5 v5.0.3
 	github.com/jackc/pgx/v5 v5.11.0
@@ -30,6 +31,7 @@ require (
 	github.com/sethvargo/go-retry v0.4.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
+	golang.org/x/exp v0.0.0-20260824195058-e88cd73687aa // indirect
 	golang.org/x/sync v0.23.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/text v0.42.0 // indirect

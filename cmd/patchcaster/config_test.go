@@ -109,6 +109,27 @@ func TestValidateInvariants(t *testing.T) {
 	}
 }
 
+func TestValidateReportsAllViolationsAtOnce(t *testing.T) {
+	// arrange: three independent violations plus the cross-field rule.
+
+	// act
+	_, err := parse(t, "serve",
+		"--database-url=postgres://x", "--mattermost-url=https://mm",
+		"--mattermost-token=tok", "--routing-file=/dev/null",
+		"--signing-secret=s",
+		"--log-level=trace", "--drain-timeout=0s",
+		"--event-max-age=48h", "--seen-retention=24h")
+
+	// assert: every offending flag named in one message (ADR-012),
+	// not just the first.
+	require.Error(t, err)
+	msg := err.Error()
+	assert.Contains(t, msg, "--log-level")
+	assert.Contains(t, msg, "--drain-timeout")
+	assert.Contains(t, msg, "--seen-retention")
+	assert.Contains(t, msg, "48h", "cross-field message carries the concrete cap")
+}
+
 func TestValidateAcceptsRotationSecrets(t *testing.T) {
 	// act
 	cli, err := parse(t, "--database-url=postgres://x", "--mattermost-url=https://mm",

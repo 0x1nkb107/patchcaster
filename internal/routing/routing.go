@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"os"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4" // ADR-013
 )
 
 // Table maps GitLab project paths to Mattermost channel identifiers.

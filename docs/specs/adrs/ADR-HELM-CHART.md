@@ -50,13 +50,19 @@ owner renamed it the same day, before any chart was signed, so the repository na
   strictly greater than `PATCHCASTER_DRAIN_TIMEOUT`, the SYSREQ-023 owner condition), Service
   (webhook port plus the internal port for in-cluster metrics scraping), optional
   ServiceAccount, Secret (or `existingSecret`), a routing ConfigMap as raw pass-through
-  (SYSREQ-022), and resources/scheduling knobs. Explicitly **not** rendered: Ingress, HPA
-  (contradicts the single-replica posture), and any bundled PostgreSQL (external by ADR-010).
+  (SYSREQ-022), and resources/scheduling knobs. An optional Gateway API `HTTPRoute`, off by
+  default, attaches the `/webhook` path and nothing else to a Gateway the platform runs, so the
+  internal listener never leaves the cluster (SYSARCH-004). Gateway API keeps hostnames,
+  listeners and TLS with the platform's Gateway and leaves only the route to the application,
+  which is why the owner added it on 2026-10-10. Explicitly **not** rendered: Ingress (it would
+  pull hostname and TLS ownership into the chart), HPA (contradicts the single-replica posture),
+  and any bundled PostgreSQL (external by ADR-010).
 - **CI gate**: every chart change runs `helm lint --strict`, a `helm template` render of the
-  example values, and a `kind` cluster validating every manifest server-side
-  (`helm install --dry-run=server` — the pinned application image may be private, so nothing is
-  scheduled or pulled). Live-install smoke tests become viable with the first application
-  release.
+  example values, and a `kind` cluster validating every manifest server-side (`helm install
+  --dry-run=server` — the pinned application image may be private, so nothing is scheduled or
+  pulled). The cluster gets the Gateway API CRDs of a pinned release first, so the example
+  values' `HTTPRoute` validates as well. Live-install smoke tests become viable with the first
+  application release.
 
 ## Consequences
 

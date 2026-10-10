@@ -22,9 +22,9 @@ The deployment target is Kubernetes (UC-003), and a chart is the installable uni
 Version-follows-tag keeps the chart's `appVersion` truthful: every published chart names an
 image that SYSREQ-031 published in the same run and SYSREQ-032 signed in the same run, so a
 chart can never point at an image that does not exist or was cut from a different commit.
-Chart scope (core workloads only, no ingress/HPA/bundled database) is design, decided in
-ADR-017; the owner fixed the registry path, the versioning policy, and chart signing on
-2026-10-10.
+Chart scope (core workloads plus an optional Gateway API HTTPRoute; no Ingress, HPA or bundled
+database) is design, decided in ADR-017; the owner fixed the registry path, the versioning
+policy, and chart signing on 2026-10-10.
 
 ## Acceptance Criteria
 

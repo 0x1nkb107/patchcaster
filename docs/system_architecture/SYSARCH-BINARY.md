@@ -22,7 +22,9 @@ One `main` package, `cmd/patchcaster`, wiring `internal/` packages: `ingest`, `s
 is the command's own surface, parsed and validated there (owner directive 2026-10-10). The
 `go.mod` `go` directive pins the exact toolchain (currently
 `1.27.1`) for reproducible builds; CGO stays off (pure-Go pgx driver, ADR-010) so the binary is
-static. Images are built from a multi-stage Dockerfile to a distroless base. Common tasks —
+static. Images are assembled by one COPY-only distroless Dockerfile around binaries compiled by
+that pinned toolchain — release images via buildx multi-arch (ADR-015), local images by
+`just container`. Common tasks —
 `build`, `test`, `lint`, `migrate`, `container`, `devdb` — live in the `justfile` (ADR-007),
 with `lint` running the version-pinned `golangci-lint` gate (ADR-011). Release artifacts are cut
 by the version-pinned goreleaser pipeline of ADR-015 (`just release`), which cross-builds both

@@ -2,7 +2,7 @@
 // (ADR-004/ADR-008). Precedence is flags > PATCHCASTER_-prefixed environment
 // variables > built-in defaults, and any invalid value exits non-zero before
 // the service listens (SYSREQ-022).
-package config
+package main
 
 import (
 	"fmt"

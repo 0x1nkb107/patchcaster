@@ -17,12 +17,11 @@ import (
 	pgxstdlib "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 
-	"github.com/0x5a17ed/patchcaster/internal/config"
 	"github.com/0x5a17ed/patchcaster/internal/store"
 )
 
 func main() {
-	var cli config.CLI
+	var cli CLI
 	ctx := kong.Parse(&cli,
 		kong.Name("patchcaster"),
 		kong.Description("Forward GitLab merge request webhooks to Mattermost threads."),
@@ -42,7 +41,7 @@ func main() {
 // dispatch keeps Run free of os.Exit so the wiring is testable; main converts
 // any error into a non-zero exit (SYSREQ-022: invalid configuration never
 // starts listening).
-func dispatch(ctx context.Context, command string, cli *config.CLI) error {
+func dispatch(ctx context.Context, command string, cli *CLI) error {
 	switch command {
 	case "migrate":
 		db, err := openDB(cli.Migrate.DatabaseURL)

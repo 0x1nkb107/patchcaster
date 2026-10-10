@@ -11,7 +11,6 @@ import (
 
 	"github.com/lmittmann/tint"
 
-	"github.com/0x5a17ed/patchcaster/internal/config"
 	"github.com/0x5a17ed/patchcaster/internal/deliver"
 	"github.com/0x5a17ed/patchcaster/internal/ingest"
 	"github.com/0x5a17ed/patchcaster/internal/mattermost"
@@ -26,7 +25,7 @@ import (
 // accepting, and the worker gets the drain budget to finish what is in
 // flight. The deployment's terminationGracePeriodSeconds must exceed
 // --drain-timeout.
-func serve(ctx context.Context, cfg *config.ServeCmd) error {
+func serve(ctx context.Context, cfg *ServeCmd) error {
 	log := newLogger(cfg.LogLevel)
 
 	routes, err := routing.Load(cfg.RoutingFile)

@@ -15,10 +15,12 @@ the tasks.
 
 ```sh
 just test            # offline unit suite
+just quality         # CI gate: fmt check + CGO-free build + vet + lint
 just devdb           # PostgreSQL 18 on 127.0.0.1:5433 (podman)
 just migrate         # apply embedded schema
 just run             # serve with the example routing table (needs env vars below)
 just lint            # vet + pinned golangci-lint
+just race            # full suite under the race detector (needs cgo)
 just sqlc            # regenerate query code after touching db/
 just container       # OCI image (distroless, CGO-free)
 ```

@@ -16,14 +16,28 @@ vet:
 	go vet ./...
 
 # Fast offline unit suite (PostgreSQL tests skip without the URL).
-test:
-	go test ./...
+# Variadic: `just test -count=1` forwards to go test.
+test +args="":
+	go test {{args}} ./...
+
+# Run the suite under the race detector; needs cgo, which -race requires.
+race +args="":
+	CGO_ENABLED=1 go test -race {{args}} ./...
+
+# Fail on unformatted files (CI form of fmt; fmt writes, this only reports).
+# Note: just passes $ through untouched (only {{...}} is just's syntax).
+fmt-check:
+	@unformatted="$(gofmt -l cmd internal)"; test -z "$unformatted" || { printf 'unformatted files:\n%s\n' "$unformatted"; exit 1; }
 
 # Store contract tests against a real PostgreSQL (disposable database!).
 test-integration:
 	PATCHCASTER_TEST_DATABASE_URL="{{test_database_url}}" go test -count=1 ./internal/store/
 
-# Full quality gate: vet and the pinned golangci-lint (plus gofmt in CI).
+# CI quality gate: formatting, the CGO-free build contract, vet, and the
+# pinned golangci-lint (lint pulls in vet).
+quality: fmt-check build lint
+
+# Vet and the pinned golangci-lint.
 # -modfile resolves the tool from the pinned tools/golangci module while the
 # working directory stays at the service module root.
 lint: vet

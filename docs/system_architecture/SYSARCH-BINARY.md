@@ -7,6 +7,7 @@ platform: "OCI container, linux/amd64 and linux/arm64"
 satisfies:
   - "SYSREQ-022"
   - "SYSREQ-031"
+  - "SYSREQ-032"
 ---
 
 # System Architecture: Single service binary and toolchain
@@ -25,7 +26,8 @@ static. Images are built from a multi-stage Dockerfile to a distroless base. Com
 `build`, `test`, `lint`, `migrate`, `container`, `devdb` — live in the `justfile` (ADR-007),
 with `lint` running the version-pinned `golangci-lint` gate (ADR-011). Release artifacts are cut
 by the version-pinned goreleaser pipeline of ADR-015 (`just release`), which cross-builds both
-claimed architectures and publishes the images and GitHub release of SYSREQ-031.
+claimed architectures and publishes the images and GitHub release of SYSREQ-031, signing images
+and archives keylessly per ADR-016 (SYSREQ-032).
 
 ## Static View (Structure)
 

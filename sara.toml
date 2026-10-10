@@ -1,5 +1,5 @@
 [repositories]
-paths = ["./docs"]
+paths = ["./docs/specs"]
 
 [validation]
 strict_mode = false

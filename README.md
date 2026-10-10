@@ -13,7 +13,7 @@
 [Configuration](#configuration) ·
 [Operations](#operations) ·
 [Local demo](demo/README.md) ·
-[Requirements](docs/README.md)
+[Requirements](docs/specs/README.md)
 
 </div>
 
@@ -22,7 +22,7 @@ one thread per merge request whose root message is a live status board
 (pipeline, reviewer, comment and edit segments refresh in place), with thread
 replies for notable events: comments, pipeline pass/fail, review verdicts,
 pushes, merge and close. The normative behavior lives in the SARA graph under
-[`docs/`](docs/README.md); this README is the operator's quickstart.
+[`docs/specs/`](docs/specs/README.md); this README is the operator's quickstart.
 
 ## Build & run
 

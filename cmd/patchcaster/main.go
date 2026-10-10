@@ -98,6 +98,11 @@ func migrate(ctx context.Context, db *sql.DB, log *slog.Logger) error {
 	if err != nil {
 		return fmt.Errorf("goose provider: %w", err)
 	}
+	// The provider borrows db: Provider.Close is exactly db.Close, meant for
+	// callers that hand over ownership. Here the pool outlives migration
+	// (serve keeps serving), and both callers close it (serve.go defer,
+	// dispatch in main.go). Do not close the provider — IDE resource-leak
+	// warnings here are the by-caller-close pattern, not a leak.
 	applied, err := provider.Up(ctx)
 	if err != nil {
 		return fmt.Errorf("apply migrations: %w", err)

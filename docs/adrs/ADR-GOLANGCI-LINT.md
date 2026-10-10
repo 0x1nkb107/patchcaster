@@ -57,9 +57,10 @@ Curated set beyond the default analyzers (`errcheck`, `govet`, `ineffassign`, `s
 
 ### Negative Consequences
 
-- A toolchain dependency whose own Go build version can drift from the project's — mitigated by
-  pinning the same version in the CI action and the justfile recipe (single source of truth in
-  the CI config).
+- A toolchain dependency whose own Go build version can drift from the project's — eliminated by
+  the owner directive (2026-10-10): golangci-lint is pinned as a Go tool dependency in
+  `tools/golangci/go.mod` and invoked via `go tool -modfile tools/golangci/go.mod golangci-lint`,
+  so it compiles under the project's own Go toolchain and CI needs no separate installation.
 - Analyzer upgrades can surface new findings retroactively — mitigated by the version pin;
   upgrades are deliberate, reviewable changes.
 

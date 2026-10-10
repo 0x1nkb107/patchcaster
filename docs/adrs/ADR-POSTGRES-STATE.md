@@ -25,7 +25,8 @@ backup as the thread-loss insurance — are what this decision removes.
 ## Key factors
 
 - Owner directive (2026-10-10): PostgreSQL 18, `pgx`, sqlc and goose retained, backend-neutral
-  repository interface in the store package.
+  repository interface in the store package. sqlc is pinned as a Go tool dependency in
+  `tools/sqlc/go.mod`, invoked via `go tool -modfile tools/sqlc/go.mod sqlc`.
 - SYSREQ-006/014/017/024 are technology-neutral by design; only the decision layer moves.
 - One dialect only — a dual-backend design would double every query, migration, and test
   permanently; replacement avoids that tax entirely.

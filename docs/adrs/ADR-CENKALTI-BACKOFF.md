@@ -33,13 +33,16 @@ library computes that schedule, per the owner directive of 2026-10-10.
 
 ## Decision Outcome
 
-Chosen option: "`cenkalti/backoff`", by owner directive; it fits anyway, with one binding
-implementation constraint: the library is used as an **interval generator**
+Chosen option: "`cenkalti/backoff`", by owner directive; it fits anyway, with binding
+implementation constraints. The library (`v5` module) is used as an **interval generator**
 (`ExponentialBackOff{InitialInterval: 1s, Multiplier: 2, MaxInterval: 10m}` plus the
 `NextBackOff()` sequence), not as a `Retry`-loop driver, because each scheduled attempt must be
-persisted in the durable queue between tries. Its default `MaxElapsedTime` of 15 minutes must be disabled
-(set to `0`), which would otherwise abort the 8-attempt budget (~45 min worst-case horizon)
-prematurely.
+persisted in the durable queue between tries. `RandomizationFactor` is set to `0` so the ladder is
+the exact 1s, 2s, 4s … 10min schedule — precisely testable per attempt. The 15-minute
+`MaxElapsedTime` abort is structurally impossible in `v5`: the field was removed from the backoff
+struct (it only governed the unused `Retry` driver), so the 8-attempt budget (~45 min worst-case
+horizon) cannot be cut short; the worker builds a fresh generator and steps it once per recorded
+failure, making the deferral a pure function of the attempt count.
 
 ### Positive Consequences
 

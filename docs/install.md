@@ -18,7 +18,7 @@ then point GitLab at it.
 ## Kubernetes: Helm chart
 
 The chart is `oci://ghcr.io/patchcaster-app/charts/patchcaster`, built in the
-sibling [patchcaster-charts](https://github.com/patchcaster-app/patchcaster-charts)
+sibling [`patchcaster-app/charts`](https://github.com/patchcaster-app/charts)
 repository (SYSREQ-033, ADR-017). Its README is the reference for installing
 it, its values, and verifying it. Chart versions follow releases
 (`appVersion` = tag) and sign under *that* repository's workflow identity, so

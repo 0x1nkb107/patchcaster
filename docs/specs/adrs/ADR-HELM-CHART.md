@@ -18,8 +18,10 @@ The deployment target is Kubernetes (UC-003), where the chart is the installable
 item ever forbade charts — an early claim that ADR-010 excluded them was checked against the
 graph and found wrong (ADR-010 is PostgreSQL); the "out of scope" posture was conversational
 only. On 2026-10-10 the owner decided to ship a first-party chart and to host it **outside** the
-application repository, as `patchcaster-app/patchcaster-charts` alongside the many sibling
-repositories of the workspace.
+application repository, as `patchcaster-app/charts` alongside the many sibling repositories of
+the workspace. The repository was first planned as `patchcaster-app/patchcaster-charts`; the
+owner renamed it the same day, before any chart was signed, so the repository name mirrors the
+`ghcr.io/patchcaster-app/charts` namespace and no published signature carries the old identity.
 
 ## Decision
 
@@ -40,7 +42,7 @@ repositories of the workspace.
   application.
 - **Signing**: the chart artifact is cosign-signed keyless (ADR-016 mechanism) against its push
   digest. The certificate identity is the **charts** repository's workflow —
-  `github.com/patchcaster-app/patchcaster-charts/.github/workflows/release.yml@refs/tags/…` —
+  `github.com/patchcaster-app/charts/.github/workflows/release.yml@refs/tags/…` —
   so verifiers must accept the union of the application and charts release identities.
 - **Scope (core only)**: Deployment (liveness/readiness on the internal listener; hardened
   securityContext with `readOnlyRootFilesystem`; `terminationGracePeriodSeconds` derived to be

@@ -43,4 +43,4 @@ ADR-017; the owner fixed the registry path, the versioning policy, and chart sig
 ## Notes
 
 Chart content (templates, values surface, scope) follows ADR-017; the chart lives in the sibling
-`patchcaster-app/patchcaster-charts` repository and is tagged and published from there.
+`patchcaster-app/charts` repository and is tagged and published from there.

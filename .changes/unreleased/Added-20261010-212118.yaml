@@ -1,0 +1,3 @@
+kind: Added
+body: 'Deliver through a durable PostgreSQL outbox: failed posts are retried with backoff, survive restarts, and are parked for triage when the retries run out.'
+time: 2026-10-10T21:21:18.653902437+02:00

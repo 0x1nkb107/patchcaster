@@ -435,7 +435,7 @@ func TestBackoffIntervalLadder(t *testing.T) {
 		{2, 2 * time.Second},
 		{3, 4 * time.Second},
 		{10, 512 * time.Second},
-		{11, 10 * time.Minute}, // cap reached (ADR-003)
+		{11, 10 * time.Minute}, // cap reached (ADR-008)
 		{12, 10 * time.Minute},
 	}
 	for _, tc := range tests {

@@ -15,7 +15,7 @@ import (
 	"github.com/0x5a17ed/patchcaster/internal/store"
 )
 
-// Owner-approved retry constants (ADR-003): 1 s start, doubling, capped at
+// Owner-approved retry constants (ADR-008): 1 s start, doubling, capped at
 // 10 min, 8 attempts total, then park. Jitter is disabled so the deferral
 // ladder (1s, 2s, 4s ... 600s) is exact and testable.
 const (
@@ -305,7 +305,7 @@ func (w *Worker) settle(ctx context.Context, job *store.Job, s store.Settlement)
 }
 
 // backoffInterval returns the deferral after the n-th failed attempt using
-// the ADR-003 ladder. A fresh, jitter-free generator is stepped n times, so
+// the ADR-008 ladder. A fresh, jitter-free generator is stepped n times, so
 // the result depends only on n.
 func backoffInterval(n int) time.Duration {
 	b := &backoff.ExponentialBackOff{

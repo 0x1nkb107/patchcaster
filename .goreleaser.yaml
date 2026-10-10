@@ -26,11 +26,20 @@ builds:
 checksum:
   name_template: "checksums.txt"
 
+# Setting files replaces goreleaser's defaults, so LICENSE (whose notice MIT
+# requires in every copy) is listed explicitly. The operator docs keep their
+# docs/ paths, so the README's operator links resolve inside the archive.
 archives:
   - name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     files:
       - src: README.md
         strip_parent: true
+      - src: LICENSE
+        strip_parent: true
+      - docs/install.md
+      - docs/configuration.md
+      - docs/operations.md
+      - docs/integrations/*.md
 
 # Draft releases keep cuts reviewable before they become public.
 release:

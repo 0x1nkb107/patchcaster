@@ -61,7 +61,8 @@ repositories of the workspace.
   release pipeline stays a single-binary-plus-image concern.
 - Bad: two repositories and two tag cuts per coordinated release; version drift is possible and
   is caught by inspection (SYSREQ-033 acceptance commands), not prevented.
-- Bad: two cosign identity strings exist; verification examples in both READMEs must carry both.
+- Bad: two cosign identity strings exist; verification examples in the application's install guide and the charts README must
+  carry both.
 - Bad: a chart version may name an `appVersion` whose image was never published; release
   acceptance (pull + `helm show chart`) catches it, the pipeline cannot.
 

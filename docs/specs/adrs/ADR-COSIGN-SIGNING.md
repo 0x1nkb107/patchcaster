@@ -35,7 +35,7 @@ Sign releases with cosign in **keyless mode**, wired into the goreleaser pipelin
 - Fulcio/Rekor with the default public transparency log; no CA or log infrastructure is run.
 - Trust anchors on verification, not on a key: verifiers pin the certificate identity to this
   repository's release workflow and a `v*` tag, and the issuer to GitHub's OIDC provider. The
-  exact commands are documented for operators (README).
+  exact commands are documented for operators (`docs/install.md`).
 - Snapshots and dry runs skip signing (`--skip=sign`): keyless has no identity to ask outside
   Actions, and a snapshot that "signed" would be a lie.
 - If releases ever need to run outside GitHub Actions, the explicit fallback is a KMS-backed

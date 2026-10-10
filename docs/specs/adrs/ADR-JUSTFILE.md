@@ -41,7 +41,7 @@ recipes stay one-line honest and tab-completable.
 
 ### Negative Consequences
 
-- Contributors need `just` installed — a one-line dependency documented in the README.
+- Contributors need `just` installed — a one-line dependency documented in `docs/development.md`.
 
 ## Pros and Cons of the Options
 

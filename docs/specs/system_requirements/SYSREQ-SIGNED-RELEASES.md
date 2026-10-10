@@ -36,11 +36,11 @@ identity-based verification it natively supports.
 ## Verification Plan
 
 - **Method**: Manual + pipeline.
-- **Procedure**: After a tag push, run the README verification commands against the image and
+- **Procedure**: After a tag push, run the verification commands in `docs/install.md` against the image and
   the archive bundle; the CI snapshot job proves non-Actions runs skip signing cleanly
   (`--skip=sign`) instead of attempting identities they cannot obtain.
 
 ## Notes
 
 Keyless mode per ADR-016; the verifier-side identity pinning is normative documentation, kept
-in README next to the commands.
+in `docs/install.md` next to the commands.

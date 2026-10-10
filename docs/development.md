@@ -2,7 +2,7 @@
 
 How to build PatchCaster from source, try a change on your own machine, and
 run the same checks CI runs before the change goes upstream. Operators
-deploying a release want the [README](../README.md) instead; the normative
+deploying a release want the [install guide](install.md) instead; the normative
 behavior lives in the SARA graph under [`specs/`](specs/README.md).
 
 ## Prerequisites
@@ -66,8 +66,8 @@ packages, e.g. `just test -run TestRenderer -v`.
 
 `just run` serves against the dev database with
 [`contrib/routing.example.yaml`](../contrib/routing.example.yaml). The
-remaining required settings come from the environment; the README's
-[configuration table](../README.md#configuration) lists all of them.
+remaining required settings come from the environment; the
+[configuration reference](configuration.md) lists all of them.
 
 ```sh
 just devdb     # once

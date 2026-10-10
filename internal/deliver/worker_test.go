@@ -12,11 +12,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/0x5a17ed/patchcaster/internal/event"
-	"github.com/0x5a17ed/patchcaster/internal/mattermost"
-	"github.com/0x5a17ed/patchcaster/internal/metrics"
-	"github.com/0x5a17ed/patchcaster/internal/plan"
-	"github.com/0x5a17ed/patchcaster/internal/store"
+	"github.com/patchcaster-app/patchcaster/internal/event"
+	"github.com/patchcaster-app/patchcaster/internal/mattermost"
+	"github.com/patchcaster-app/patchcaster/internal/metrics"
+	"github.com/patchcaster-app/patchcaster/internal/plan"
+	"github.com/patchcaster-app/patchcaster/internal/store"
 )
 
 var workerNow = time.Date(2026, 10, 10, 10, 0, 0, 0, time.UTC)

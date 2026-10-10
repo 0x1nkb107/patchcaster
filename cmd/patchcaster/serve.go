@@ -11,13 +11,13 @@ import (
 
 	"github.com/lmittmann/tint"
 
-	"github.com/0x5a17ed/patchcaster/internal/deliver"
-	"github.com/0x5a17ed/patchcaster/internal/ingest"
-	"github.com/0x5a17ed/patchcaster/internal/mattermost"
-	"github.com/0x5a17ed/patchcaster/internal/metrics"
-	"github.com/0x5a17ed/patchcaster/internal/ops"
-	"github.com/0x5a17ed/patchcaster/internal/routing"
-	"github.com/0x5a17ed/patchcaster/internal/store"
+	"github.com/patchcaster-app/patchcaster/internal/deliver"
+	"github.com/patchcaster-app/patchcaster/internal/ingest"
+	"github.com/patchcaster-app/patchcaster/internal/mattermost"
+	"github.com/patchcaster-app/patchcaster/internal/metrics"
+	"github.com/patchcaster-app/patchcaster/internal/ops"
+	"github.com/patchcaster-app/patchcaster/internal/routing"
+	"github.com/patchcaster-app/patchcaster/internal/store"
 )
 
 // serve wires every component and owns the shutdown choreography

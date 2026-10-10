@@ -4,7 +4,7 @@
 // Policy lives here, not at either edge, so the two can never drift.
 package plan
 
-import "github.com/0x5a17ed/patchcaster/internal/event"
+import "github.com/patchcaster-app/patchcaster/internal/event"
 
 // Notice template names: each maps to templates/notice_<name>.tmpl in the
 // renderer, and the set is exactly the notifying event kinds of SYSREQ-029

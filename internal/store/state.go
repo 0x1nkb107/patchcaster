@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/0x5a17ed/patchcaster/internal/store/sqlcgen"
+	"github.com/patchcaster-app/patchcaster/internal/store/sqlcgen"
 )
 
 // State is the merge request board snapshot (SYSREQ-027): everything a root

@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/0x5a17ed/patchcaster/internal/event"
+	"github.com/patchcaster-app/patchcaster/internal/event"
 )
 
 func TestForDecisionTable(t *testing.T) {

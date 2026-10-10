@@ -8,9 +8,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/0x5a17ed/patchcaster/internal/event"
-	"github.com/0x5a17ed/patchcaster/internal/plan"
-	"github.com/0x5a17ed/patchcaster/internal/store"
+	"github.com/patchcaster-app/patchcaster/internal/event"
+	"github.com/patchcaster-app/patchcaster/internal/plan"
+	"github.com/patchcaster-app/patchcaster/internal/store"
 )
 
 // Board semantics under test (SYSREQ-027/030, ADR-014): ingest is the only

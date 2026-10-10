@@ -1,4 +1,4 @@
-module github.com/0x5a17ed/patchcaster
+module github.com/patchcaster-app/patchcaster
 
 go 1.27.1
 

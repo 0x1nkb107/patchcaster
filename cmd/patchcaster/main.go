@@ -16,7 +16,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	pgxstdlib "github.com/jackc/pgx/v5/stdlib"
 
-	"github.com/0x5a17ed/patchcaster/internal/store"
+	"github.com/patchcaster-app/patchcaster/internal/store"
 )
 
 // version is stamped at link time by the release pipeline

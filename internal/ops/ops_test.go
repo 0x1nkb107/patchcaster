@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/0x5a17ed/patchcaster/internal/metrics"
+	"github.com/patchcaster-app/patchcaster/internal/metrics"
 )
 
 type stubPinger struct{ err error }

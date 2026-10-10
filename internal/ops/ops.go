@@ -13,7 +13,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/0x5a17ed/patchcaster/internal/metrics"
+	"github.com/patchcaster-app/patchcaster/internal/metrics"
 )
 
 // Pinger reports store availability for the readiness probe.

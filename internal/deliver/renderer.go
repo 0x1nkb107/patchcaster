@@ -7,8 +7,8 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/0x5a17ed/patchcaster/internal/event"
-	"github.com/0x5a17ed/patchcaster/internal/store"
+	"github.com/patchcaster-app/patchcaster/internal/event"
+	"github.com/patchcaster-app/patchcaster/internal/store"
 )
 
 // Templates are embedded in the binary (SYSREQ-025); there is no operator-

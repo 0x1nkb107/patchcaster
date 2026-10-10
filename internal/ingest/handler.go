@@ -7,11 +7,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/0x5a17ed/patchcaster/internal/event"
-	"github.com/0x5a17ed/patchcaster/internal/metrics"
-	"github.com/0x5a17ed/patchcaster/internal/plan"
-	"github.com/0x5a17ed/patchcaster/internal/routing"
-	"github.com/0x5a17ed/patchcaster/internal/store"
+	"github.com/patchcaster-app/patchcaster/internal/event"
+	"github.com/patchcaster-app/patchcaster/internal/metrics"
+	"github.com/patchcaster-app/patchcaster/internal/plan"
+	"github.com/patchcaster-app/patchcaster/internal/routing"
+	"github.com/patchcaster-app/patchcaster/internal/store"
 )
 
 // maxBodyBytes bounds one webhook payload; GitLab merge request payloads stay

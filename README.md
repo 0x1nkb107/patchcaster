@@ -22,7 +22,7 @@ just run             # serve with the example routing table (needs env vars belo
 just lint            # vet + pinned golangci-lint
 just race            # full suite under the race detector (needs cgo)
 just sqlc            # regenerate query code after touching db/
-just container       # OCI image (distroless, CGO-free)
+just container       # OCI image: pinned-toolchain host build into distroless stage
 just release-check    # validate the goreleaser pipeline (ADR-015)
 just release-snapshot # release dry run: builds; publishes and signs nothing
 ```

@@ -44,7 +44,6 @@ release:
 # v2.18 OSS has no docker_login step.
 dockers_v2:
   - id: patchcaster
-    dockerfile: Dockerfile.goreleaser
     images:
       - "ghcr.io/patchcaster-app/patchcaster"
     tags:

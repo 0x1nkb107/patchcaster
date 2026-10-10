@@ -67,9 +67,13 @@ devdb:
 	  -e POSTGRES_USER=patchcaster -e POSTGRES_PASSWORD=dev -e POSTGRES_DB=patchcaster \
 	  -p 127.0.0.1:5433:5432 docker.io/library/postgres:18
 
-# Build the OCI image.
-container:
-	{{engine}} build -t patchcaster:dev .
+# Build the OCI image locally (single architecture; pass `arm64` to build
+# that one). The pinned host toolchain compiles, then the binary is staged
+# in the layout the shared release Dockerfile reads (ADR-015) — no compiler
+# ever runs inside the image.
+container arch="amd64":
+	CGO_ENABLED=0 GOARCH={{arch}} go build -trimpath -ldflags "-s -w" -o dist/container/linux/{{arch}}/patchcaster ./cmd/patchcaster
+	{{engine}} build --pull=missing -t patchcaster:dev --platform=linux/{{arch}} -f Dockerfile --build-arg TARGETPLATFORM=linux/{{arch}} dist/container
 
 # Validate the release pipeline config against the pinned tool (ADR-015).
 release-check:

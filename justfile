@@ -75,10 +75,15 @@ container:
 release-check:
 	go tool -modfile tools/goreleaser/go.mod goreleaser check
 
-# Full release dry run: builds binaries and images, publishes nothing.
-release-snapshot:
-	go tool -modfile tools/goreleaser/go.mod goreleaser release --snapshot --clean
+# Full release dry run: builds binaries and images, publishes and signs
+# nothing (keyless signing has no identity outside Actions, ADR-016).
+# Extra args go to goreleaser, e.g. `--skip=docker` without a daemon.
+release-snapshot +args="":
+	go tool -modfile tools/goreleaser/go.mod goreleaser release --snapshot --clean --skip=publish,sign {{args}}
 
-# Cut and publish a release; normally runs tag-triggered in CI, not here.
+# Cut and publish a release; normally runs tag-triggered in CI, not here
+# (keyless signing needs the workflow's OIDC identity). The pinned cosign
+# (ADR-016) is built from its tools module onto PATH for goreleaser.
 release:
-	go tool -modfile tools/goreleaser/go.mod goreleaser release --clean
+	mkdir -p dist && go build -modfile tools/cosign/go.mod -o dist/cosign github.com/sigstore/cosign/v2/cmd/cosign
+	PATH="$PWD/dist:$PATH" go tool -modfile tools/goreleaser/go.mod goreleaser release --clean

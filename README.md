@@ -23,8 +23,8 @@ just lint            # vet + pinned golangci-lint
 just race            # full suite under the race detector (needs cgo)
 just sqlc            # regenerate query code after touching db/
 just container       # OCI image (distroless, CGO-free)
-just release-check   # validate the goreleaser pipeline (ADR-015)
-just release-snapshot# release dry run: builds, publishes nothing
+just release-check    # validate the goreleaser pipeline (ADR-015)
+just release-snapshot # release dry run: builds; publishes and signs nothing
 ```
 
 ## Configuration
@@ -91,6 +91,24 @@ posted.
   in the `outbox` table for operator triage.
 * v1 runs as a **single replica**; the queue uses lease-based claims so more
   replicas remain a future option, not a schema change.
+* **Release provenance**: images live at `ghcr.io/patchcaster-app/patchcaster`, signed
+  keylessly with cosign via the release workflow (ADR-016). Verify before deploying:
+
+  ```sh
+  cosign verify ghcr.io/patchcaster-app/patchcaster:vX.Y.Z \
+    --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+    --certificate-identity-regexp 'https://github.com/patchcaster-app/patchcaster/\.github/workflows/release\.yml@refs/tags/v[0-9].*'
+  ```
+
+  The GitHub release carries a `checksums.txt` signature bundle proving the
+  archives match the signed digests:
+
+  ```sh
+  cosign verify-bundle --bundle checksums.txt.sig \
+    --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+    --certificate-identity-regexp 'https://github.com/patchcaster-app/patchcaster/\.github/workflows/release\.yml@refs/tags/v[0-9].*' \
+    checksums.txt
+  ```
 
 ## Testing
 

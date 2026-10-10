@@ -46,13 +46,41 @@ dockers_v2:
   - id: patchcaster
     dockerfile: Dockerfile.goreleaser
     images:
-      - "ghcr.io/0x5a17ed/patchcaster"
+      - "ghcr.io/patchcaster-app/patchcaster"
     tags:
       - "{{ .Tag }}"
       - "latest"
     platforms:
       - linux/amd64
       - linux/arm64
+
+# Keyless cosign signing (ADR-016, SYSREQ-032). No keys exist: on GitHub
+# Actions cosign obtains the workflow's OIDC identity, Fulcio issues a short
+# certificate, and Rekor records the entry. The `--bundle` file (signature +
+# certificate + log entry) is uploaded to the release via signature: true;
+# image signatures live in the registry as .sig tags. There is no identity to
+# obtain outside Actions, so snapshots must --skip=sign (the release-snapshot
+# task does). goreleaser resolves `cosign` from PATH, which `just release`
+# fills with the build of the pinned tools/cosign module.
+signs:
+  - id: checksums
+    cmd: cosign
+    artifacts: checksum
+    signature: true
+    args:
+      - "sign-bundle"
+      - "--yes"
+      - "--bundle=${signature}"
+      - "${artifact}"
+
+docker_signs:
+  - id: images
+    cmd: cosign
+    artifacts: manifests
+    args:
+      - "sign"
+      - "--yes"
+      - "${artifact}@${digest}"
 
 changelog:
   sort: ASC

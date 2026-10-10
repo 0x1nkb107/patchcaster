@@ -58,6 +58,7 @@ jobs:
     permissions:
       contents: write # GitHub release
       packages: write # ghcr.io push
+      id-token: write # cosign keyless OIDC identity (ADR-016)
     steps:
       # Full history: goreleaser builds the changelog from commit history.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -73,6 +74,7 @@ jobs:
             tools/golangci/go.sum
             tools/sqlc/go.sum
             tools/goreleaser/go.sum
+            tools/cosign/go.sum
 
       - uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
         with:

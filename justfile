@@ -1,5 +1,6 @@
 # PatchCaster development tasks (ADR-007).
-# Toolchain binaries are pinned tools modules, never ambient installs.
+# Toolchain binaries are pinned tools modules, never ambient installs. The
+# one exception is cosign, which the release workflow installs (ADR-016).
 
 engine := env_var_or_default("ENGINE", "podman")
 database_url := "postgres://patchcaster:dev@127.0.0.1:5433/patchcaster?sslmode=disable"
@@ -100,11 +101,12 @@ release-snapshot +args="":
 	go tool -modfile tools/goreleaser/go.mod goreleaser release --snapshot --clean --skip=publish,sign {{args}}
 
 # Cut and publish a release; normally runs tag-triggered in CI, not here
-# (keyless signing needs the workflow's OIDC identity). The pinned cosign
-# (ADR-016) is built from its tools module onto PATH for goreleaser. The
-# release notes are the tag's batched changelog (ADR-018); a tag without one
-# fails here, before anything is built or published.
+# (keyless signing needs the workflow's OIDC identity). goreleaser calls
+# cosign from PATH, where the release workflow's installer puts it
+# (ADR-016). The release notes are the tag's batched changelog (ADR-018).
+# A missing cosign or a tag without notes fails here, before anything is
+# built or published.
 release:
+	@command -v cosign >/dev/null || { echo "cosign is not on PATH: the release workflow installs it (ADR-016)" >&2; exit 1; }
 	@notes=".changes/$(git describe --tags --exact-match).md"; test -f "$notes" || { echo "no $notes: run 'just changelog <tag>' and commit it before tagging" >&2; exit 1; }
-	mkdir -p dist && go build -modfile tools/cosign/go.mod -o dist/cosign github.com/sigstore/cosign/v2/cmd/cosign
-	PATH="$PWD/dist:$PATH" go tool -modfile tools/goreleaser/go.mod goreleaser release --clean --release-notes ".changes/$(git describe --tags --exact-match).md"
+	go tool -modfile tools/goreleaser/go.mod goreleaser release --clean --release-notes ".changes/$(git describe --tags --exact-match).md"

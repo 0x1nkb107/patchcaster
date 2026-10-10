@@ -72,8 +72,8 @@ dockers_v2:
 # is uploaded with the release and checked with `verify-blob --bundle`.
 # Image signatures live in the registry as .sig tags. There is no identity to
 # obtain outside Actions, so snapshots must --skip=sign (the release-snapshot
-# task does). goreleaser resolves `cosign` from PATH, which `just release`
-# fills with the build of the pinned tools/cosign module.
+# task does). goreleaser resolves `cosign` from PATH, where the release
+# workflow's cosign-installer step puts it.
 signs:
   - id: checksums
     cmd: cosign

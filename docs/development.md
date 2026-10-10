@@ -20,9 +20,10 @@ behaviour lives in the SARA graph under [`specs/`](specs/README.md).
 * **[sara](https://crates.io/crates/sara-cli)** (`cargo install sara-cli`),
   only when you change the specs.
 
-Nothing else is installed by hand: sqlc, golangci-lint, goreleaser and cosign
+Nothing else is installed by hand: sqlc, golangci-lint, goreleaser and changie
 are pinned as Go tool modules under `tools/` and built by your own Go
-toolchain through `go tool -modfile`.
+toolchain through `go tool -modfile`. cosign only signs releases, so only
+the release workflow installs it.
 
 ## Layout
 

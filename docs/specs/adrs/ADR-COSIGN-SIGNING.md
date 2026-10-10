@@ -27,8 +27,12 @@ Controller `ClusterImagePolicy`) is the native pattern.
 
 Sign releases with cosign in **keyless mode**, wired into the goreleaser pipeline of ADR-015:
 
-- cosign v2 is pinned as a tools module (`tools/cosign`) like every other tool; the `release`
-  task builds it from that module and puts it on `PATH` for goreleaser — no ambient installs.
+- cosign v2 is installed in the release job by the `sigstore/cosign-installer` action, pinned
+  by commit SHA and given an explicit `cosign-release` version. The installer checks the
+  downloaded binary against the cosign release key before putting it on `PATH`, where
+  goreleaser finds it. cosign was first a tools module (`tools/cosign`) like every other
+  tool; the owner replaced it with the action on 2026-10-10, as cosign only ever runs in that
+  job.
 - The release archives' `checksums.txt` gets a cosign *bundle* (signature + certificate + log
   entry) attached to the GitHub release; the OCI manifest lists get `cosign sign` signatures
   in the registry itself. Both cover the `latest` tag.

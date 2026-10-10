@@ -20,20 +20,20 @@ import (
 	"github.com/patchcaster-app/patchcaster/internal/store"
 )
 
-// serve wires every component and owns the shutdown choreography
-// (SYSREQ-023): on SIGTERM readiness flips false, the public listener stops
-// accepting, and the worker gets the drain budget to finish what is in
-// flight. The deployment's terminationGracePeriodSeconds must exceed
-// --drain-timeout.
-func serve(ctx context.Context, cfg *ServeCmd) error {
-	log := newLogger(cfg.LogLevel)
+// Run serves until ctx ends. It wires every component and owns the shutdown
+// choreography (SYSREQ-023): on SIGTERM readiness flips false, the public
+// listener stops accepting, and the worker gets the drain budget to finish
+// what is in flight. The deployment's terminationGracePeriodSeconds must
+// exceed --drain-timeout.
+func (c *ServeCmd) Run(ctx context.Context) error {
+	log := newLogger(c.LogLevel)
 
-	routes, err := routing.Load(cfg.RoutingFile)
+	routes, err := routing.Load(c.RoutingFile)
 	if err != nil {
 		return err
 	}
 
-	db, err := openDB(cfg.DatabaseURL)
+	db, err := openDB(c.DatabaseURL)
 	if err != nil {
 		return err
 	}
@@ -53,37 +53,37 @@ func serve(ctx context.Context, cfg *ServeCmd) error {
 	if err != nil {
 		return err
 	}
-	secrets := make([][]byte, len(cfg.SigningSecrets))
-	for i, s := range cfg.SigningSecrets {
+	secrets := make([][]byte, len(c.SigningSecrets))
+	for i, s := range c.SigningSecrets {
 		secrets[i] = []byte(s)
 	}
 	handler := &ingest.Handler{
 		Secrets: secrets,
 		Store:   st,
 		Routes:  routes,
-		MaxAge:  cfg.EventMaxAge,
+		MaxAge:  c.EventMaxAge,
 		Now:     time.Now,
 		Log:     log,
 		Metrics: m,
 	}
 	worker := deliver.NewWorker(
 		st,
-		mattermost.New(cfg.MattermostURL, cfg.MattermostToken),
+		mattermost.New(c.MattermostURL, c.MattermostToken),
 		renderer, m, log,
-		deliver.Config{Poll: time.Second, Lease: cfg.ClaimLease},
+		deliver.Config{Poll: time.Second, Lease: c.ClaimLease},
 		nil,
 	)
 
 	// Bind before announcing readiness: a port conflict must fail the start,
 	// not arrive as a late listener error.
-	pubLn, err := net.Listen("tcp", cfg.Addr)
+	pubLn, err := net.Listen("tcp", c.Addr)
 	if err != nil {
-		return fmt.Errorf("bind public listener %s: %w", cfg.Addr, err)
+		return fmt.Errorf("bind public listener %s: %w", c.Addr, err)
 	}
-	intLn, err := net.Listen("tcp", cfg.InternalAddr)
+	intLn, err := net.Listen("tcp", c.InternalAddr)
 	if err != nil {
 		_ = pubLn.Close()
-		return fmt.Errorf("bind internal listener %s: %w", cfg.InternalAddr, err)
+		return fmt.Errorf("bind internal listener %s: %w", c.InternalAddr, err)
 	}
 
 	pubCtx, cancelPub := context.WithCancel(ctx)
@@ -99,17 +99,17 @@ func serve(ctx context.Context, cfg *ServeCmd) error {
 	// channel nobody drains during shutdown.
 	errc := make(chan error, 4)
 	workerDone := make(chan struct{})
-	go func() { errc <- ops.ListenAndServe(intCtx, intLn, probe.Mux(), cfg.DrainTimeout) }()
-	go func() { errc <- ops.ListenAndServe(pubCtx, pubLn, handler.Mux(), cfg.DrainTimeout) }()
+	go func() { errc <- ops.ListenAndServe(intCtx, intLn, probe.Mux(), c.DrainTimeout) }()
+	go func() { errc <- ops.ListenAndServe(pubCtx, pubLn, handler.Mux(), c.DrainTimeout) }()
 	go func() {
 		err := worker.Run(wrkCtx)
 		close(workerDone)
 		errc <- err
 	}()
-	go func() { errc <- pruneLoop(wrkCtx, st, cfg.SeenRetention, log) }()
+	go func() { errc <- pruneLoop(wrkCtx, st, c.SeenRetention, log) }()
 
 	probe.MarkReady(true)
-	log.Info("serving", "public", cfg.Addr, "internal", cfg.InternalAddr)
+	log.Info("serving", "public", c.Addr, "internal", c.InternalAddr)
 
 	var errs []error
 	select {
@@ -123,14 +123,14 @@ func serve(ctx context.Context, cfg *ServeCmd) error {
 
 	case <-ctx.Done():
 		probe.MarkReady(false)
-		log.Info("shutdown signaled", "drain_budget", cfg.DrainTimeout)
+		log.Info("shutdown signaled", "drain_budget", c.DrainTimeout)
 		cancelPub() // webhooks stop being accepted immediately
 		worker.StopAfterCurrentJob()
 
 		select {
 		case <-workerDone:
 			log.Info("worker finished within drain budget")
-		case <-time.After(cfg.DrainTimeout):
+		case <-time.After(c.DrainTimeout):
 			log.Warn("drain budget exhausted; releasing worker")
 			cancelWrk()
 			<-workerDone

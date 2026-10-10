@@ -24,41 +24,40 @@ import (
 var version = "dev"
 
 func main() {
+	// SIGTERM/SIGINT start the documented drain (SYSREQ-023); without this
+	// trap the process would die at the default disposition, code 143.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	var cli CLI
-	ctx := kong.Parse(&cli,
+	kctx := kong.Parse(&cli, kongOptions(ctx)...)
+
+	// The commands' Run methods return errors instead of exiting, so the
+	// wiring stays testable; kong reports the error and exits non-zero
+	// (SYSREQ-022: invalid configuration never starts listening).
+	kctx.FatalIfErrorf(kctx.Run())
+}
+
+// kongOptions configures the command line for main and the tests alike. ctx
+// reaches every command's Run method as its context.Context.
+func kongOptions(ctx context.Context) []kong.Option {
+	return []kong.Option{
 		kong.Name("patchcaster"),
 		kong.Description("Forward GitLab merge request webhooks to Mattermost threads."),
 		kong.UsageOnError(),
 		kong.Vars{"version": version},
-	)
-
-	// SIGTERM/SIGINT start the documented drain (SYSREQ-023); without this
-	// trap the process would die at the default disposition, code 143.
-	runCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-
-	if err := dispatch(runCtx, ctx.Command(), &cli); err != nil {
-		fatal(err)
+		kong.BindTo(ctx, (*context.Context)(nil)),
 	}
 }
 
-// dispatch keeps Run free of os.Exit so the wiring is testable; main converts
-// any error into a non-zero exit (SYSREQ-022: invalid configuration never
-// starts listening).
-func dispatch(ctx context.Context, command string, cli *CLI) error {
-	switch command {
-	case "migrate":
-		db, err := openDB(cli.Migrate.DatabaseURL)
-		if err != nil {
-			return err
-		}
-		defer func() { _ = db.Close() }()
-		return migrate(ctx, db, newLogger("info"))
-	case "serve":
-		return serve(ctx, &cli.Serve)
-	default:
-		return fmt.Errorf("unknown command %q", command)
+// Run applies the embedded migrations over a connection it opens and closes.
+func (c *MigrateCmd) Run(ctx context.Context) error {
+	db, err := openDB(c.DatabaseURL)
+	if err != nil {
+		return err
 	}
+	defer func() { _ = db.Close() }()
+	return migrate(ctx, db, newLogger("info"))
 }
 
 // openDB opens a pooled database handle through the pure-Go pgx stdlib
@@ -84,9 +83,4 @@ func migrate(ctx context.Context, db *sql.DB, log *slog.Logger) error {
 	}
 	log.Info("migrations applied", "count", applied)
 	return nil
-}
-
-func fatal(err error) {
-	fmt.Fprintf(os.Stderr, "patchcaster: %v\n", err)
-	os.Exit(1)
 }

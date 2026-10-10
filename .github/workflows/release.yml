@@ -1,0 +1,91 @@
+# $schema: https://json.schemastore.org/github-workflow.json
+---
+name: Release
+
+# Tags cut releases; everything else exercises the same pipeline as a
+# snapshot that publishes nothing (ADR-015).
+on:
+  push:
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  GOTOOLCHAIN: local
+
+jobs:
+  # The drift alarm: config validity, both cross-compiled binaries run, and
+  # the multi-arch image build (buildx) succeeds — without an external
+  # publish in sight.
+  smoke:
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: |
+            go.sum
+            tools/golangci/go.sum
+            tools/sqlc/go.sum
+            tools/goreleaser/go.sum
+
+      - uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+        with:
+          just-version: '1.58.0'
+
+      - name: Validate release config
+        run: just release-check
+
+      - name: Snapshot build (binaries and images, no publish)
+        run: just release-snapshot
+
+      - name: Built binary knows its version
+        run: ./dist/patchcaster_linux_amd64*/patchcaster --version
+
+  release:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write # GitHub release
+      packages: write # ghcr.io push
+    steps:
+      # Full history: goreleaser builds the changelog from commit history.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: |
+            go.sum
+            tools/golangci/go.sum
+            tools/sqlc/go.sum
+            tools/goreleaser/go.sum
+
+      - uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+        with:
+          just-version: '1.58.0'
+
+      # v2.18 OSS has no docker_login pipeline; the daemon credential is the
+      # standard ghcr pattern using the workflow token.
+      - name: Login to ghcr.io
+        run: echo "${GITHUB_TOKEN}" | docker login ghcr.io -u "${GITHUB_REPOSITORY_OWNER}" --password-stdin
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release
+        run: just release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

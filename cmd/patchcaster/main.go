@@ -19,12 +19,17 @@ import (
 	"github.com/0x5a17ed/patchcaster/internal/store"
 )
 
+// version is stamped at link time by the release pipeline
+// (-ldflags -X main.version, ADR-015); source builds report "dev".
+var version = "dev"
+
 func main() {
 	var cli CLI
 	ctx := kong.Parse(&cli,
 		kong.Name("patchcaster"),
 		kong.Description("Forward GitLab merge request webhooks to Mattermost threads."),
 		kong.UsageOnError(),
+		kong.Vars{"version": version},
 	)
 
 	// SIGTERM/SIGINT start the documented drain (SYSREQ-023); without this

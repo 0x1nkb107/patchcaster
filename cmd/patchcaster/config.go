@@ -10,12 +10,15 @@ import (
 	"time"
 
 	z "github.com/Oudwins/zog"
+	"github.com/alecthomas/kong"
 )
 
 // CLI is the kong root. Running bare "patchcaster" serves.
 type CLI struct {
 	Serve   ServeCmd   `cmd:"" default:"withargs" help:"Run the webhook relay."`
 	Migrate MigrateCmd `cmd:"" help:"Apply database migrations and exit."`
+
+	Version kong.VersionFlag `help:"Show the build version and exit."`
 }
 
 // MigrateCmd applies goose migrations then exits, for migration-before-rollout

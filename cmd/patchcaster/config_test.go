@@ -12,7 +12,7 @@ import (
 func parse(t *testing.T, args ...string) (*CLI, error) {
 	t.Helper()
 	var cli CLI
-	k, err := kong.New(&cli)
+	k, err := kong.New(&cli, kong.Vars{"version": "test"})
 	if err != nil {
 		t.Fatal(err)
 	}

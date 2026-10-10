@@ -1,0 +1,67 @@
+# $schema: https://goreleaser.com/static/schema.json
+---
+# Release pipeline (ADR-015, SYSREQ-031), driven by the pinned tool in
+# tools/goreleaser. Validate with `just release-check`; dry-run with
+# `just release-snapshot`. Publishing happens only from the tag-triggered
+# workflow (or an explicit `just release` with GITHUB_TOKEN exported).
+version: 2
+
+project_name: patchcaster
+
+builds:
+  - id: patchcaster
+    main: ./cmd/patchcaster
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+
+checksum:
+  name_template: "checksums.txt"
+
+archives:
+  - name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - src: README.md
+        strip_parent: true
+
+# Draft releases keep cuts reviewable before they become public.
+release:
+  draft: true
+
+# One entry, both platforms: goreleaser runs `docker buildx build
+# --platform linux/amd64,linux/arm64` and publishes a manifest list per
+# image:tag. The COPY-only Dockerfile selects the staged binary via
+# TARGETPLATFORM (goreleaser stages linux/<arch>/<binary>), so no QEMU runs
+# any target binary (ADR-015). Registry login is the workflow's job:
+# v2.18 OSS has no docker_login step.
+dockers_v2:
+  - id: patchcaster
+    dockerfile: Dockerfile.goreleaser
+    images:
+      - "ghcr.io/0x5a17ed/patchcaster"
+    tags:
+      - "{{ .Tag }}"
+      - "latest"
+    platforms:
+      - linux/amd64
+      - linux/arm64
+
+changelog:
+  sort: ASC
+  groups:
+    - title: Features
+      regexp: "^.*feat[(\\w)]*:+.*$"
+      order: 0
+    - title: Fixes
+      regexp: "^.*fix[(\\w)]*:+.*$"
+      order: 1
+    - title: Others
+      order: 999

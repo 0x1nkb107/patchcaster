@@ -23,6 +23,8 @@ just lint            # vet + pinned golangci-lint
 just race            # full suite under the race detector (needs cgo)
 just sqlc            # regenerate query code after touching db/
 just container       # OCI image (distroless, CGO-free)
+just release-check   # validate the goreleaser pipeline (ADR-015)
+just release-snapshot# release dry run: builds, publishes nothing
 ```
 
 ## Configuration

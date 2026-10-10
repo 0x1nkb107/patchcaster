@@ -70,3 +70,15 @@ devdb:
 # Build the OCI image.
 container:
 	{{engine}} build -t patchcaster:dev .
+
+# Validate the release pipeline config against the pinned tool (ADR-015).
+release-check:
+	go tool -modfile tools/goreleaser/go.mod goreleaser check
+
+# Full release dry run: builds binaries and images, publishes nothing.
+release-snapshot:
+	go tool -modfile tools/goreleaser/go.mod goreleaser release --snapshot --clean
+
+# Cut and publish a release; normally runs tag-triggered in CI, not here.
+release:
+	go tool -modfile tools/goreleaser/go.mod goreleaser release --clean

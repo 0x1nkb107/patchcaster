@@ -1,0 +1,27 @@
+# Changelog fragments and releases (ADR-018), driven by the pinned tool in
+# tools/changie. `just change` records a fragment; `just changelog vX.Y.Z`
+# batches the unreleased fragments into .changes/vX.Y.Z.md and rebuilds
+# CHANGELOG.md. Kinds and layout follow Keep a Changelog 1.1.0.
+changesDir: .changes
+unreleasedDir: unreleased
+headerPath: header.tpl.md
+changelogPath: CHANGELOG.md
+versionExt: md
+versionFormat: '## [{{.Version}}](https://github.com/patchcaster-app/patchcaster/releases/tag/{{.Version}}) - {{.Time.Format "2006-01-02"}}'
+kindFormat: '### {{.Kind}}'
+changeFormat: '- {{.Body}}'
+# No auto bumps: the version is named explicitly when batching, matching the
+# release tag (pre-1.0, a "major" kind must not jump to 1.0.0 on its own).
+kinds:
+  - label: Added
+  - label: Changed
+  - label: Deprecated
+  - label: Removed
+  - label: Fixed
+  - label: Security
+newlines:
+  beforeChangelogVersion: 1
+  beforeKind: 1
+  afterKind: 1
+  endOfVersion: 1
+envPrefix: CHANGIE_

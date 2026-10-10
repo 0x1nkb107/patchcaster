@@ -60,7 +60,8 @@ jobs:
       packages: write # ghcr.io push
       id-token: write # cosign keyless OIDC identity (ADR-016)
     steps:
-      # Full history: goreleaser builds the changelog from commit history.
+      # Full history and tags: goreleaser derives the version and previous tag
+      # from git, and `just release` finds the tag's changelog (ADR-018).
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0

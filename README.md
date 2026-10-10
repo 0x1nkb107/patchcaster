@@ -44,4 +44,5 @@ GitLab, Mattermost or network access.
 | [GitLab](docs/integrations/gitlab.md) | webhook, signing token, required triggers |
 | [Mattermost](docs/integrations/mattermost.md) | bot account, channel membership, channel ids |
 | [Operations](docs/operations.md) | probes, metrics, drain, upgrades, delivery guarantees |
+| [Changelog](CHANGELOG.md) | what changed in each release |
 | [Development](docs/development.md) | building, testing, sending changes upstream |

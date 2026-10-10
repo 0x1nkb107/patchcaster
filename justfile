@@ -75,6 +75,20 @@ container arch="amd64":
 	CGO_ENABLED=0 GOARCH={{arch}} go build -trimpath -ldflags "-s -w" -o dist/container/linux/{{arch}}/patchcaster ./cmd/patchcaster
 	{{engine}} build --pull=missing -t patchcaster:dev --platform=linux/{{arch}} -f Dockerfile --build-arg TARGETPLATFORM=linux/{{arch}} dist/container
 
+# Record a changelog fragment for the next release (ADR-018). Prompts for the
+# kind and body; flags skip the prompts, e.g.
+# `just change -k Fixed -b "Retry posts after a Mattermost restart."`.
+[positional-arguments]
+change *args:
+	go tool -modfile tools/changie/go.mod changie new "$@"
+
+# Batch the unreleased fragments into .changes/<version>.md and rebuild
+# CHANGELOG.md (ADR-018). The version is the tag about to be cut, v-prefixed.
+changelog version:
+	@case "{{version}}" in v[0-9]*) ;; *) echo "version must be the release tag, e.g. v0.1.0" >&2; exit 1 ;; esac
+	go tool -modfile tools/changie/go.mod changie batch --allow-no-changes=false {{version}}
+	go tool -modfile tools/changie/go.mod changie merge
+
 # Validate the release pipeline config against the pinned tool (ADR-015).
 release-check:
 	go tool -modfile tools/goreleaser/go.mod goreleaser check
@@ -87,7 +101,10 @@ release-snapshot +args="":
 
 # Cut and publish a release; normally runs tag-triggered in CI, not here
 # (keyless signing needs the workflow's OIDC identity). The pinned cosign
-# (ADR-016) is built from its tools module onto PATH for goreleaser.
+# (ADR-016) is built from its tools module onto PATH for goreleaser. The
+# release notes are the tag's batched changelog (ADR-018); a tag without one
+# fails here, before anything is built or published.
 release:
+	@notes=".changes/$(git describe --tags --exact-match).md"; test -f "$notes" || { echo "no $notes: run 'just changelog <tag>' and commit it before tagging" >&2; exit 1; }
 	mkdir -p dist && go build -modfile tools/cosign/go.mod -o dist/cosign github.com/sigstore/cosign/v2/cmd/cosign
-	PATH="$PWD/dist:$PATH" go tool -modfile tools/goreleaser/go.mod goreleaser release --clean
+	PATH="$PWD/dist:$PATH" go tool -modfile tools/goreleaser/go.mod goreleaser release --clean --release-notes ".changes/$(git describe --tags --exact-match).md"

@@ -27,14 +27,17 @@ checksum:
   name_template: "checksums.txt"
 
 # Setting files replaces goreleaser's defaults, so LICENSE (whose notice MIT
-# requires in every copy) is listed explicitly. The operator docs keep their
-# docs/ paths, so the README's operator links resolve inside the archive.
+# requires in every copy) and CHANGELOG.md are listed explicitly. The
+# operator docs keep their docs/ paths, so the README's operator links
+# resolve inside the archive.
 archives:
   - name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     files:
       - src: README.md
         strip_parent: true
       - src: LICENSE
+        strip_parent: true
+      - src: CHANGELOG.md
         strip_parent: true
       - docs/install.md
       - docs/configuration.md
@@ -91,14 +94,7 @@ docker_signs:
       - "--yes"
       - "${artifact}@${digest}"
 
-changelog:
-  sort: ASC
-  groups:
-    - title: Features
-      regexp: "^.*feat[(\\w)]*:+.*$"
-      order: 0
-    - title: Fixes
-      regexp: "^.*fix[(\\w)]*:+.*$"
-      order: 1
-    - title: Others
-      order: 999
+# Release notes are the tag's changie batch (ADR-018): `just release` passes
+# .changes/<tag>.md via --release-notes, which replaces the commit-log
+# changelog. Never set changelog.disable: it skips the whole changelog step,
+# including loading that file, and would publish an empty release body.

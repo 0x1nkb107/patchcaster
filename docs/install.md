@@ -66,11 +66,11 @@ cosign verify ghcr.io/patchcaster-app/patchcaster:vX.Y.Z \
   --certificate-identity-regexp 'https://github.com/patchcaster-app/patchcaster/\.github/workflows/release\.yml@refs/tags/v[0-9].*'
 ```
 
-The GitHub release carries a `checksums.txt` signature bundle proving the
-archives match the signed digests:
+The GitHub release carries `checksums.txt.sigstore.json`, a Sigstore bundle
+proving the archives match the signed digests:
 
 ```sh
-cosign verify-blob --bundle checksums.txt.sig \
+cosign verify-blob --bundle checksums.txt.sigstore.json \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   --certificate-identity-regexp 'https://github.com/patchcaster-app/patchcaster/\.github/workflows/release\.yml@refs/tags/v[0-9].*' \
   checksums.txt

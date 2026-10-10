@@ -80,12 +80,11 @@ jobs:
         with:
           just-version: '1.58.0'
 
-      # cosign for keyless signing (ADR-016). The installer checks the binary
-      # against the cosign release key before it reaches PATH. cosign stays on
-      # v2, whose signature formats the documented verify commands expect.
+      # cosign for keyless signing (ADR-016). The installer checks the
+      # binary's signatures before it reaches PATH.
       - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
         with:
-          cosign-release: v2.6.5
+          cosign-release: v3.1.3
 
       # v2.18 OSS has no docker_login pipeline; the daemon credential is the
       # standard ghcr pattern using the workflow token.

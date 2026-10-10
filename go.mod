@@ -1,6 +1,6 @@
 module github.com/0x5a17ed/patchcaster
 
-go 1.26.2
+go 1.27.1
 
 require (
 	github.com/Oudwins/zog v0.23.0

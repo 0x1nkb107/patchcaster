@@ -1,0 +1,5 @@
+[repositories]
+paths = ["./docs"]
+
+[validation]
+strict_mode = false

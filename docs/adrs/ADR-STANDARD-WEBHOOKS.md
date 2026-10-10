@@ -1,0 +1,72 @@
+---
+id: "ADR-002"
+type: architecture_decision_record
+name: "Standard Webhooks HMAC verification over static X-Gitlab-Token"
+description: "Verify GitLab 19 signing tokens per the Standard Webhooks scheme instead of relying on the static secret token header."
+status: proposed
+deciders:
+  - "TBD"
+justifies:
+  - "SYSARCH-001"
+---
+
+# Architecture Decision: Standard Webhooks HMAC verification over static X-Gitlab-Token
+
+## Context and problem statement
+
+The bot's ingest endpoint is public. GitLab offers two authentication mechanisms for webhook
+deliveries: the legacy static secret sent in `X-Gitlab-Token`, and — since GitLab 19.0
+(generally available in 19.1) — signing tokens producing `webhook-signature` per the Standard
+Webhooks specification. The decision fixes which the service trusts.
+
+## Key factors
+
+- A static header secret is replayable indefinitely and proves nothing about the body.
+- The HMAC scheme binds identifier, timestamp, and exact payload bytes (SYSREQ-012, SYSREQ-013).
+- v1 targets GitLab 19+ only, so the newer mechanism is available in scope.
+
+## Considered options
+
+- Verify `X-Gitlab-Token` only.
+- Verify Standard Webhooks HMAC signatures only.
+- Accept either mechanism.
+
+## Decision Outcome
+
+Chosen option: "Standard Webhooks HMAC verification only", because it is strictly stronger
+(authenticity, integrity, bounded replay) and dual-mode acceptance doubles the attack surface for
+no operational gain in a v1 scoped to GitLab 19+.
+
+### Positive Consequences
+
+- One verification path; rejection logic (401) is unconditional and testable.
+- Freshness window comes free with the scheme.
+
+### Negative Consequences
+
+- Self-managed GitLab 19.0 operators must have the `webhook_signing_token` feature flag on
+  (it is on by default, removed in 19.1); document in deployment guide.
+
+## Pros and Cons of the Options
+
+### HMAC only
+
+- Good, because forged or mutated deliveries are computationally infeasible.
+- Good, because replay is time-bounded by design.
+- Bad, because pre-19 GitLab cannot be served — accepted by the version constraint.
+
+### Static token only
+
+- Good, because it works on every GitLab version.
+- Bad, because it is replayable and body-independent.
+
+### Either accepted
+
+- Good, because of maximum compatibility.
+- Bad, because attackers get the weaker path; the strong mode is then decoration.
+
+## Links
+
+- Justifies SYSARCH-001; implements SYSREQ-012/013.
+- [GitLab webhooks: signing tokens](https://docs.gitlab.com/user/project/integrations/webhooks/)
+- [Standard Webhooks specification](https://www.standardwebhooks.com/)

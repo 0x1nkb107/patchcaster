@@ -156,10 +156,7 @@ type raw struct {
 	Changes struct {
 		Description json.RawMessage `json:"description"`
 		Title       json.RawMessage `json:"title"`
-		Reviewers   [][]struct {
-			ID    int64  `json:"id"`
-			State string `json:"state"`
-		} `json:"reviewers"`
+		Reviewers   reviewerChange  `json:"reviewers"`
 	} `json:"changes"`
 
 	// note / pipeline merge request linkage
@@ -176,6 +173,41 @@ type raw struct {
 	} `json:"commits"`
 	UserName     string `json:"user_name"`
 	UserUsername string `json:"user_username"`
+}
+
+// reviewerChange models changes.reviewers. GitLab's public docs render it as
+// a positional array of arrays ([[previous], [current]]), but captured real
+// payloads — and GitLab's own Go client — send a {previous, current} object.
+// Both spellings decode here; betting on one would silently drop every
+// review notice whenever GitLab's docs and reality disagree (SYSREQ-029).
+// Source: https://gitlab.com/gitlab-org/api/client-go/-/merge_requests/2984
+type reviewerChange struct {
+	Previous []reviewerSnapshot
+	Current  []reviewerSnapshot
+}
+
+type reviewerSnapshot struct {
+	ID    int64  `json:"id"`
+	State string `json:"state"`
+}
+
+func (r *reviewerChange) UnmarshalJSON(b []byte) error {
+	var obj struct {
+		Previous []reviewerSnapshot `json:"previous"`
+		Current  []reviewerSnapshot `json:"current"`
+	}
+	if err := json.Unmarshal(b, &obj); err == nil {
+		r.Previous, r.Current = obj.Previous, obj.Current
+		return nil
+	}
+	var pair [][]reviewerSnapshot
+	if err := json.Unmarshal(b, &pair); err != nil {
+		return fmt.Errorf("changes.reviewers: %w", err)
+	}
+	if len(pair) == 2 {
+		r.Previous, r.Current = pair[0], pair[1]
+	}
+	return nil
 }
 
 // ErrInvalidPayload marks payloads that must be answered 4xx without posting
@@ -275,19 +307,14 @@ func reviewerTally(r *raw) (done, required int) {
 }
 
 // reviewTransition reports a submitted-review state change for the acting
-// user inside changes.reviewers (SYSREQ-029): GitLab pairs previous and
-// current reviewer snapshots as two arrays. Re-requests (re-requested
+// user inside changes.reviewers (SYSREQ-029). Re-requests (re-requested
 // reviewers move back to unreviewed) and unsubmitted states are not notices.
 func reviewTransition(r *raw) string {
-	if len(r.Changes.Reviewers) < 2 {
-		return ""
-	}
-	prev, cur := r.Changes.Reviewers[0], r.Changes.Reviewers[1]
 	prevState := map[int64]string{}
-	for _, rev := range prev {
+	for _, rev := range r.Changes.Reviewers.Previous {
 		prevState[rev.ID] = rev.State
 	}
-	for _, rev := range cur {
+	for _, rev := range r.Changes.Reviewers.Current {
 		if rev.ID != r.User.ID {
 			continue
 		}

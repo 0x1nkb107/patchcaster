@@ -198,6 +198,33 @@ func TestParse_ReviewTransitionIsANotice(t *testing.T) {
 	assert.False(t, ev.EditChanged, "a review is not an edit")
 }
 
+func TestParse_ReviewTransitionObjectForm(t *testing.T) {
+	// The captured-real spelling (GitLab docs show the array-of-arrays form;
+	// real deliveries and GitLab's Go client use this object form).
+	body := `{
+  "object_kind": "merge_request",
+  "user": {"id": 7, "username": "carol"},
+  "project": {"id": 42, "full_path": "grp/app"},
+  "object_attributes": {
+    "id": 987654321, "iid": 12, "action": "update", "state": "opened",
+    "source_branch": "feature/auth", "source_project_id": 42,
+    "updated_at": "2026-10-10T09:05:00.000Z"
+  },
+  "reviewers": [{"id": 7, "username": "carol", "state": "requested_changes"}],
+  "changes": {"reviewers": {
+    "previous": [{"id": 7, "state": "review_started"}],
+    "current": [{"id": 7, "state": "requested_changes"}]
+  }}
+}`
+
+	// act
+	ev, err := Parse([]byte(body))
+
+	// assert
+	require.NoError(t, err)
+	assert.Equal(t, ReviewChanges, ev.ReviewState, "the object form must transition equally")
+}
+
 func TestParse_ReviewerDenominatorFallsBackToAssigned(t *testing.T) {
 	body := `{
   "object_kind": "merge_request",

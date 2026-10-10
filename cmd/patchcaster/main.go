@@ -6,6 +6,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -16,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	pgxstdlib "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
+	"github.com/pressly/goose/v3/lock"
 
 	"github.com/0x5a17ed/patchcaster/internal/store"
 )
@@ -70,16 +72,37 @@ func openDB(url string) (*sql.DB, error) {
 	return db, nil
 }
 
-// migrate brings the schema up to the embedded revision.
+// migrate brings the schema up to the embedded revision. The session locker
+// (goose's recommended Postgres coordination) serializes concurrent runs:
+// rolling-update overlap or an operator invoking `migrate` while a pod starts
+// would otherwise race identical DDL — the loser would abort mid-transaction.
+// If the lock connection dies, PostgreSQL drops the advisory lock and rolls
+// back the migration transaction, so the next runner redoes it cleanly.
 func migrate(ctx context.Context, db *sql.DB, log *slog.Logger) error {
-	goose.SetBaseFS(store.MigrationsFS)
-	if err := goose.SetDialect("postgres"); err != nil {
-		return fmt.Errorf("goose dialect: %w", err)
+	locker, err := lock.NewPostgresSessionLocker()
+	if err != nil {
+		return fmt.Errorf("migration session locker: %w", err)
 	}
-	if err := goose.UpContext(ctx, db, "migrations"); err != nil {
+	// The provider globs only the top level of fsys (no recursion), so it
+	// must see the migrations directory itself, not the embed root.
+	migrations, err := fs.Sub(store.MigrationsFS, "migrations")
+	if err != nil {
+		return fmt.Errorf("embedded migrations: %w", err)
+	}
+	provider, err := goose.NewProvider(
+		goose.DialectPostgres,
+		db,
+		migrations,
+		goose.WithSessionLocker(locker),
+	)
+	if err != nil {
+		return fmt.Errorf("goose provider: %w", err)
+	}
+	applied, err := provider.Up(ctx)
+	if err != nil {
 		return fmt.Errorf("apply migrations: %w", err)
 	}
-	log.Info("migrations applied")
+	log.Info("migrations applied", "count", len(applied))
 	return nil
 }
 

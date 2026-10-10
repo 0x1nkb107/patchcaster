@@ -33,7 +33,7 @@ lint: vet
 build:
 	CGO_ENABLED=0 go build ./...
 
-# Regenerate sqlc query code after editing db/queries or migrations (ADR-010).
+# Regenerate sqlc query code after editing internal/store/queries or migrations (ADR-010).
 sqlc:
 	go tool -modfile tools/sqlc/go.mod sqlc generate
 

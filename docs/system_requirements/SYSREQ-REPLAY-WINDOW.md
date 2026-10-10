@@ -3,7 +3,7 @@ id: "SYSREQ-013"
 type: system_requirement
 name: "Event age cap"
 description: "Verified deliveries whose event is older than 4 hours are discarded."
-specification: "The service SHALL acknowledge verified deliveries whose event timestamp is older than 4 hours with HTTP 2xx without posting *(assumed)*."
+specification: "The service SHALL acknowledge verified deliveries whose event timestamp is older than 4 hours with HTTP 2xx without posting."
 derives_from:
   - "SCEN-004"
 ---
@@ -12,7 +12,7 @@ derives_from:
 
 ## Requirement Specification
 
-> The service SHALL acknowledge verified deliveries whose event timestamp is older than 4 hours with HTTP 2xx without posting *(assumed)*.
+> The service SHALL acknowledge verified deliveries whose event timestamp is older than 4 hours with HTTP 2xx without posting.
 
 ## Rationale
 

@@ -26,8 +26,8 @@ pushes, merge and close. The normative behavior lives in the SARA graph under
 
 ## Getting started
 
-1. Create a Mattermost bot account and add it to every channel it should
-   post to.
+1. [Create a Mattermost bot account](docs/integrations/mattermost.md) and
+   add it to every channel it should post to.
 2. [Install](docs/install.md) PatchCaster next to a PostgreSQL 18 database,
    with a [routing table](docs/configuration.md#routing-table) naming the
    channel for each project.
@@ -44,6 +44,7 @@ GitLab, Mattermost or network access.
 | [Install](docs/install.md) | prerequisites, Helm chart, container image, binaries, verifying releases |
 | [Configuration](docs/configuration.md) | every flag and environment variable, the routing table |
 | [GitLab](docs/integrations/gitlab.md) | webhook, signing token, required triggers |
+| [Mattermost](docs/integrations/mattermost.md) | bot account, channel membership, channel ids |
 | [Operations](docs/operations.md) | probes, metrics, drain, upgrades, delivery guarantees |
 | [Development](docs/development.md) | building, testing, sending changes upstream |
 | [Specs](docs/specs/README.md) | normative requirements and decisions (SARA) |

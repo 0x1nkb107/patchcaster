@@ -8,8 +8,8 @@ then point GitLab at it.
 
 * **PostgreSQL 18** that PatchCaster can reach. It holds the delivery queue,
   thread mappings and dedupe records; PatchCaster creates its own schema.
-* **A Mattermost bot account** and its token. The bot must be a member of
-  every channel it posts to.
+* **A [Mattermost bot account](integrations/mattermost.md)** and its token.
+  The bot must be a member of every channel it posts to.
 * **GitLab 19.0 or later**, able to reach PatchCaster with
   [signed webhooks](integrations/gitlab.md).
 * **A routing table** naming the channel for each project

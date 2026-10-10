@@ -53,7 +53,10 @@ struct-wide custom schema so it lands in the same aggregated issue list.
 Issues are rendered through a flag-name map (Go field name → CLI flag) and
 joined with `errors.Join`, so kong's exit message names every offending option
 at once. The dependency is pinned (v0.23.0 at adoption) and exercised by the
-lint/test gates on every bump.
+lint/test gates on every bump. A second owner directive of the same day extends
+the tool to the decoded routing table (`internal/routing`): per-row `Required`
+fields plus a whole-document custom schema for project uniqueness, so every
+broken row is named with its index in one startup error.
 
 ### Positive Consequences
 
@@ -62,7 +65,8 @@ lint/test gates on every bump.
 - Validation intent reads as a declarative table next to the kong tags it
   constrains, replacing a stack of if-statements.
 - Zero transitive dependencies; the validation vocabulary (schemas, issues)
-  stays at the command-line boundary and reaches no other package.
+  stays at the startup-configuration boundaries — CLI flags and the routing
+  file — and reaches no runtime path.
 
 ### Negative Consequences
 
@@ -70,10 +74,12 @@ lint/test gates on every bump.
   version and the CI gate, which compiles and runs every schema test on any
   bump.
 - v0.23 offers no struct-level tests and no duration schema, so the
-  cross-field rule and duration positivity go through `CustomFunc` — slightly
+  cross-field rule, duration positivity, and the routing table's cross-row
+  uniqueness rule go through `CustomFunc` — slightly
   more ceremony than a tagged validator would demand.
 - Two validation idioms coexist in the codebase by design: schema-based at the
-  CLI, hand-written parsing at the webhook edge (see Key factors for why).
+  startup-configuration boundaries (CLI, routing file), hand-written parsing at
+  the webhook edge (see Key factors for why).
 
 ## Pros and Cons of the Options
 

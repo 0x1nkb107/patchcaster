@@ -46,9 +46,9 @@ Chosen option: "go.yaml.in/yaml/v4", by owner directive. Pinned at
 `v4.0.0-rc.6` — the highest published v4 — because v4 is the only actively
 developed line; the final `v4.0.0` release supersedes the pin, and the CI
 dependency path makes the bump visible. Confined to `internal/routing`:
-`routing.Parse` keeps validation (empty fields, duplicate projects) hand-written
-on the decoded struct — the parser parses, the loader enforces the table's
-invariants (parsing over policing).
+`routing.Parse` keeps decoding and validation as separate steps — go-yaml
+parses, a Zog schema asserts the table's invariants on the decoded struct
+(ADR-012), and the loader builds the lookup map (parsing over policing).
 
 ### Positive Consequences
 

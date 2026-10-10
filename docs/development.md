@@ -3,7 +3,7 @@
 How to build PatchCaster from source, try a change on your own machine, and
 run the same checks CI runs before the change goes upstream. Operators
 deploying a release want the [install guide](install.md) instead; the normative
-behavior lives in the SARA graph under [`specs/`](specs/README.md).
+behaviour lives in the SARA graph under [`specs/`](specs/README.md).
 
 ## Prerequisites
 
@@ -134,7 +134,7 @@ Then, depending on what the change touches:
   `just release-check` and `just release-snapshot`; pull requests repeat both
   in the Release workflow's smoke job. Without a Docker daemon,
   `just release-snapshot --skip=docker` still builds the binaries.
-* **Behavior**: the specs are normative, so a change in what PatchCaster does
+* **Behaviour**: the specs are normative, so a change in what PatchCaster does
   needs the matching requirement, architecture item or ADR under
   [`specs/`](specs/README.md) updated too. Run `sara check` after editing
   them; CI does not.

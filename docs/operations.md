@@ -46,6 +46,30 @@ Migrations are embedded in the binary. Run `patchcaster migrate` before
 rollout, or let startup apply them (single-replica v1). Both paths apply only
 what is pending.
 
+## Compatibility
+
+An upgrade needs no action unless it changes this contract:
+
+* **Configuration**: flag and environment variable names, their meaning and
+  defaults, and the routing table format.
+* **Interfaces**: the `POST /webhook` endpoint and its signature scheme, the
+  probe endpoints, and metric names, label names and existing label values.
+* **Requirements**: the minimum PostgreSQL and GitLab versions, the GitLab
+  triggers to enable, and what the Mattermost bot needs
+  ([what you need](install.md#what-you-need)).
+* **Artifacts**: image and archive names, platforms, and the signing
+  identities that the [verification commands](install.md#verify-what-you-deploy)
+  check.
+
+Anything else may change in any release: the wording and layout of
+Mattermost posts, log messages and levels, retry and timing behaviour, and the
+database schema. Migrations stay automatic, but the triage query below may
+need adjusting.
+
+A release that changes the contract lists it under **Breaking** in the
+[changelog](../CHANGELOG.md), with what to do, and raises the minor version
+before 1.0.0 and the major version after.
+
 ## Delivery guarantees
 
 Delivery is at-least-once: a crash between Mattermost acceptance and

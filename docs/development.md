@@ -152,9 +152,9 @@ carries a fragment in `.changes/unreleased/` of one kind:
 
 | Kind | For |
 | --- | --- |
-| Breaking | user-facing changes that need action on upgrade; say what to do |
+| Breaking | changes to the [compatibility contract](operations.md#compatibility); say what to do |
 | Added | new features |
-| Changed | changes to existing user-facing behaviour |
+| Changed | other changes to existing user-facing behaviour; no action needed |
 | Deprecated | features that a later release will remove |
 | Removed | features that are gone |
 | Fixed | bug fixes |

@@ -28,13 +28,16 @@ body bytes — a forged or mutated delivery becomes computationally infeasible (
   matches any configured signing secret proceeds.
 - Missing, malformed, or mismatched `webhook-signature` answers `401` before the body is parsed
   and with zero side effects.
+- The `X-Gitlab-Token` header is never trusted (ADR-002): a request with a matching static token
+  but no valid signature is refused exactly like any other unverified delivery.
 - Signature recomputation uses the raw request bytes, never a re-serialized body.
 
 ## Verification Plan
 
 - **Method**: Test.
 - **Procedure**: Tests sign fixtures with the same construction, include the Standard Webhooks
-  test vectors, and cover each failure mode separately.
+  test vectors, and cover each failure mode separately — including a valid `X-Gitlab-Token`
+  without a signature, which must be refused.
 
 ## Notes
 

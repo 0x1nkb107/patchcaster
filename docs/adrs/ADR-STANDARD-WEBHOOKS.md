@@ -3,9 +3,9 @@ id: "ADR-002"
 type: architecture_decision_record
 name: "Standard Webhooks HMAC verification over static X-Gitlab-Token"
 description: "Verify GitLab 19 signing tokens per the Standard Webhooks scheme instead of relying on the static secret token header."
-status: proposed
+status: accepted
 deciders:
-  - "TBD"
+  - "Project owner"
 justifies:
   - "SYSARCH-001"
 ---
@@ -35,7 +35,8 @@ Webhooks specification. The decision fixes which the service trusts.
 
 Chosen option: "Standard Webhooks HMAC verification only", because it is strictly stronger
 (authenticity, integrity, bounded replay) and dual-mode acceptance doubles the attack surface for
-no operational gain in a v1 scoped to GitLab 19+.
+no operational gain in a v1 scoped to GitLab 19+. Confirmed by the project owner on 2026-10-10:
+security takes precedence, and the legacy static `X-Gitlab-Token` path is refused outright.
 
 ### Positive Consequences
 

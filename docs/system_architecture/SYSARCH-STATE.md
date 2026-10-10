@@ -9,6 +9,8 @@ satisfies:
   - "SYSREQ-014"
   - "SYSREQ-017"
   - "SYSREQ-024"
+  - "SYSREQ-027"
+  - "SYSREQ-030"
 ---
 
 # System Architecture: Conversation state store
@@ -28,19 +30,23 @@ structs and repository interfaces (owner directive, 2026-10-10), which is what k
 
 ## Static View (Structure)
 
-Three relations: `mr_thread` (project id + merge request id → root post id, channel id, thread
-state open/closed per SYSREQ-026), `seen_webhook` (webhook id, first-seen time; pruned past
+Four relations: `mr_thread` (project id + merge request id → root post id, channel id, thread
+state open/closed per SYSREQ-026), `mr_state` (one row per merge request: pipeline status, human
+comment count, edit count, reviewer tally, source branch and open flag for push attribution, last
+attributed push count — SYSREQ-027/030), `seen_webhook` (webhook id, first-seen time; pruned past
 retention per SYSREQ-014), `outbox` (payload, resolved destination channel per SYSREQ-024, state
-`pending|parked|sent`, attempt count, next attempt time, claim lease). Three repository
-interfaces — thread, dedupe, outbox — consumed by ingest (enqueue, seen-check) and delivery
-(claim, settle) and by readiness (ping).
+`pending|parked|sent`, attempt count, next attempt time, claim lease, plus per-delivery phase
+flags marking which Mattermost operations of a delivery already succeeded — SYSREQ-028). Four
+repository interfaces — thread, state, dedupe, outbox — consumed by ingest (enqueue, seen-check,
+state apply), delivery (claim, render-read, settle) and by readiness (ping).
 
 ## Dynamic View (Behavior)
 
-Enqueue and the seen-mark of the same delivery commit together in one PostgreSQL transaction
-in the ingest request path (SYSREQ-014, SYSREQ-017) — that commit is the point where the `2xx`
-becomes honest, and a failed commit means neither happened, leaving GitLab's retry to be
-processed normally. Workers claim due rows with a lease (`claimed_at` + expiry, so a
+Enqueue, the seen-mark, and the derived-state application of the same delivery commit together in
+one PostgreSQL transaction in the ingest request path (SYSREQ-014, SYSREQ-017, SYSREQ-027) — that
+commit is the point where the `2xx` becomes honest, and a failed commit means none of them
+happened, leaving GitLab's retry to be processed normally. Ingest is the only writer of derived
+state, which is what makes counts exactly-once: delivery workers only read state to render. Workers claim due rows with a lease (`claimed_at` + expiry, so a
 crashed worker's rows come back), claiming in an order that serializes each merge request to one
 worker at a time, which is what preserves SYSREQ-002's exactly-one-root under the worker pool.
 A periodic task prunes `seen_webhook` past retention. Readiness is a pool ping against a writable

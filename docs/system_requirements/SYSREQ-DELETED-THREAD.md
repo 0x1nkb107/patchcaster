@@ -3,7 +3,7 @@ id: "SYSREQ-026"
 type: system_requirement
 name: "Deleted threads stay deleted"
 description: "A root post removed in Mattermost is treated as an intentional deletion."
-specification: "The service SHALL park every reply whose stored root post Mattermost reports as missing, treating the absence as an intentional deletion."
+specification: "The service SHALL park every Mattermost operation whose stored root post Mattermost reports as missing, treating the absence as an intentional deletion."
 derives_from:
   - "SCEN-002"
 depends_on:
@@ -25,9 +25,9 @@ as terminal, once, keeps the audit trail honest and the channel calm.
 
 ## Acceptance Criteria
 
-- A reply attempt that Mattermost explicitly reports as referring to a missing or deleted root
-  parks that message immediately (not retried), emits one structured log record, and increments
-  a parked counter (SYSREQ-019).
+- An operation (reply post or root-message update) that Mattermost explicitly reports as
+  referring to a missing or deleted root parks that message immediately (not retried), emits one
+  structured log record, and increments a parked counter (SYSREQ-019).
 - On that first missing-root outcome the thread mapping is marked closed; later events for the
   same merge request are skipped and counted without further Mattermost calls, sharing the
   skip semantics of SYSREQ-007.

@@ -3,7 +3,7 @@ id: "SYSREQ-001"
 type: system_requirement
 name: "Merge request event ingestion"
 description: "Accept and parse GitLab merge request webhook payloads from all hook scopes."
-specification: "The service SHALL accept GitLab merge request webhook deliveries from project, group, and system hooks, parsing timestamp fields as ISO 8601 values as emitted by GitLab 19 and later."
+specification: "The service SHALL accept GitLab merge request, comment, pipeline, and push webhook deliveries from project, group, and system hooks, parsing timestamp fields as ISO 8601 values as emitted by GitLab 19 and later."
 derives_from:
   - "SCEN-001"
   - "SCEN-007"
@@ -24,8 +24,10 @@ delivery simple.
 
 ## Acceptance Criteria
 
-- Recorded GitLab 19 fixtures for project, group, and system-hook merge request events all parse
-  into the internal event model.
+- Recorded GitLab 19 fixtures for project, group, and system-hook merge request, comment,
+  pipeline, and push events all parse into the internal event model, retaining each kind's
+  merge request linkage (merge request id; note and pipeline payloads name it, push deliveries
+  carry project and branch for SYSREQ-030 attribution).
 - Timestamps of the form `2026-04-23T12:30:45.123Z` parse and the event time is retained.
 - Malformed JSON or missing required fields (`object_kind`, `object_attributes.action`, project
   path) answer `400` and are never queued.

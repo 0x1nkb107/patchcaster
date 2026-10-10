@@ -3,7 +3,7 @@ id: "SYSREQ-004"
 type: system_requirement
 name: "Delivery through the bot account API"
 description: "All messages are posted via the Mattermost bot account REST API."
-specification: "The service SHALL deliver every message through the Mattermost REST API v4 posts endpoints, authenticated with a bot account token."
+specification: "The service SHALL deliver every message through the Mattermost REST API v4 posts endpoints, including updating an already posted message, authenticated with a bot account token."
 derives_from:
   - "SCEN-001"
 ---
@@ -23,6 +23,8 @@ root. One credential and one surface keep the trust model simple.
 ## Acceptance Criteria
 
 - Every message is sent as `POST {site-url}/api/v4/posts` with `Authorization: Bearer <bot-token>`.
+- Root refreshes are sent as `PUT {site-url}/api/v4/posts/{post_id}` with the same authorization;
+  the update body carries the post identifier and message only.
 - The token is provided via configuration (SYSREQ-022) and never appears in a URL or query string.
 - No code path posts to an incoming-webhook URL.
 

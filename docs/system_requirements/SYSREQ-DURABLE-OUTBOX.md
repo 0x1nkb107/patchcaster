@@ -3,7 +3,7 @@ id: "SYSREQ-017"
 type: system_requirement
 name: "Durable outbound queue"
 description: "Messages pending delivery are persisted until accepted."
-specification: "The service SHALL persist every outbound message until Mattermost accepts it so that messages pending at process termination are delivered after restart."
+specification: "The service SHALL persist every outbound message until Mattermost accepts it and SHALL apply the delivery's derived merge request state in the same transaction that enqueues it, so that pending messages and state survive process termination together."
 derives_from:
   - "SCEN-005"
 depends_on:
@@ -24,7 +24,9 @@ end to end.
 
 ## Acceptance Criteria
 
-- The outbound message row is written before the `2xx` is sent for a routed event.
+- The outbound message row is written before the `2xx` is sent for a routed event, together with
+  the state changes the delivery implies (SYSREQ-027): one transaction admits, records, and
+  applies — or admits nothing.
 - The row persists the destination channel resolved at ingress; retries never re-resolve routing
   (SYSREQ-024).
 - `SIGKILL` immediately after the acknowledgement leaves the message pending; the next process

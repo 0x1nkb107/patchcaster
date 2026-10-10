@@ -1,6 +1,6 @@
 # Changelog fragments and releases (ADR-018), driven by the pinned tool in
-# tools/changie. `just change` records a fragment; `just changelog vX.Y.Z`
-# batches the unreleased fragments into .changes/vX.Y.Z.md and rebuilds
+# tools/changie. `just change` records a fragment; `just changelog` batches
+# the unreleased fragments into .changes/<version>.md and rebuilds
 # CHANGELOG.md. The layout and six of the kinds follow Keep a Changelog
 # 1.1.0. Breaking and Updated extend it, and the order of the kinds below
 # is the order of the sections in every release.
@@ -12,19 +12,30 @@ versionExt: md
 versionFormat: '## [{{.Version}}](https://github.com/patchcaster-app/patchcaster/releases/tag/{{.Version}}) - {{.Time.Format "2006-01-02"}}'
 kindFormat: '### {{.Kind}}'
 changeFormat: '- {{.Body}}'
-# No auto bumps: the version is named explicitly when batching, matching the
-# release tag (pre-1.0, a "major" kind must not jump to 1.0.0 on its own).
+# Each kind's auto level picks the next version: the highest level among the
+# unreleased fragments wins. Breaking stays at minor while the project is on
+# 0.x, as the compatibility contract promises (docs/operations.md), and
+# becomes major once 1.0.0 is out. Cut 1.0.0 itself with `just changelog
+# major`.
 kinds:
   # User-facing changes that need action on upgrade, listed first.
   - label: Breaking
+    auto: minor
   - label: Added
+    auto: minor
   - label: Changed
+    auto: minor
   - label: Deprecated
+    auto: minor
   - label: Removed
+    auto: minor
   - label: Fixed
+    auto: patch
   - label: Security
+    auto: patch
   # Updated dependencies that ship: Go modules, toolchain, base image.
   - label: Updated
+    auto: patch
 newlines:
   beforeChangelogVersion: 1
   beforeKind: 1

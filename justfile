@@ -84,11 +84,30 @@ change *args:
 	go tool -modfile tools/changie/go.mod changie new "$@"
 
 # Batch the unreleased fragments into .changes/<version>.md and rebuild
-# CHANGELOG.md (ADR-018). The version is the tag about to be cut, v-prefixed.
-changelog version:
-	{{ assert(version =~ '^v[0-9]', "version must be the release tag, e.g. v0.1.0") }}
-	go tool -modfile tools/changie/go.mod changie batch --allow-no-changes=false {{version}}
+# CHANGELOG.md (ADR-018). changie picks the version from the fragments' kinds;
+# pass major, minor or patch, or a tag such as v1.0.0, to override it.
+changelog version="auto":
+	#!/usr/bin/env bash
+	set -euo pipefail
+	{{ assert(version =~ '^(auto|major|minor|patch|v[0-9].*)$', "version must be auto, major, minor, patch or a tag such as v1.0.0") }}
+	go tool -modfile tools/changie/go.mod changie batch --allow-no-changes=false "{{version}}"
 	go tool -modfile tools/changie/go.mod changie merge
+	echo "batched $(go tool -modfile tools/changie/go.mod changie latest): review and commit it, then run 'just tag'"
+
+# Tag HEAD with the version the last `just changelog` batched (ADR-018). The
+# tag message is that release's notes, and git signs the tag when tag.gpgSign
+# is set. Pushing the tag is left to you, because the push publishes it.
+tag:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	version="$(go tool -modfile tools/changie/go.mod changie latest)"
+	notes=".changes/${version}.md"
+	if ! git cat-file -e "HEAD:${notes}" 2>/dev/null; then
+		echo "no committed ${notes}: run 'just changelog' and commit its result first" >&2
+		exit 1
+	fi
+	git tag -a "${version}" --cleanup=whitespace -F "${notes}"
+	echo "tagged ${version}: run 'git push origin ${version}' to release it"
 
 # Validate the release pipeline config against the pinned tool (ADR-015).
 release-check:

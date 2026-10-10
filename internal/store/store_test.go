@@ -9,7 +9,6 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	pgxstdlib "github.com/jackc/pgx/v5/stdlib"
-	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -36,9 +35,10 @@ func openTestStore(t *testing.T) (*store.Postgres, *sql.DB) {
 	_, err = db.ExecContext(ctx, "DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
 	require.NoError(t, err, "test database must be disposable")
 
-	goose.SetBaseFS(store.MigrationsFS)
-	require.NoError(t, goose.SetDialect("postgres"))
-	require.NoError(t, goose.UpContext(ctx, db, "migrations"))
+	// Migrate through the production path (provider + session locker).
+	applied, err := store.Migrate(ctx, db)
+	require.NoError(t, err)
+	require.Positive(t, applied, "fresh schema must apply at least one migration")
 
 	return store.New(db), db
 }

@@ -1,9 +1,11 @@
 # PatchCaster
 
-Forwards GitLab (19.0+) merge request webhook events into Mattermost channels —
-one thread per merge request: `open` posts the thread root, every later
-allowlisted action posts a reply. The normative behavior lives in the SARA
-graph under [`docs/`](docs/README.md); this README is the operator's quickstart.
+Forwards GitLab (19.0+) merge request activity into Mattermost channels —
+one thread per merge request whose root message is a live status board
+(pipeline, reviewer, comment and edit segments refresh in place), with thread
+replies for notable events: comments, pipeline pass/fail, review verdicts,
+pushes, merge and close. The normative behavior lives in the SARA graph under
+[`docs/`](docs/README.md); this README is the operator's quickstart.
 
 ## Build & run
 
@@ -51,6 +53,17 @@ signing token enabled. PatchCaster verifies only the `webhook-signature` HMAC
 (`v1,{base64}` over `{webhook-id}.{timestamp}.{body}`, ADR-002); the legacy
 `X-Gitlab-Token` is never trusted. The endpoint is `POST /webhook`.
 
+Enable these GitLab trigger types — anything else is authenticated, counted
+(`patchcaster_deliveries_discarded_total`), and dropped, so a missing trigger
+degrades silently:
+
+| Trigger | Effect |
+| --- | --- |
+| Merge request events | thread lifecycle, review verdicts, pushes, board state |
+| Comment events | `💬` notices (merge-request notes only) |
+| Pipeline events | `🟡/🟢/🔴` status segment; pass/fail notices |
+| Push events | `N new commits` counts attributed by project + branch |
+
 ### Routing table
 
 See [`contrib/routing.example.yaml`](contrib/routing.example.yaml): exact,
@@ -62,7 +75,8 @@ posted.
 
 * **Probes/metrics** on the internal listener: `GET /livez`, `GET /readyz`
   (store-backed, flips to 503 at SIGTERM), `GET /metrics` (`patchcaster_*`
-  funnel counters). Liveness never depends on Mattermost.
+  funnel counters: discards, state applications and notices by kind, push
+  attribution misses). Liveness never depends on Mattermost.
 * **Drain**: SIGTERM stops acceptance and gives in-flight work
   `--drain-timeout`; set `terminationGracePeriodSeconds` above it.
 * **Migrations** are embedded in the binary: run `patchcaster migrate` before

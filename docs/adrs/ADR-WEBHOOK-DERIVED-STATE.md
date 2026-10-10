@@ -30,6 +30,9 @@ how the service derives and applies this state.
   simultaneously; either may be accepted first.
 - GitLab 19+ payloads carry per-reviewer `state` and reviewer-state transitions inside `update`
   events — review tallies and verdict notices need no API.
+- `changes.reviewers` is documented as a positional `[[previous], [current]]` pair, but captured
+  real payloads send a `{previous, current}` object; the parser accepts both (the GitLab docs are
+  acknowledged inaccurate here — GitLab's own Go client models the object form).
 - Mattermost post creation has no idempotency key (SYSREQ-017), but post update by id is
   idempotent.
 

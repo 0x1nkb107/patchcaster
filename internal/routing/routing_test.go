@@ -56,6 +56,30 @@ func TestParse_RejectsBrokenTables(t *testing.T) {
 	}
 }
 
+func TestParse_ReportsAllBrokenRowsAtOnce(t *testing.T) {
+	// arrange: an empty project, an empty channel, and a duplicate in one table.
+	data := []byte(`
+routes:
+  - project: ""
+    channel: c1
+  - project: grp/a
+    channel: ""
+  - project: grp/a
+    channel: c2
+`)
+
+	// act
+	_, err := Parse(data)
+
+	// assert: every violation named with its row index in one error (ADR-012),
+	// not just the first.
+	require.Error(t, err)
+	msg := err.Error()
+	assert.Contains(t, msg, `routing entry 0: project path must not be empty`)
+	assert.Contains(t, msg, `routing entry 1: channel identifier must not be empty`)
+	assert.Contains(t, msg, `routing entry 2: duplicate project "grp/a"`)
+}
+
 func TestLoad_MissingFileNamesPath(t *testing.T) {
 	// act
 	_, err := Load("/nonexistent/routing.yaml")

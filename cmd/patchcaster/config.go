@@ -44,7 +44,10 @@ type ServeCmd struct {
 // (ADR-012). Keys are ServeCmd field names; validationIssues renders them
 // back into operator-facing flag names.
 var serveSchema = z.Struct(z.Shape{
-	"SigningSecrets": z.Slice(z.String().Min(1)).Required(),
+	// Required, not Min(1): non-required schemas skip their tests on zero
+	// values, so only Required could catch an empty rotation entry — belt and
+	// braces, since kong was observed pruning empty segments at the separator.
+	"SigningSecrets": z.Slice(z.String().Required(z.Message("signing secret must not be empty"))).Required(),
 	"LogLevel":       z.String().OneOf([]string{"debug", "info", "warn", "error"}),
 	"DrainTimeout":   positiveDuration(),
 	"EventMaxAge":    positiveDuration(),

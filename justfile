@@ -1,7 +1,7 @@
-# PatchCaster development tasks (ADR-005).
+# PatchCaster development tasks (ADR-007).
 # Toolchain binaries are pinned tools modules, never ambient installs.
 
-engine := "podman"
+engine := env_var_or_default("ENGINE", "podman")
 database_url := "postgres://patchcaster:dev@127.0.0.1:5433/patchcaster?sslmode=disable"
 test_database_url := env_var_or_default("PATCHCASTER_TEST_DATABASE_URL", database_url)
 

@@ -11,7 +11,8 @@ behavior lives in the SARA graph under [`specs/`](specs/README.md).
   runs with `GOTOOLCHAIN=local`, so that exact toolchain is what the gates see.
 * **[just](https://just.systems)** runs every task (ADR-007); CI pins 1.58.0.
 * **podman** for the development database and the container image. To use
-  docker instead, override the engine per call: `just engine=docker devdb`.
+  docker instead, export `ENGINE=docker` or override it per call:
+  `just engine=docker devdb`.
 * **A C toolchain**, only for `just race` — the race detector needs cgo, while
   everything else builds with `CGO_ENABLED=0`.
 * **`curl`, `openssl` and `python3`**, only for the

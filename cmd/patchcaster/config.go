@@ -1,7 +1,8 @@
-// Package config defines the command line and environment surface
+// This file defines the command line and environment surface
 // (ADR-003/ADR-012). Precedence is flags > PATCHCASTER_-prefixed environment
 // variables > built-in defaults, and any invalid value exits non-zero before
 // the service listens (SYSREQ-022).
+
 package main
 
 import (

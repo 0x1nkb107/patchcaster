@@ -26,8 +26,10 @@ follows Keep a Changelog 1.1.0 and Semantic Versioning 2.0.0.
 - **Tool**: changie, pinned as a tools module (`tools/changie`) like every other tool and run
   through `go tool -modfile`; no ambient install.
 - **Fragments**: each user-visible change adds one YAML fragment under `.changes/unreleased/`
-  (`just change`), written for operators at the time the change is made. Kinds are exactly
-  Keep a Changelog's: Added, Changed, Deprecated, Removed, Fixed, Security.
+  (`just change`), written for operators at the time the change is made. Kinds are Keep a
+  Changelog's Added, Changed, Deprecated, Removed, Fixed and Security, plus two the owner added:
+  **Breaking** for user-facing changes that need action on upgrade, listed first in every
+  release, and **Updated** for updated dependencies that ship in the binary or image.
 - **Batching**: before a release, `just changelog vX.Y.Z` batches the fragments into
   `.changes/vX.Y.Z.md` and rebuilds `CHANGELOG.md` from the header and every version file. The
   version is named explicitly and must equal the tag about to be cut; changie's automatic

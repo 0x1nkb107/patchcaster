@@ -1,7 +1,9 @@
 # Changelog fragments and releases (ADR-018), driven by the pinned tool in
 # tools/changie. `just change` records a fragment; `just changelog vX.Y.Z`
 # batches the unreleased fragments into .changes/vX.Y.Z.md and rebuilds
-# CHANGELOG.md. Kinds and layout follow Keep a Changelog 1.1.0.
+# CHANGELOG.md. The layout and six of the kinds follow Keep a Changelog
+# 1.1.0. Breaking and Updated extend it, and the order of the kinds below
+# is the order of the sections in every release.
 changesDir: .changes
 unreleasedDir: unreleased
 headerPath: header.tpl.md
@@ -13,12 +15,16 @@ changeFormat: '- {{.Body}}'
 # No auto bumps: the version is named explicitly when batching, matching the
 # release tag (pre-1.0, a "major" kind must not jump to 1.0.0 on its own).
 kinds:
+  # User-facing changes that need action on upgrade, listed first.
+  - label: Breaking
   - label: Added
   - label: Changed
   - label: Deprecated
   - label: Removed
   - label: Fixed
   - label: Security
+  # Updated dependencies that ship: Go modules, toolchain, base image.
+  - label: Updated
 newlines:
   beforeChangelogVersion: 1
   beforeKind: 1

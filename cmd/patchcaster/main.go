@@ -23,6 +23,17 @@ import (
 // (-ldflags -X main.version, ADR-015); source builds report "dev".
 var version = "dev"
 
+// CLI is the kong root. Running bare "patchcaster" serves. Every setting is a
+// flag with a PATCHCASTER_-prefixed environment twin (ADR-003/ADR-012).
+// Precedence is flags > environment variables > built-in defaults, and any
+// invalid value exits non-zero before the service listens (SYSREQ-022).
+type CLI struct {
+	Serve   ServeCmd   `cmd:"" default:"withargs" help:"Run the webhook relay."`
+	Migrate MigrateCmd `cmd:"" help:"Apply database migrations and exit."`
+
+	Version kong.VersionFlag `help:"Show the build version and exit."`
+}
+
 func main() {
 	// SIGTERM/SIGINT start the documented drain (SYSREQ-023); without this
 	// trap the process would die at the default disposition, code 143.
@@ -48,6 +59,12 @@ func kongOptions(ctx context.Context) []kong.Option {
 		kong.Vars{"version": version},
 		kong.BindTo(ctx, (*context.Context)(nil)),
 	}
+}
+
+// MigrateCmd applies goose migrations then exits, for migration-before-rollout
+// pipelines (SYSREQ-021 posture).
+type MigrateCmd struct {
+	DatabaseURL string `flag:"" required:"" env:"PATCHCASTER_DATABASE_URL" help:"PostgreSQL connection URL."`
 }
 
 // Run applies the embedded migrations over a connection it opens and closes.

@@ -86,7 +86,7 @@ change *args:
 # Batch the unreleased fragments into .changes/<version>.md and rebuild
 # CHANGELOG.md (ADR-018). The version is the tag about to be cut, v-prefixed.
 changelog version:
-	@case "{{version}}" in v[0-9]*) ;; *) echo "version must be the release tag, e.g. v0.1.0" >&2; exit 1 ;; esac
+	{{ assert(version =~ '^v[0-9]', "version must be the release tag, e.g. v0.1.0") }}
 	go tool -modfile tools/changie/go.mod changie batch --allow-no-changes=false {{version}}
 	go tool -modfile tools/changie/go.mod changie merge
 
@@ -103,10 +103,16 @@ release-snapshot +args="":
 # Cut and publish a release; normally runs tag-triggered in CI, not here
 # (keyless signing needs the workflow's OIDC identity). goreleaser calls
 # cosign from PATH, where the release workflow's installer puts it
-# (ADR-016). The release notes are the tag's batched changelog (ADR-018).
-# A missing cosign or a tag without notes fails here, before anything is
-# built or published.
+# (ADR-016), and signs before it publishes anything. The release notes are
+# the tag's batched changelog; an untagged HEAD or a tag without notes fails
+# here, before anything is built.
 release:
-	@command -v cosign >/dev/null || { echo "cosign is not on PATH: the release workflow installs it (ADR-016)" >&2; exit 1; }
-	@notes=".changes/$(git describe --tags --exact-match).md"; test -f "$notes" || { echo "no $notes: run 'just changelog <tag>' and commit it before tagging" >&2; exit 1; }
-	go tool -modfile tools/goreleaser/go.mod goreleaser release --clean --release-notes ".changes/$(git describe --tags --exact-match).md"
+	#!/usr/bin/env bash
+	set -euo pipefail
+	tag="$(git describe --tags --exact-match)"
+	notes=".changes/${tag}.md"
+	if [[ ! -f "${notes}" ]]; then
+		echo "no ${notes}: run 'just changelog ${tag}' and commit it before tagging" >&2
+		exit 1
+	fi
+	exec go tool -modfile tools/goreleaser/go.mod goreleaser release --clean --release-notes "${notes}"

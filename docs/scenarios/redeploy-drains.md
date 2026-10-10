@@ -16,7 +16,7 @@ accepted.
 
 ## Initial State
 
-- The instance is serving; at least one delivery is mid-handoff and messages may be queued.
+- The instance runs a published, tagged build; at least one delivery is mid-handoff and messages may be queued.
 
 ## Trigger
 

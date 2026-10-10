@@ -35,8 +35,9 @@ recipes stay one-line honest and tab-completable.
 
 ### Positive Consequences
 
-- `just`, `just test`, `just lint`, `just migrate`, `just container` as the shared vocabulary;
-  CI invokes the same recipes.
+- `just`, `just test`, `just lint`, `just migrate`, `just container`, `just devdb` as the shared
+  vocabulary; CI invokes the same recipes (`lint` runs the pinned `golangci-lint` gate, ADR-011;
+  `devdb` serves the disposable PostgreSQL for the test suite, ADR-010).
 
 ### Negative Consequences
 

@@ -19,7 +19,8 @@ One `main` package, `cmd/patchcaster`, wiring `internal/` packages: `ingest`, `s
 `ops`, `config`. The `go.mod` `go` directive states the language minimum `1.26` with a pinned
 toolchain line for reproducible builds; CGO stays off (pure-Go pgx driver, ADR-010) so the binary is
 static. Images are built from a multi-stage Dockerfile to a distroless base. Common tasks —
-`build`, `test`, `lint`, `migrate`, `container` — live in the `justfile` (ADR-007).
+`build`, `test`, `lint`, `migrate`, `container`, `devdb` — live in the `justfile` (ADR-007),
+with `lint` running the version-pinned `golangci-lint` gate (ADR-011).
 
 ## Static View (Structure)
 

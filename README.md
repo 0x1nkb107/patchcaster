@@ -9,10 +9,10 @@
 [![Go](https://img.shields.io/github/go-mod/go-version/patchcaster-app/patchcaster)](go.mod)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-[Build & run](#build--run) ·
 [Configuration](#configuration) ·
 [Operations](#operations) ·
 [Local demo](demo/README.md) ·
+[Development](docs/development.md) ·
 [Requirements](docs/specs/README.md)
 
 </div>
@@ -22,27 +22,9 @@ one thread per merge request whose root message is a live status board
 (pipeline, reviewer, comment and edit segments refresh in place), with thread
 replies for notable events: comments, pipeline pass/fail, review verdicts,
 pushes, merge and close. The normative behavior lives in the SARA graph under
-[`docs/specs/`](docs/specs/README.md); this README is the operator's quickstart.
-
-## Build & run
-
-The toolchain (sqlc, golangci-lint) is pinned as Go tool modules under
-`tools/` — no ambient installs are needed beyond Go itself; `just` orchestrates
-the tasks.
-
-```sh
-just test            # offline unit suite
-just quality         # CI gate: fmt check + CGO-free build + vet + lint
-just devdb           # PostgreSQL 18 on 127.0.0.1:5433 (podman)
-just migrate         # apply embedded schema
-just run             # serve with the example routing table (needs env vars below)
-just lint            # vet + pinned golangci-lint
-just race            # full suite under the race detector (needs cgo)
-just sqlc            # regenerate query code after touching db/
-just container       # OCI image: pinned-toolchain host build into distroless stage
-just release-check    # validate the goreleaser pipeline (ADR-015)
-just release-snapshot # release dry run: builds; publishes and signs nothing
-```
+[`docs/specs/`](docs/specs/README.md). This README is the operator's
+quickstart; building, testing and contributing changes are covered in
+[`docs/development.md`](docs/development.md).
 
 ## Configuration
 
@@ -131,9 +113,3 @@ posted.
     --certificate-identity-regexp 'https://github.com/patchcaster-app/patchcaster/\.github/workflows/release\.yml@refs/tags/v[0-9].*' \
     checksums.txt
   ```
-
-## Testing
-
-`go test ./...` is fully offline; store contract tests run against a real
-PostgreSQL when `PATCHCASTER_TEST_DATABASE_URL` points at a *disposable*
-database (CI provides one).

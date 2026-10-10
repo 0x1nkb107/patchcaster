@@ -55,9 +55,10 @@ dockers_v2:
 
 # Keyless cosign signing (ADR-016, SYSREQ-032). No keys exist: on GitHub
 # Actions cosign obtains the workflow's OIDC identity, Fulcio issues a short
-# certificate, and Rekor records the entry. The `--bundle` file (signature +
-# certificate + log entry) is uploaded to the release via signature: true;
-# image signatures live in the registry as .sig tags. There is no identity to
+# certificate, and Rekor records the entry. `sign-blob --bundle` writes the
+# signature, certificate and log entry to one file, checksums.txt.sig, which
+# is uploaded with the release and checked with `verify-blob --bundle`.
+# Image signatures live in the registry as .sig tags. There is no identity to
 # obtain outside Actions, so snapshots must --skip=sign (the release-snapshot
 # task does). goreleaser resolves `cosign` from PATH, which `just release`
 # fills with the build of the pinned tools/cosign module.
@@ -65,9 +66,9 @@ signs:
   - id: checksums
     cmd: cosign
     artifacts: checksum
-    signature: true
+    signature: "${artifact}.sig"
     args:
-      - "sign-bundle"
+      - "sign-blob"
       - "--yes"
       - "--bundle=${signature}"
       - "${artifact}"

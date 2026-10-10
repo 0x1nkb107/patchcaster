@@ -70,7 +70,7 @@ The GitHub release carries a `checksums.txt` signature bundle proving the
 archives match the signed digests:
 
 ```sh
-cosign verify-bundle --bundle checksums.txt.sig \
+cosign verify-blob --bundle checksums.txt.sig \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   --certificate-identity-regexp 'https://github.com/patchcaster-app/patchcaster/\.github/workflows/release\.yml@refs/tags/v[0-9].*' \
   checksums.txt

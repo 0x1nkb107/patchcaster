@@ -27,8 +27,8 @@ identity-based verification it natively supports.
 
 - `cosign verify` on a published version tag succeeds when pinned to the release workflow's
   certificate identity and GitHub's OIDC issuer, and fails for unsigned or foreign images.
-- The GitHub release carries a signature bundle for the checksum file; `cosign verify-bundle`
-  proves the published archives match the signed digests.
+- The GitHub release carries a signature bundle for the checksum file; `cosign verify-blob
+  --bundle` proves the published archives match the signed digests.
 - A signing failure fails the release job: no artifact path produces unsigned output on a
   green pipeline. (goreleaser publishes before signing, so a failed sign leaves a release to
   be retried or discarded — never a green run over unsigned artifacts.)

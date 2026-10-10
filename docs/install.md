@@ -57,8 +57,8 @@ runtime libraries; run it under your service manager with the
 ## Verify what you deploy
 
 Release images, and the checksum file covering the archives, are signed
-keylessly with cosign by the release workflow (ADR-016). Verify an image
-before deploying it:
+keylessly with cosign v3 by the release workflow (ADR-016), so verify them
+with cosign v3 or later. Verify an image before deploying it:
 
 ```sh
 cosign verify ghcr.io/patchcaster-app/patchcaster:vX.Y.Z \

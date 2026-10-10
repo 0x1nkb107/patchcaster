@@ -37,7 +37,7 @@ Chosen option: "`cenkalti/backoff`", by owner directive; it fits anyway, with on
 implementation constraint: the library is used as an **interval generator**
 (`ExponentialBackOff{InitialInterval: 1s, Multiplier: 2, MaxInterval: 10m}` plus the
 `NextBackOff()` sequence), not as a `Retry`-loop driver, because each scheduled attempt must be
-persisted in SQLite between tries. Its default `MaxElapsedTime` of 15 minutes must be disabled
+persisted in the durable queue between tries. Its default `MaxElapsedTime` of 15 minutes must be disabled
 (set to `0`), which would otherwise abort the 8-attempt budget (~45 min worst-case horizon)
 prematurely.
 

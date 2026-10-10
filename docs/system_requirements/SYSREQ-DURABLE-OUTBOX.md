@@ -35,7 +35,7 @@ end to end.
 ## Verification Plan
 
 - **Method**: Test.
-- **Procedure**: Kill-and-restart integration test over a temporary database file; inspect row
+- **Procedure**: Kill-and-restart integration test against a disposable PostgreSQL database; inspect row
   state after the kill and assert delivery after restart.
 
 ## Notes

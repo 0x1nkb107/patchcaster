@@ -26,7 +26,7 @@ condition that the deployment grants a termination grace period of at least this
 - On `SIGTERM` the public listener immediately stops accepting new deliveries (new connections
   are refused or answered `503`).
 - Workers stop claiming new messages and finish the attempt in progress; whatever remains stays
-  pending on disk.
+  pending in the store.
 - The process exits with status `0` once drained, or force-stops at the 30-second budget.
 
 ## Verification Plan

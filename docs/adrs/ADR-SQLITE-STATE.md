@@ -3,7 +3,7 @@ id: "ADR-001"
 type: architecture_decision_record
 name: "SQLite with sqlc and goose for state"
 description: "Use embedded SQLite for thread continuity and the outbound queue, sqlc for query code, goose for migrations."
-status: accepted
+status: superseded
 deciders:
   - "Project owner"
 justifies:
@@ -11,6 +11,9 @@ justifies:
 ---
 
 # Architecture Decision: SQLite with sqlc and goose for state
+
+> **Superseded by ADR-010 (2026-10-10).** PostgreSQL replaces SQLite as the state backend;
+> sqlc and goose are retained under the new decision.
 
 ## Context and problem statement
 

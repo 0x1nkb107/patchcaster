@@ -30,7 +30,8 @@ arithmetic there.
 
 - A verified delivery whose `webhook-id` is present in the seen store answers `2xx` with zero
   posts and increments the suppressed counter.
-- Suppression survives a process restart (the store is SQLite, not memory).
+- Suppression survives a process restart (the seen set lives in the durable store, not process
+  memory).
 - Seen rows are retained for at least 24 h and pruned only after retention; the pruner is
   bounded work, not a full-table scan per request.
 - A delivery cannot bypass dedupe: the signature is computed over `webhook-id`, so a missing or

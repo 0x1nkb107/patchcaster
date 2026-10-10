@@ -20,19 +20,19 @@ receive traffic or claims of health.
 
 ## Trigger
 
-Any of: startup with an invalid routing table or missing bot token; loss of write access to the
-SQLite volume after startup.
+Any of: startup with an invalid routing table or missing bot token; the database losing
+write availability after startup (failover, quota, connection outage).
 
 ## Step-by-Step Flow
 
 1. At startup, configuration validation fails, so the process exits non-zero before listening.
-2. Mid-life volume failure makes readiness report failure while the process stays alive long enough for the orchestrator to observe it.
+2. Mid-life store failure makes readiness report failure while the process stays alive long enough for the orchestrator to observe it.
 3. The orchestrator stops routing to the instance and restarts or replaces it.
 
 ## Expected Outcome
 
 - Readiness is 200 only when configuration is valid and the state store is writable.
-- Recovery after the volume returns brings readiness back to 200 without manual restart.
+- Recovery once the database is writable again brings readiness back to 200 without manual restart.
 
 ## Exceptions & Edge Cases
 

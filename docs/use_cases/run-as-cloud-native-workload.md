@@ -16,7 +16,8 @@ refines:
 
 ## Pre-conditions
 
-- The OCI image, resource requests/limits, and a persistent volume for state are deployable in the target cluster.
+- The OCI image and resource requests/limits are deployable, and a reachable PostgreSQL 18 with
+  provisioned credentials is available (the schema is created by goose at startup).
 
 ## Main Success Outcome
 
@@ -32,8 +33,10 @@ within a bounded window during rollouts.
 - Startup configuration validation with a non-zero exit on invalid input (SYSREQ-022).
 - SIGTERM drain bounded to 30 s (SYSREQ-023).
 
-Consequences of ADR-001 to accept at deployment: the SQLite volume is ReadWriteOnce, so the
-workload runs as a single replica; horizontal scaling would require a different store first.
+Deployment posture after ADR-010: compute is stateless, so volumes and placement constraints are
+gone. v1 still runs a single replica — worker claiming is not yet hardened for multi-process
+concurrency — but the store no longer forbids more, and multi-replica claiming is a deliberate
+future increment, not a v1 promise.
 
 ## Post-conditions
 

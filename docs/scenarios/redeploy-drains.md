@@ -30,7 +30,7 @@ The orchestrator sends SIGTERM during a rollout.
 
 ## Expected Outcome
 
-- No accepted delivery is lost: whatever did not post is pending on disk and drains after the new instance starts.
+- No accepted delivery is lost: whatever did not post is pending in the store and drains after the new instance starts.
 - GitLab sees connection errors only *after* SIGTERM, which is within the rollout plan, not message loss.
 
 ## Exceptions & Edge Cases

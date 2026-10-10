@@ -2,7 +2,7 @@
 id: "SYSARCH-002"
 type: system_architecture
 name: "Conversation state store"
-description: "Embedded SQLite holding thread mappings, seen webhook identifiers, and pending messages."
+description: "PostgreSQL 18 holding thread mappings, seen webhook identifiers, and pending messages, behind a backend-neutral repository interface."
 satisfies:
   - "SYSREQ-006"
   - "SYSREQ-007"
@@ -13,29 +13,35 @@ satisfies:
 
 # System Architecture: Conversation state store
 
-Normative: merge request thread mappings, seen webhook identifiers, and pending outbound messages
-live in an embedded SQLite database on a persistent volume.
+Normative: merge request thread mappings, seen webhook identifiers, and pending outbound
+messages live in PostgreSQL 18, reached through a backend-neutral repository interface
+(ADR-010).
 
 ## Technical Strategy
 
-SQLite via a pure-Go driver so the binary stays CGO-free and statically buildable
-(SYSARCH-005). WAL mode; one writer connection, readers share. Schema changes go through goose
-migrations executed at startup; all SQL goes through sqlc-generated, type-checked Go — no
-string-built queries (ADR-001).
+PostgreSQL 18, accessed with `pgx` (`pgxpool` owns pooling and health; `database/sql` adapter
+for sqlc's `engine: postgresql`). All SQL is sqlc-generated and type-checked; schema changes are
+goose migrations applied at startup. One internal package implements the store; **no engine type
+— sqlc row struct, `pgx` type, or driver error — crosses its boundary**: callers receive domain
+structs and repository interfaces (owner directive, 2026-10-10), which is what keeps the
+"backend-neutral" promise checkable rather than aspirational.
 
 ## Static View (Structure)
 
-Three tables: `mr_thread` (project id + merge request id → root post id, channel id, thread
-state open/closed per SYSREQ-026),
-`seen_webhook` (webhook id, first-seen time; pruned past retention), `outbox` (payload, resolved
-destination channel, state `pending|parked|sent`, attempt count, next attempt time — SYSREQ-024).
-One Go package owns the SQL; the rest
-of the system sees only the generated repository interfaces.
+Three relations: `mr_thread` (project id + merge request id → root post id, channel id, thread
+state open/closed per SYSREQ-026), `seen_webhook` (webhook id, first-seen time; pruned past
+retention per SYSREQ-014), `outbox` (payload, resolved destination channel per SYSREQ-024, state
+`pending|parked|sent`, attempt count, next attempt time, claim lease). Three repository
+interfaces — thread, dedupe, outbox — consumed by ingest (enqueue, seen-check) and delivery
+(claim, settle) and by readiness (ping).
 
 ## Dynamic View (Behavior)
 
-Enqueue is a single write inside the ingest request path (bounded, local disk) — the durability
-point behind SYSREQ-017. Startup claims nothing; workers claim due `pending` rows at their
-convenience. A periodic prune trims `seen_webhook`. Readiness pings writability (SYSREQ-018).
-Volume loss is an operational event, not a code path: events whose mappings were lost are
-skipped and logged (SYSREQ-007); threads are never rebuilt.
+Enqueue is a single INSERT in the ingest request path (SYSREQ-017) — its commit is the point
+where the `2xx` becomes honest. Workers claim due rows with a lease (`claimed_at` + expiry, so a
+crashed worker's rows come back), claiming in an order that serializes each merge request to one
+worker at a time, which is what preserves SYSREQ-002's exactly-one-root under the worker pool.
+A periodic task prunes `seen_webhook` past retention. Readiness is a pool ping against a writable
+store (SYSREQ-018): database unavailability fails readiness, never liveness (SCEN-008). v1
+deploys a single replica; the lease design is the groundwork, not the promise, of any future
+multi-replica increment.

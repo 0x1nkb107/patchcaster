@@ -15,8 +15,8 @@ HMAC signatures, filters them to an agreed action allowlist, routes each survivi
 GitLab project to a Mattermost channel, and posts the activity through the Mattermost bot account
 REST API. Each merge request is one thread: the `open` action creates the root post and later
 activity (`update`, approvals, `merge`, `close`) appears as replies inside it. Thread continuity
-and duplicate suppression are kept in embedded SQLite, so the compute instance is restartable
-with one small persistent volume.
+and duplicate suppression are kept in an external PostgreSQL 18 (ADR-010), so compute instances
+are stateless and restartable at will.
 
 ## Business Context
 
@@ -46,6 +46,6 @@ verification of every delivery using the signing tokens introduced in GitLab 19.
 
 - **Regulatory**: None specific applies *(assumed)*.
 - **Physical & Design Context**: Implemented in Go with a `go` directive of at least 1.26, shipped as a single static binary in an OCI image (owner decision 2026-10-10; see SYSARCH-005).
-- **Operational**: Requires GitLab 19.0+ with webhook signing tokens available (feature flag in 19.0, generally available in 19.1) and a Mattermost instance whose bot account API supports threaded posts. Runs as a 12-factor process: configuration from the command line and environment, TLS terminated at the ingress, one small persistent volume for state.
+- **Operational**: Requires GitLab 19.0+ with webhook signing tokens available (feature flag in 19.0, generally available in 19.1) and a Mattermost instance whose bot account API supports threaded posts. Runs as a 12-factor process: configuration from the command line and environment, TLS terminated at the ingress; state lives in an external PostgreSQL 18 (ADR-010).
 - **Safety & Security**: Signing secrets and the bot token are treated as secrets at rest and never appear in logs or metrics (SYSREQ-021). Every accepted delivery carries a verified signature (ADR-002).
 - **Business**: Open source under the repository license; no revenue or time-to-market constraint recorded *(assumed)*.

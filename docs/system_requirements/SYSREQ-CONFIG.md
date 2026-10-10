@@ -23,8 +23,8 @@ CLI (ADR-003).
 
 ## Acceptance Criteria
 
-- Every option (site URL, bot token, signing secrets, routing table path, listen addresses, state
-  file path) is declared with kong and bound to a `PATCHCASTER_`-prefixed environment variable;
+- Every option (site URL, bot token, signing secrets, routing table path, listen addresses,
+  database connection settings) is declared with kong and bound to a `PATCHCASTER_`-prefixed environment variable;
   the precedence is flags > environment variables > built-in defaults (owner-set, 2026-10-10).
 - Any missing or malformed required value exits non-zero with a message naming the option, before
   any listener accepts a connection.

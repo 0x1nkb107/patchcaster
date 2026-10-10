@@ -21,8 +21,8 @@ idiom so a failing test reads the same everywhere.
 
 - Owner directive: tests use stretchr/testify following arrange-act-assert.
 - Table-driven tests remain the Go idiom for parameterized checks (repository policy).
-- Determinism: injected clocks, `httptest` doubles, temporary SQLite files — no network or
-  wall-clock reliance.
+- Determinism: injected clocks, `httptest` doubles, and a disposable PostgreSQL database via a
+  test connection URL — no external network or wall-clock reliance.
 
 ## Considered options
 

@@ -24,14 +24,15 @@ quality collapses precisely during rollouts. The mapping is also the join key th
 
 - After a root post is accepted by Mattermost, a mapping from merge request identity (project
   identifier + merge request identifier) to root post identifier is written durably.
-- Stopping the process and starting it again against the same volume still routes later events
+- Stopping the process and starting it again against the same database still routes later events
   into the original thread.
 
 ## Verification Plan
 
 - **Method**: Test.
-- **Procedure**: Integration test that runs the service twice sequentially against one temporary
-  database file, posting root in run 1 and reply in run 2.
+- **Procedure**: Integration test that runs the service twice sequentially against one
+  disposable PostgreSQL database (connection URL from the test environment), posting root in
+  run 1 and reply in run 2.
 
 ## Notes
 

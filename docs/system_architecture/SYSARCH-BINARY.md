@@ -17,7 +17,7 @@ configured through its kong-parsed command line.
 
 One `main` package, `cmd/patchcaster`, wiring `internal/` packages: `ingest`, `store`, `deliver`,
 `ops`, `config`. The `go.mod` `go` directive states the language minimum `1.26` with a pinned
-toolchain line for reproducible builds; CGO stays off (pure-Go SQLite, ADR-001) so the binary is
+toolchain line for reproducible builds; CGO stays off (pure-Go pgx driver, ADR-010) so the binary is
 static. Images are built from a multi-stage Dockerfile to a distroless base. Common tasks —
 `build`, `test`, `lint`, `migrate`, `container` — live in the `justfile` (ADR-007).
 

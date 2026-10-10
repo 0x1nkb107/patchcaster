@@ -1,0 +1,36 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: patchcaster
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      PATCHCASTER_TEST_DATABASE_URL: postgres://postgres:ci@localhost:5432/patchcaster?sslmode=disable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build
+        run: CGO_ENABLED=0 go build ./...
+      - name: Unit and integration tests
+        run: go test -count=1 ./...
+      - name: Lint (pinned tools/golangci module)
+        run: go tool -modfile tools/golangci/go.mod golangci-lint run
+      - name: Formatting
+        run: test -z "$(gofmt -l cmd internal)"

@@ -1,0 +1,9 @@
+# Routing table: exact, case-sensitive project path -> Mattermost channel id.
+# Channel ids are Mattermost identifiers (find them via the channel integration
+# settings or `mattermost channel` CLI). Many projects may share one channel.
+# An unmapped project is never forwarded; there is no catch-all.
+routes:
+  - project: group/application
+    channel: "channel-id-here"
+  - project: group/library
+    channel: "channel-id-here"

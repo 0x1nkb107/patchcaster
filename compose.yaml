@@ -1,0 +1,10 @@
+services:
+  # Local development database; production supplies its own PostgreSQL 18.
+  postgres:
+    image: docker.io/library/postgres:18
+    environment:
+      POSTGRES_USER: patchcaster
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: patchcaster
+    ports:
+      - "127.0.0.1:5433:5432"

@@ -1,0 +1,20 @@
+# golangci-lint v2 configuration (ADR-011). The binary runs from
+# tools/golangci pinned as a Go tool dependency, compiled by this project's
+# own Go toolchain.
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    - errorlint    # %w / errors.Is / errors.As discipline (ADR-007)
+    - nolintlint   # no unexplained nolint survival
+  settings:
+    govet:
+      disable:
+        # `inline` flags calls into third-party constructors (tint.NewHandler);
+        # it is not part of go vet's default set and adds no actionable signal.
+        - inline
+
+formatters:
+  enable:
+    - gofmt

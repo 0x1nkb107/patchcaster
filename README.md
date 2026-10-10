@@ -1,4 +1,21 @@
+<div align="center">
+
 # PatchCaster
+
+**From forge to chat — one live thread per merge request.**
+
+[![CI](https://github.com/patchcaster-app/patchcaster/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/patchcaster-app/patchcaster/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/patchcaster-app/patchcaster?sort=semver)](https://github.com/patchcaster-app/patchcaster/releases)
+[![Go](https://img.shields.io/github/go-mod/go-version/patchcaster-app/patchcaster)](go.mod)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+[Build & run](#build--run) ·
+[Configuration](#configuration) ·
+[Operations](#operations) ·
+[Local demo](demo/README.md) ·
+[Requirements](docs/README.md)
+
+</div>
 
 Forwards GitLab (19.0+) merge request activity into Mattermost channels —
 one thread per merge request whose root message is a live status board

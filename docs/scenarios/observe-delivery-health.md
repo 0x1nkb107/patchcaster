@@ -35,4 +35,5 @@ The operator scrapes the metrics endpoint and searches logs by a known `webhook-
 
 ## Exceptions & Edge Cases
 
-- Rejections are counted by cause (signature, freshness, duplicate) so 401 storms are diagnosable.
+- Rejections and discards are counted by cause (signature, expired, duplicate) so 401 storms
+  and expiry floods are diagnosable.

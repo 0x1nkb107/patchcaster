@@ -3,7 +3,7 @@ id: "SYSREQ-014"
 type: system_requirement
 name: "Duplicate delivery suppression"
 description: "GitLab re-deliveries of the same webhook identifier are not posted twice."
-specification: "The service SHALL acknowledge a delivery whose webhook identifier was already accepted within the freshness window without posting again."
+specification: "The service SHALL acknowledge a delivery whose webhook identifier it already accepted within a retention period of at least 24 hours without posting again."
 derives_from:
   - "SCEN-004"
 ---
@@ -12,27 +12,37 @@ derives_from:
 
 ## Requirement Specification
 
-> The service SHALL acknowledge a delivery whose webhook identifier was already accepted within the freshness window without posting again.
+> The service SHALL acknowledge a delivery whose webhook identifier it already accepted within a retention period of at least 24 hours without posting again.
 
 ## Rationale
 
-GitLab re-delivers when it times out or sees an error; a duplicate reply is user-visible noise on
-every thread. `webhook-id` is unique per delivery attempt sequence, making it a safe natural key.
+GitLab retries failed deliveries with growing backoff (from ~10 min up to a 24 h ceiling) and
+keeps `webhook-id` — equal to `Idempotency-Key` — stable across every retry of the same message
+([docs](https://docs.gitlab.com/user/project/integrations/webhooks/)). A stable identifier makes
+"already accepted" a durable fact keyed on the delivery itself, so retries become benign:
+the second arrival answers `2xx`, which also heals a temporarily disabled webhook.
+
+Retention of 24 h is an owner decision (2026-10-10) sized against the retry backoff ceiling;
+paired with the 4 h event-age cap (SYSREQ-013) it closes the replay window completely — see the
+arithmetic there.
 
 ## Acceptance Criteria
 
-- A delivery whose `webhook-id` was already accepted answers `2xx` with zero posts and increments
-  the suppressed counter.
-- Seen identifiers are stored durably: suppression survives a process restart inside the window.
-- Seen-identifier retention covers at least 24 h, then rows may be pruned *(assumed — GitLab
-  retries can arrive long after the freshness window)*.
+- A verified delivery whose `webhook-id` is present in the seen store answers `2xx` with zero
+  posts and increments the suppressed counter.
+- Suppression survives a process restart (the store is SQLite, not memory).
+- Seen rows are retained for at least 24 h and pruned only after retention; the pruner is
+  bounded work, not a full-table scan per request.
+- A delivery cannot bypass dedupe: the signature is computed over `webhook-id`, so a missing or
+  altered identifier fails verification first (SYSREQ-012).
 
 ## Verification Plan
 
 - **Method**: Test.
-- **Procedure**: Store unit tests plus handler tests replaying a stored delivery before and after
-  a simulated restart.
+- **Procedure**: Replay the same signed delivery before and after a simulated restart; unit-test
+  the pruner against an injected clock; assert suppression counters and zero outbound calls.
 
 ## Notes
 
-Suppression is checked after signature verification so an attacker cannot poison the dedupe set.
+Dedupe runs after signature verification so an attacker cannot poison the seen set with forged
+identifiers.

@@ -29,7 +29,7 @@ allowlisted subsequent activity, each naming the actor, action, and merge reques
 ## Key Functional Scope
 
 - Parse merge request payloads from project, group, and system hooks (GitLab 19 timestamp formats).
-- Verify delivery authenticity and freshness; suppress duplicates.
+- Verify delivery authenticity and event age; suppress duplicates.
 - Forward exactly the actions `open`, `close`, `merge`, `approval`, `approved`, `update`.
 - One thread per merge request, keyed by a durable merge-request-to-post mapping.
 

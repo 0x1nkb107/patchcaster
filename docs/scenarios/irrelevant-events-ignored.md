@@ -25,7 +25,7 @@ Any of: a `push`/`pipeline`/comment delivery; a merge request delivery with acti
 
 ## Step-by-Step Flow
 
-1. Signature and freshness verify as usual (authenticity is checked before content decisions).
+1. The signature verifies as usual (authenticity is checked before content decisions).
 2. The kind/action filter or the routing lookup decides nothing must be forwarded.
 3. The service responds 2xx and increments the ignored-delivery counters.
 

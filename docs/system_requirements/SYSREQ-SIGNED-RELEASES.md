@@ -3,7 +3,7 @@ id: "SYSREQ-032"
 type: system_requirement
 name: "Signed release provenance"
 description: "Published images and archives carry cosign signatures verifiable against the release workflow identity."
-specification: "Published release images and release archives SHALL carry cosign signatures recorded in a public transparency log and verifiable against the project's release workflow identity without pre-distributed keys."
+specification: "Published release images, release archives, and Helm chart artifacts SHALL carry cosign signatures recorded in a public transparency log and verifiable against the project's release workflow identity without pre-distributed keys."
 derives_from:
   - "SCEN-010"
 ---

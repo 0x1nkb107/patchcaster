@@ -8,6 +8,7 @@ satisfies:
   - "SYSREQ-022"
   - "SYSREQ-031"
   - "SYSREQ-032"
+  - "SYSREQ-033"
 ---
 
 # System Architecture: Single service binary and toolchain
@@ -29,7 +30,9 @@ that pinned toolchain — release images via buildx multi-arch (ADR-015), local 
 with `lint` running the version-pinned `golangci-lint` gate (ADR-011). Release artifacts are cut
 by the version-pinned goreleaser pipeline of ADR-015 (`just release`), which cross-builds both
 claimed architectures and publishes the images and GitHub release of SYSREQ-031, signing images
-and archives keylessly per ADR-016 (SYSREQ-032).
+and archives keylessly per ADR-016 (SYSREQ-032). The Helm chart of SYSREQ-033 ships out-of-band
+from the sibling charts repository, signed under that repository's own workflow identity
+(ADR-017).
 
 ## Static View (Structure)
 

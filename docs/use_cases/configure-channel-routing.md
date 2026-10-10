@@ -33,6 +33,8 @@ quietly and never posts.
   system hook (SYSREQ-001, SCEN-007).
 - Configuration is validated at startup; an invalid table stops the process before serving
   (SYSREQ-022).
+- A routing change reaches only events accepted after it ships: queued messages keep the
+  destination resolved at ingress (SYSREQ-024), so consistency needs no hot-reload.
 
 Out of scope for v1:
 

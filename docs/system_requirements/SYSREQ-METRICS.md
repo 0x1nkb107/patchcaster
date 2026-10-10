@@ -22,8 +22,9 @@ cost. The same counters answer the solution KPIs (loss and latency) and alert on
 ## Acceptance Criteria
 
 - The metrics endpoint exposes counters for deliveries received, rejected by cause (signature,
-  parse), suppressed duplicates, discarded (expired, unrouted or non-allowlisted action),
-  messages posted, and Mattermost attempts by outcome; plus a delivery attempt latency histogram.
+  parse), suppressed duplicates, discarded (expired, unrouted or non-allowlisted action), skipped
+  (no thread mapping or thread closed — SYSREQ-007/SYSREQ-026), parked messages, messages posted,
+  and Mattermost attempts by outcome; plus a delivery attempt latency histogram.
 - Counter names share one `patchcaster_` prefix *(names assumed)* and render in Prometheus text
   format on the internal listener.
 

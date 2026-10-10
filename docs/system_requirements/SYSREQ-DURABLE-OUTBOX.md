@@ -25,6 +25,8 @@ end to end.
 ## Acceptance Criteria
 
 - The outbound message row is written before the `2xx` is sent for a routed event.
+- The row persists the destination channel resolved at ingress; retries never re-resolve routing
+  (SYSREQ-024).
 - `SIGKILL` immediately after the acknowledgement leaves the message pending; the next process
   delivers it.
 - Re-claimed messages are delivered exactly once from the service's side (a post accepted by

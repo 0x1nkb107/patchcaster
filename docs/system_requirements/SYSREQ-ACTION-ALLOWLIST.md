@@ -26,7 +26,9 @@ on pushes would spam channels. Unknown future GitLab actions default to silence,
   proceed to routing.
 - Any other action value — `reopen`, `unapproval`, `unapproved`, or unrecognized — answers `2xx`
   with zero posts.
-- The allowlist is a single in-code table for v1, not runtime configuration *(assumed)*.
+- The allowlist is a single in-code table for v1, deny-by-default — unrecognised actions never
+  post — and shaped as data so a later move to configuration is additive (owner-approved,
+  2026-10-10).
 
 ## Verification Plan
 
@@ -37,4 +39,6 @@ on pushes would spam channels. Unknown future GitLab actions default to silence,
 ## Notes
 
 `update` is forwarded regardless of `changes` content in v1; content-based noise filtering is a
-possible follow-up, not a gap against this item.
+possible follow-up, not a gap against this item. Migration to configuration must preserve
+deny-by-default: a malformed or empty table forwards nothing, exactly as an empty allowlist
+behaves today.

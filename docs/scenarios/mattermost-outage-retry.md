@@ -39,3 +39,5 @@ One or more verified merge request deliveries arrive during the outage.
 
 - A process crash during the outage loses nothing: pending messages are on disk (SYSREQ-017).
 - A message that exhausts its retry budget is parked with a metric, not silently discarded.
+- A routing-table rollout during the outage redirects nothing: every pending row carries the
+  destination resolved at ingress (SYSREQ-024).

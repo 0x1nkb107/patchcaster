@@ -35,6 +35,8 @@ GitLab delivers an action of `update`, `approval`, `approved`, `merge`, or `clos
 
 ## Exceptions & Edge Cases
 
-- Mapping unknown (merge request opened before installation, or state lost): a new root message
-  is posted instead of a dangling reply (SYSREQ-007).
+- Mapping unknown (merge request opened before installation, or state lost): the event is
+  skipped and logged; the service never invents a root (SYSREQ-007).
+- Root post deleted by a human: the reply is parked and the thread closed — it stays deleted
+  (SYSREQ-026).
 - Duplicate re-delivery of the same `webhook-id`: suppressed, no second reply (SYSREQ-014).

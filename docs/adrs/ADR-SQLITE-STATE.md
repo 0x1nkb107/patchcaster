@@ -47,8 +47,8 @@ outbox, and the owner's toolchain directive removes the codegen and migration qu
 
 - Single-writer store ⇒ single replica (volume is ReadWriteOnce); horizontal scale would need a
   store swap later — mitigated by isolating SQL in one package behind repository interfaces.
-- Volume loss loses mappings and backlog; mitigated operationally (backup of one small file) and
-  semantically by the SYSREQ-007 fallback.
+- Volume loss loses mappings and backlog; mitigated operationally (backup of one small file).
+  After loss, unmapped events are skipped and logged (SYSREQ-007) — threads are not rebuilt.
 
 ## Pros and Cons of the Options
 

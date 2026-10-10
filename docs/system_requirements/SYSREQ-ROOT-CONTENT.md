@@ -20,7 +20,8 @@ depends_on:
 
 The root message is the team's triage surface: a reader decides from it whether to open the merge
 request. The merge request description is deliberately excluded — it is long untrusted Markdown
-and the main source of channel spam *(assumed)*.
+and the main source of channel spam (owner-approved, 2026-10-10; SYSREQ-025 keeps descriptions
+unreachable from message templates).
 
 ## Acceptance Criteria
 

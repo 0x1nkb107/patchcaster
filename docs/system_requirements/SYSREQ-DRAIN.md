@@ -3,7 +3,7 @@ id: "SYSREQ-023"
 type: system_requirement
 name: "Graceful drain on shutdown"
 description: "Shutdown finishes in-flight work within a bounded window."
-specification: "The service SHALL stop accepting new deliveries upon SIGTERM and finish in-flight deliveries within 30 seconds before exiting *(assumed)*."
+specification: "The service SHALL stop accepting new deliveries upon SIGTERM and finish in-flight deliveries within 30 seconds before exiting."
 derives_from:
   - "SCEN-010"
 ---
@@ -12,13 +12,14 @@ derives_from:
 
 ## Requirement Specification
 
-> The service SHALL stop accepting new deliveries upon SIGTERM and finish in-flight deliveries within 30 seconds before exiting *(assumed)*.
+> The service SHALL stop accepting new deliveries upon SIGTERM and finish in-flight deliveries within 30 seconds before exiting.
 
 ## Rationale
 
 The outbox (SYSREQ-017) guarantees nothing is lost from disk; draining guarantees the work
 already in hands also completes, so rollouts are event-invisible. 30 s fits a standard
-`terminationGracePeriodSeconds` and bounds rollout time *(assumed)*.
+`terminationGracePeriodSeconds` and bounds rollout time; owner-approved (2026-10-10) on the
+condition that the deployment grants a termination grace period of at least this budget.
 
 ## Acceptance Criteria
 
@@ -36,4 +37,6 @@ already in hands also completes, so rollouts are event-invisible. 30 s fits a st
 
 ## Notes
 
-The orchestrator's own grace period must be at least this budget — deployment concern (UC-003).
+Owner condition (2026-10-10): deployment manifests set `terminationGracePeriodSeconds` strictly
+above this 30 s budget; readiness flips to `503` at signal time (SYSARCH-004) so the Service
+detaches the pod while the drain runs (UC-003).

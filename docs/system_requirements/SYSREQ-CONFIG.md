@@ -3,7 +3,7 @@ id: "SYSREQ-022"
 type: system_requirement
 name: "Strict startup configuration"
 description: "Configuration is loaded once and validated at startup."
-specification: "The service SHALL load its complete configuration from command-line flags and environment variables at startup and exit with a non-zero status when that configuration is invalid."
+specification: "The service SHALL load its complete configuration at startup from command-line flags, environment variables, and built-in defaults in that precedence, exiting with a non-zero status when configuration is incomplete or invalid."
 derives_from:
   - "SCEN-008"
 ---
@@ -12,7 +12,7 @@ derives_from:
 
 ## Requirement Specification
 
-> The service SHALL load its complete configuration from command-line flags and environment variables at startup and exit with a non-zero status when that configuration is invalid.
+> The service SHALL load its complete configuration at startup from command-line flags, environment variables, and built-in defaults in that precedence, exiting with a non-zero status when configuration is incomplete or invalid.
 
 ## Rationale
 
@@ -25,7 +25,7 @@ CLI (ADR-003).
 
 - Every option (site URL, bot token, signing secrets, routing table path, listen addresses, state
   file path) is declared with kong and bound to a `PATCHCASTER_`-prefixed environment variable;
-  an explicit flag wins over the environment *(precedence assumed)*.
+  the precedence is flags > environment variables > built-in defaults (owner-set, 2026-10-10).
 - Any missing or malformed required value exits non-zero with a message naming the option, before
   any listener accepts a connection.
 

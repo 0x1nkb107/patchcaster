@@ -91,6 +91,11 @@ posted.
   in the `outbox` table for operator triage.
 * v1 runs as a **single replica**; the queue uses lease-based claims so more
   replicas remain a future option, not a schema change.
+* **Helm chart**: `oci://ghcr.io/patchcaster-app/charts/patchcaster` from the
+  sibling [patchcaster-charts](https://github.com/patchcaster-app/patchcaster-charts)
+  repository (SYSREQ-033, ADR-017); chart versions follow releases
+  (`appVersion` = tag) and sign under *that* repository's workflow identity, so the
+  verify regexp differs accordingly — its README carries the exact command.
 * **Release provenance**: images live at `ghcr.io/patchcaster-app/patchcaster`, signed
   keylessly with cosign via the release workflow (ADR-016). Verify before deploying:
 

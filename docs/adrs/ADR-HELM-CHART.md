@@ -32,10 +32,12 @@ repositories of the workspace.
   an application release is a release-time convention verified at acceptance, *not* enforced by
   cross-repo automation: a tag-triggered dispatch would need a cross-repo token, and the
   organization deliberately carries no repository secrets (ADR-016).
-- **Publishing mechanism**: version-pinned `helm.sh/helm/v3` (tools module, v3.22.0) running
-  `helm package --version <tag> --app-version <tag>` followed by `helm push … oci://` — the
-  canonical OCI path from the Helm registries documentation. The chart repository is not a
-  goreleaser consumer; ADR-015 stays scoped to the application.
+- **Publishing mechanism**: `helm package --version <tag> --app-version <tag>` followed by
+  `helm push … oci://` — the canonical OCI path from the Helm registries documentation. helm
+  (4.x) is ambient: a developer tool like `git`, present on workstations and GitHub runners, not
+  vendored into this repository; the only pinned tool module is `tools/cosign`, mirroring
+  ADR-016. The chart repository is not a goreleaser consumer; ADR-015 stays scoped to the
+  application.
 - **Signing**: the chart artifact is cosign-signed keyless (ADR-016 mechanism) against its push
   digest. The certificate identity is the **charts** repository's workflow —
   `github.com/patchcaster-app/patchcaster-charts/.github/workflows/release.yml@refs/tags/…` —
@@ -47,8 +49,11 @@ repositories of the workspace.
   ServiceAccount, Secret (or `existingSecret`), a routing ConfigMap as raw pass-through
   (SYSREQ-022), and resources/scheduling knobs. Explicitly **not** rendered: Ingress, HPA
   (contradicts the single-replica posture), and any bundled PostgreSQL (external by ADR-010).
-- **CI gate**: every chart change runs `helm lint --strict` and a `helm template` render of the
-  example values, mirroring the quality-gate posture of the application repository.
+- **CI gate**: every chart change runs `helm lint --strict`, a `helm template` render of the
+  example values, and a `kind` cluster validating every manifest server-side
+  (`helm install --dry-run=server` — the pinned application image may be private, so nothing is
+  scheduled or pulled). Live-install smoke tests become viable with the first application
+  release.
 
 ## Consequences
 

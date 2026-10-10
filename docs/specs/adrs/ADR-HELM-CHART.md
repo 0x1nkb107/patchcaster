@@ -37,9 +37,10 @@ owner renamed it the same day, before any chart was signed, so the repository na
 - **Publishing mechanism**: `helm package --version <tag> --app-version <tag>` followed by
   `helm push … oci://` — the canonical OCI path from the Helm registries documentation. helm
   (4.x) is ambient: a developer tool like `git`, present on workstations and GitHub runners, not
-  vendored into this repository; the only pinned tool module is `tools/cosign`, mirroring
-  ADR-016. The chart repository is not a goreleaser consumer; ADR-015 stays scoped to the
-  application.
+  vendored into this repository. cosign comes from the same pinned `sigstore/cosign-installer`
+  step as in ADR-016, so the charts repository has no tool modules (it first built cosign from
+  a `tools/cosign` module; the owner replaced that on 2026-10-10). The chart repository is not
+  a goreleaser consumer; ADR-015 stays scoped to the application.
 - **Signing**: the chart artifact is cosign-signed keyless (ADR-016 mechanism) against its push
   digest. The certificate identity is the **charts** repository's workflow —
   `github.com/patchcaster-app/charts/.github/workflows/release.yml@refs/tags/…` —

@@ -46,6 +46,8 @@ Release with goreleaser v2, pinned as a tools module exactly like the lint and c
 ## Consequences
 
 - Cutting a release is `git tag vX.Y.Z && git push --tags`; no manual artifact steps remain.
+  (Amended by ADR-018: the changelog is batched and committed first, and its version file
+  becomes the release notes.)
 - Published tags are immutable by convention: republishing would violate the promise of
   SYSREQ-031, so a bad cut means a new version, never a force-push.
 - Toolchain coupling is real: goreleaser v2.18 requires Go 1.27, which motivated moving the

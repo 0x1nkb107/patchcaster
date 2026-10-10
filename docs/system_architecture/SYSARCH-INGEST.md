@@ -25,7 +25,8 @@ handing the event to the delivery queue.
 Single `net/http` handler chain on the standard library `http.ServeMux` (Go 1.22+ method
 patterns). Middleware order is part of the design: body-size limit and raw-body capture first
 (the HMAC covers exact bytes), then signature verification (SYSREQ-012), then identifier dedupe
-on headers alone (SYSREQ-014), then parse; the post-parse expiry cap (SYSREQ-013, event time
+on headers alone — the check only; the seen-mark itself rides the enqueue transaction
+(SYSREQ-014) — then parse; the post-parse expiry cap (SYSREQ-013, event time
 lives in the signed body) precedes the action allowlist (SYSREQ-008), then routing
 (SYSREQ-009/010/011), then outbox enqueue — persisting the resolved destination with the
 row (SYSREQ-024) — then the `2xx` write. No framework: the surface is a

@@ -36,12 +36,18 @@ arithmetic there.
   bounded work, not a full-table scan per request.
 - A delivery cannot bypass dedupe: the signature is computed over `webhook-id`, so a missing or
   altered identifier fails verification first (SYSREQ-012).
+- A delivery is recorded as seen only in the same store transaction that durably accepts its
+  message or its no-forward decision: a crash can never leave a seen identifier with no enqueued
+  message, so suppression can never mask a lost event (pairs with the `5xx` answer of
+  SYSREQ-017).
 
 ## Verification Plan
 
 - **Method**: Test.
 - **Procedure**: Replay the same signed delivery before and after a simulated restart; unit-test
-  the pruner against an injected clock; assert suppression counters and zero outbound calls.
+  the pruner against an injected clock; assert suppression counters and zero outbound calls; an
+  injected enqueue failure asserts a `5xx` answer and no seen record, so the following GitLab
+  retry is processed rather than suppressed.
 
 ## Notes
 

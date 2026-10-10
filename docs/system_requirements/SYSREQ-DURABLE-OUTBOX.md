@@ -29,8 +29,13 @@ end to end.
   (SYSREQ-024).
 - `SIGKILL` immediately after the acknowledgement leaves the message pending; the next process
   delivers it.
-- Re-claimed messages are delivered exactly once from the service's side (a post accepted by
-  Mattermost is never re-posted).
+- A message whose acceptance was recorded is never re-posted. After a crash between Mattermost
+  accepting a post and the queue recording that acceptance, the retry re-posts: the contract is
+  at-least-once, with the duplicate risk confined to that window, because Mattermost post
+  creation carries no client-supplied idempotency key.
+- A routed event the store cannot durably accept is answered `5xx`, never `2xx` — the
+  acknowledgement of SYSREQ-015 is issued only after the enqueue commit (GitLab then retries;
+  readiness is already failing, SYSREQ-018).
 
 ## Verification Plan
 
@@ -41,4 +46,6 @@ end to end.
 ## Notes
 
 Duplicate *deliveries from GitLab* are handled by SYSREQ-014; this item covers the service's own
-delivery pipeline.
+delivery pipeline. The duplicate window between acceptance and record is accepted residual risk,
+documented rather than eliminated: search-before-post as a mitigation was considered and rejected
+as unbounded best-effort against an API that never promised idempotency.

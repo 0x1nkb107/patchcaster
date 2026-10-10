@@ -24,7 +24,8 @@ The operator scrapes the metrics endpoint and searches logs by a known `webhook-
 
 ## Step-by-Step Flow
 
-1. Counters for received, rejected, suppressed, posted, and delivery attempts render in Prometheus text format.
+1. Counters for received, rejected, suppressed, discarded, skipped, parked, posted, and delivery
+   attempts render in Prometheus text format.
 2. Every log line related to one delivery carries that delivery's `webhook-id`.
 
 ## Expected Outcome

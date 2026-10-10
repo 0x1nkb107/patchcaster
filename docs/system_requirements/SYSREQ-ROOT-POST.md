@@ -37,4 +37,6 @@ its identifier before any other event is handled is what makes the thread stable
 
 ## Notes
 
-Delivery mechanics live in SYSARCH-003; this item fixes the observable behaviour.
+Delivery mechanics live in SYSARCH-003; this item fixes the observable behaviour. The
+exactly-one guarantee is subject to the crash window stated in SYSREQ-017's notes: duplicate risk
+exists only for a crash between Mattermost acceptance and the queue recording it.

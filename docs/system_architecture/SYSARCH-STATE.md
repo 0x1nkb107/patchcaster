@@ -37,8 +37,10 @@ interfaces — thread, dedupe, outbox — consumed by ingest (enqueue, seen-chec
 
 ## Dynamic View (Behavior)
 
-Enqueue is a single INSERT in the ingest request path (SYSREQ-017) — its commit is the point
-where the `2xx` becomes honest. Workers claim due rows with a lease (`claimed_at` + expiry, so a
+Enqueue and the seen-mark of the same delivery commit together in one PostgreSQL transaction
+in the ingest request path (SYSREQ-014, SYSREQ-017) — that commit is the point where the `2xx`
+becomes honest, and a failed commit means neither happened, leaving GitLab's retry to be
+processed normally. Workers claim due rows with a lease (`claimed_at` + expiry, so a
 crashed worker's rows come back), claiming in an order that serializes each merge request to one
 worker at a time, which is what preserves SYSREQ-002's exactly-one-root under the worker pool.
 A periodic task prunes `seen_webhook` past retention. Readiness is a pool ping against a writable

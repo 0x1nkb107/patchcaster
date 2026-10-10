@@ -1,6 +1,6 @@
-// Package mattermost is the bot-account HTTP client for posting messages
-// (SYSARCH-003). Only POST /api/v4/posts is used; the error taxonomy here is
-// the contract the delivery worker schedules against.
+// Package mattermost is the bot-account HTTP client for posting and updating
+// messages (SYSARCH-003). Only POST and PUT on /api/v4/posts are used; the
+// error taxonomy here is the contract the delivery worker schedules against.
 package mattermost
 
 import (
@@ -74,9 +74,30 @@ func (c *Client) Post(ctx context.Context, channelID, message, rootID string) (s
 	if err != nil {
 		return "", fmt.Errorf("encode post for channel %q: %w", channelID, err)
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL+"/api/v4/posts", bytes.NewReader(body))
+	return c.send(ctx, http.MethodPost, c.BaseURL+"/api/v4/posts", body)
+}
+
+// Update replaces the message of an already posted message (root status
+// refresh, SYSREQ-004). The update is idempotent: reposting the same message
+// text is a no-op a retry may safely repeat.
+func (c *Client) Update(ctx context.Context, postID, message string) error {
+	body, err := json.Marshal(struct {
+		ID      string `json:"id"`
+		Message string `json:"message"`
+	}{ID: postID, Message: message})
 	if err != nil {
-		return "", fmt.Errorf("build post request: %w", err)
+		return fmt.Errorf("encode update for post %q: %w", postID, err)
+	}
+	_, err = c.send(ctx, http.MethodPut, c.BaseURL+"/api/v4/posts/"+postID, body)
+	return err
+}
+
+// send executes a posts-API request and maps the response onto the worker's
+// retry taxonomy (SYSREQ-016/018, SYSREQ-026).
+func (c *Client) send(ctx context.Context, method, url string, body []byte) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, method, url, bytes.NewReader(body))
+	if err != nil {
+		return "", fmt.Errorf("build %s request: %w", method, err)
 	}
 	req.Header.Set("Authorization", "Bearer "+c.Token)
 	req.Header.Set("Content-Type", "application/json")

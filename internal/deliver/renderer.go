@@ -3,10 +3,12 @@ package deliver
 import (
 	"embed"
 	"fmt"
+	"strconv"
 	"strings"
 	"text/template"
 
 	"github.com/0x5a17ed/patchcaster/internal/event"
+	"github.com/0x5a17ed/patchcaster/internal/store"
 )
 
 // Templates are embedded in the binary (SYSREQ-025); there is no operator-
@@ -28,6 +30,7 @@ var mdReplacer = strings.NewReplacer(
 	"]", "\\]",
 	"<", "&lt;",
 	">", "&gt;",
+	"@", "\\@", // titles demanding "@here" must not ping the channel (SYSREQ-003)
 	"\r", " ",
 	"\n", " ",
 )
@@ -44,35 +47,109 @@ func safeURL(u string) string {
 	}, u)
 }
 
-// View is the only thing a template may touch: every field is escaped or
-// sanitized at construction, so no accessor leaks raw payload text.
-type View struct {
-	Title       string
-	ProjectPath string
-	Author      string
-	Actor       string
-	Action      string
+// RootView is the escaped projection of the board a root message renders
+// from; the status line arrives precomputed (StatusLine). Every field is
+// sanitized at construction, so no template can leak raw payload text.
+type RootView struct {
 	IID         string
+	Title       string
+	Author      string
+	ProjectPath string
+	Source      string
+	Target      string
 	URL         string
+	Status      string
 }
 
-// NewView builds the escaped projection of an event.
-func NewView(ev *event.Event) *View {
-	return &View{
-		Title:       mdReplacer.Replace(ev.Title),
-		ProjectPath: mdReplacer.Replace(ev.ProjectPath),
-		Author:      mdReplacer.Replace(ev.Author),
-		Actor:       mdReplacer.Replace(ev.Actor),
-		Action:      mdReplacer.Replace(ev.Action),
-		IID:         fmt.Sprintf("%d", ev.IID),
-		URL:         safeURL(ev.URL),
+// NewRootView builds the escaped projection of a board snapshot.
+func NewRootView(st *store.State) *RootView {
+	return &RootView{
+		IID:         strconv.FormatInt(st.IID, 10),
+		Title:       mdReplacer.Replace(st.Title),
+		Author:      mdReplacer.Replace(st.Author),
+		ProjectPath: mdReplacer.Replace(st.ProjectPath),
+		Source:      mdReplacer.Replace(st.SourceBranch),
+		Target:      mdReplacer.Replace(st.TargetBranch),
+		URL:         safeURL(st.URL),
+		Status:      StatusLine(st),
+	}
+}
+
+// NoticeView is the escaped projection a thread notice renders from (the
+// acting user and merge request number — never payload bodies).
+type NoticeView struct {
+	Actor   string
+	IID     string
+	Commits string // preformatted commit count for push notices, else ""
+}
+
+// NewNoticeView builds the escaped projection of an event for a notice.
+func NewNoticeView(ev *event.Event) *NoticeView {
+	v := &NoticeView{
+		Actor: mdReplacer.Replace(ev.Actor),
+		IID:   strconv.FormatInt(ev.IID, 10),
+	}
+	if ev.PushCount != nil && *ev.PushCount > 0 {
+		v.Commits = strconv.Itoa(*ev.PushCount)
+	}
+	return v
+}
+
+// plural renders a count with a singular noun at one, plural otherwise.
+// (Mattermost threads favor compact labels; "1 comment" over "1 comments".)
+func plural(n int, singular, suffix string) string {
+	if n == 1 {
+		return "1 " + singular
+	}
+	return strconv.Itoa(n) + " " + singular + suffix
+}
+
+// StatusLine assembles the root's second line (SYSREQ-028): segments joined
+// by " • ", each present only when its signal exists; empty when none is.
+func StatusLine(st *store.State) string {
+	var segments []string
+	if st.PipelineStatus != "" {
+		segments = append(segments, pipelineSegment(st.PipelineStatus))
+	}
+	if st.ReviewersRequired > 0 {
+		segments = append(segments, fmt.Sprintf(
+			"👀 %d/%d reviewers", st.ReviewersDone, st.ReviewersRequired))
+	}
+	if st.Comments > 0 {
+		segments = append(segments, "💬 "+plural(st.Comments, "comment", "s"))
+	}
+	if st.Edits > 0 {
+		segments = append(segments, "📝 "+plural(st.Edits, "edit", "s"))
+	}
+	return strings.Join(segments, " • ")
+}
+
+// pipelineSegment maps GitLab pipeline statuses onto the owner's fixed
+// emoji table (2026-10-10); unknown statuses degrade to a neutral marker
+// with the raw status text — escaped — and never fail the render.
+func pipelineSegment(status string) string {
+	switch status {
+	case "running":
+		return "🟡 Pipeline running"
+	case "success":
+		return "🟢 Pipeline passed"
+	case "failed":
+		return "🔴 Pipeline failed"
+	case "waiting_for_resource", "scheduled", "prepared", "waiting", "manual":
+		return "⚪ Pipeline waiting"
+	case "canceled":
+		return "⚪ Pipeline canceled"
+	case "skipped":
+		return "⚪ Pipeline skipped"
+	default:
+		return "⚪ Pipeline " + mdReplacer.Replace(status)
 	}
 }
 
 // Renderer executes the embedded templates against escaped views.
 type Renderer struct {
-	root  *template.Template
-	reply *template.Template
+	root    *template.Template
+	noticeT *template.Template
 }
 
 // NewRenderer parses the embedded templates. A failure here is a build-time
@@ -82,27 +159,35 @@ func NewRenderer() (*Renderer, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parse root template: %w", err)
 	}
-	reply, err := template.ParseFS(templateFS, "templates/reply.tmpl")
+	notices, err := template.ParseFS(templateFS, "templates/notice_*.tmpl")
 	if err != nil {
-		return nil, fmt.Errorf("parse reply template: %w", err)
+		return nil, fmt.Errorf("parse notice templates: %w", err)
 	}
-	return &Renderer{root: root, reply: reply}, nil
+	return &Renderer{root: root, noticeT: notices}, nil
 }
 
-// Root renders the thread-opening post for an "open" event.
-func (r *Renderer) Root(ev *event.Event) (string, error) {
-	return r.exec(r.root, "root.tmpl", ev)
+// Root renders the root message from the current board snapshot: the same
+// render serves announcement and every later refresh (SYSREQ-028), so a
+// retried refresh is textually identical for unchanged state.
+func (r *Renderer) Root(st *store.State) (string, error) {
+	return exec(r.root, "root.tmpl", NewRootView(st), st.MrRef)
 }
 
-// Reply renders a thread reply for any other allowlisted action.
-func (r *Renderer) Reply(ev *event.Event) (string, error) {
-	return r.exec(r.reply, "reply.tmpl", ev)
+// Notice renders one thread notice by plan name (internal/plan); the name
+// maps to templates/notice_<name>.tmpl.
+func (r *Renderer) Notice(name string, ev *event.Event) (string, error) {
+	file := "notice_" + name + ".tmpl"
+	t := r.noticeT.Lookup(file) // ParseFS names templates by file basename.
+	if t == nil {
+		return "", fmt.Errorf("no notice template %q", file)
+	}
+	return exec(t, file, NewNoticeView(ev), ev.MRRef)
 }
 
-func (r *Renderer) exec(t *template.Template, name string, ev *event.Event) (string, error) {
+func exec(t *template.Template, name string, view any, mrRef string) (string, error) {
 	var sb strings.Builder
-	if err := t.Execute(&sb, NewView(ev)); err != nil {
-		return "", fmt.Errorf("execute %s for MR %s: %w", name, ev.MRRef, err)
+	if err := t.Execute(&sb, view); err != nil {
+		return "", fmt.Errorf("execute %s for MR %s: %w", name, mrRef, err)
 	}
 	return strings.TrimRight(sb.String(), "\n"), nil
 }

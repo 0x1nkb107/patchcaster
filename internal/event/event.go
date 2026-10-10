@@ -54,16 +54,16 @@ type Event struct {
 	// Derived-state inputs (SYSREQ-027), populated per kind.
 	Open              bool   `json:"open,omitempty"`          // merge request state is "opened"
 	SourceBranch      string `json:"source_branch,omitempty"` // push attribution key (SYSREQ-030)
+	TargetBranch      string `json:"target_branch,omitempty"` // root header line (SYSREQ-003)
 	SourceProjectID   int64  `json:"source_project_id,omitempty"`
 	ReviewersDone     int    `json:"reviewers_done,omitempty"`     // state reviewed or approved
 	ReviewersRequired int    `json:"reviewers_required,omitempty"` // approval-rule minimum, else assigned count
 	Pushed            bool   `json:"pushed,omitempty"`             // update with oldrev: source branch gained commits
 	EditChanged       bool   `json:"edit_changed,omitempty"`       // counts as one edit (push or description)
 	TitleChanged      bool   `json:"title_changed,omitempty"`
-	System            bool   `json:"system,omitempty"`        // system-initiated delivery, never notifies
-	ReviewState       string `json:"review_state,omitempty"`  // acting reviewer's submitted state, if this event transitioned it (SYSREQ-029)
-	LinkedMRRef       string `json:"linked_mr_ref,omitempty"` // merge request named by a note or pipeline delivery
-	NoteCreate        bool   `json:"note_create,omitempty"`   // note action "create"
+	System            bool   `json:"system,omitempty"`       // system-initiated delivery, never notifies
+	ReviewState       string `json:"review_state,omitempty"` // acting reviewer's submitted state, if this event transitioned it (SYSREQ-029)
+	NoteCreate        bool   `json:"note_create,omitempty"`  // note action "create"
 	PipelineStatus    string `json:"pipeline_status,omitempty"`
 	PushProjectID     int64  `json:"push_project_id,omitempty"`
 	PushBranch        string `json:"push_branch,omitempty"`
@@ -131,6 +131,7 @@ type raw struct {
 		// merge request state inputs
 		State           string `json:"state"`
 		SourceBranch    string `json:"source_branch"`
+		TargetBranch    string `json:"target_branch"`
 		SourceProjectID int64  `json:"source_project_id"`
 		Oldrev          string `json:"oldrev"`
 		System          bool   `json:"system"`
@@ -233,6 +234,7 @@ func parseMergeRequest(r *raw) (*Event, error) {
 		URL:             a.URL,
 		Open:            a.State == "opened",
 		SourceBranch:    a.SourceBranch,
+		TargetBranch:    a.TargetBranch,
 		SourceProjectID: a.SourceProjectID,
 		System:          a.System,
 		Pushed:          a.Oldrev != "",
@@ -310,7 +312,7 @@ func parseNote(r *raw) (*Event, error) {
 		NoteCreate:  a.Action == "create",
 	}
 	if a.NoteableType == "MergeRequest" && r.MergeRequest.ID != 0 {
-		e.LinkedMRRef = fmt.Sprintf("%d", r.MergeRequest.ID)
+		e.MRRef = fmt.Sprintf("%d", r.MergeRequest.ID)
 		e.IID = r.MergeRequest.IID
 	}
 	e.When = parseTimestamp(a.CreatedAt, a.UpdatedAt)
@@ -327,7 +329,7 @@ func parsePipeline(r *raw) (*Event, error) {
 		PipelineStatus: a.Status,
 	}
 	if r.MergeRequest.ID != 0 {
-		e.LinkedMRRef = fmt.Sprintf("%d", r.MergeRequest.ID)
+		e.MRRef = fmt.Sprintf("%d", r.MergeRequest.ID)
 		e.IID = r.MergeRequest.IID
 	}
 	e.When = parseTimestamp(a.FinishedAt, a.CreatedAt, a.Timestamp, a.UpdatedAt)

@@ -22,7 +22,8 @@ WHERE id = (
     FOR UPDATE SKIP LOCKED
     LIMIT 1
 )
-RETURNING id, mr_ref, action, dest_channel, payload, attempts
+RETURNING id, mr_ref, action, dest_channel, payload, attempts,
+          notice_posted, root_refreshed
 `
 
 type ClaimDueParams struct {
@@ -31,12 +32,14 @@ type ClaimDueParams struct {
 }
 
 type ClaimDueRow struct {
-	ID          int64
-	MrRef       string
-	Action      string
-	DestChannel string
-	Payload     json.RawMessage
-	Attempts    int32
+	ID            int64
+	MrRef         string
+	Action        string
+	DestChannel   string
+	Payload       json.RawMessage
+	Attempts      int32
+	NoticePosted  bool
+	RootRefreshed bool
 }
 
 func (q *Queries) ClaimDue(ctx context.Context, arg ClaimDueParams) (ClaimDueRow, error) {
@@ -49,6 +52,8 @@ func (q *Queries) ClaimDue(ctx context.Context, arg ClaimDueParams) (ClaimDueRow
 		&i.DestChannel,
 		&i.Payload,
 		&i.Attempts,
+		&i.NoticePosted,
+		&i.RootRefreshed,
 	)
 	return i, err
 }
@@ -75,6 +80,34 @@ func (q *Queries) InsertOutbox(ctx context.Context, arg InsertOutboxParams) erro
 		arg.Payload,
 		arg.NextAttemptAt,
 	)
+	return err
+}
+
+const markNoticePosted = `-- name: MarkNoticePosted :exec
+UPDATE outbox SET notice_posted = TRUE, updated_at = $2 WHERE id = $1
+`
+
+type MarkNoticePostedParams struct {
+	ID        int64
+	UpdatedAt time.Time
+}
+
+func (q *Queries) MarkNoticePosted(ctx context.Context, arg MarkNoticePostedParams) error {
+	_, err := q.db.ExecContext(ctx, markNoticePosted, arg.ID, arg.UpdatedAt)
+	return err
+}
+
+const markRootRefreshed = `-- name: MarkRootRefreshed :exec
+UPDATE outbox SET root_refreshed = TRUE, updated_at = $2 WHERE id = $1
+`
+
+type MarkRootRefreshedParams struct {
+	ID        int64
+	UpdatedAt time.Time
+}
+
+func (q *Queries) MarkRootRefreshed(ctx context.Context, arg MarkRootRefreshedParams) error {
+	_, err := q.db.ExecContext(ctx, markRootRefreshed, arg.ID, arg.UpdatedAt)
 	return err
 }
 
@@ -218,6 +251,251 @@ type SettleSkipParams struct {
 func (q *Queries) SettleSkip(ctx context.Context, arg SettleSkipParams) error {
 	_, err := q.db.ExecContext(ctx, settleSkip, arg.ID, arg.SettledReason, arg.SettledAt)
 	return err
+}
+
+const stateApplyMR = `-- name: StateApplyMR :exec
+UPDATE mr_state
+SET title = $2, author = $3, url = $4, iid = $5, source_branch = $6, target_branch = $7,
+    source_project_id = $8, open = $9, reviewers_done = $10,
+    reviewers_required = $11, edit_count = edit_count + $12, updated_at = $13, project_path = $14
+WHERE mr_ref = $1
+`
+
+type StateApplyMRParams struct {
+	MrRef             string
+	Title             string
+	Author            string
+	Url               string
+	Iid               int64
+	SourceBranch      string
+	TargetBranch      string
+	SourceProjectID   int64
+	Open              bool
+	ReviewersDone     int32
+	ReviewersRequired int32
+	EditCount         int32
+	UpdatedAt         time.Time
+	ProjectPath       string
+}
+
+func (q *Queries) StateApplyMR(ctx context.Context, arg StateApplyMRParams) error {
+	_, err := q.db.ExecContext(ctx, stateApplyMR,
+		arg.MrRef,
+		arg.Title,
+		arg.Author,
+		arg.Url,
+		arg.Iid,
+		arg.SourceBranch,
+		arg.TargetBranch,
+		arg.SourceProjectID,
+		arg.Open,
+		arg.ReviewersDone,
+		arg.ReviewersRequired,
+		arg.EditCount,
+		arg.UpdatedAt,
+		arg.ProjectPath,
+	)
+	return err
+}
+
+const stateAttributePush = `-- name: StateAttributePush :execrows
+UPDATE mr_state
+SET last_push_count = $3, updated_at = $4
+WHERE open AND source_project_id = $1 AND source_branch = $2
+`
+
+type StateAttributePushParams struct {
+	SourceProjectID int64
+	SourceBranch    string
+	LastPushCount   int32
+	UpdatedAt       time.Time
+}
+
+func (q *Queries) StateAttributePush(ctx context.Context, arg StateAttributePushParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, stateAttributePush,
+		arg.SourceProjectID,
+		arg.SourceBranch,
+		arg.LastPushCount,
+		arg.UpdatedAt,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const stateClose = `-- name: StateClose :exec
+UPDATE mr_state SET open = FALSE, updated_at = $2 WHERE mr_ref = $1
+`
+
+type StateCloseParams struct {
+	MrRef     string
+	UpdatedAt time.Time
+}
+
+func (q *Queries) StateClose(ctx context.Context, arg StateCloseParams) error {
+	_, err := q.db.ExecContext(ctx, stateClose, arg.MrRef, arg.UpdatedAt)
+	return err
+}
+
+const stateEnsure = `-- name: StateEnsure :exec
+
+INSERT INTO mr_state (mr_ref, updated_at)
+VALUES ($1, $2)
+ON CONFLICT (mr_ref) DO NOTHING
+`
+
+type StateEnsureParams struct {
+	MrRef     string
+	UpdatedAt time.Time
+}
+
+// Live-state board (SYSREQ-027..030). mr_state rows are created by the first
+// delivery that names the merge request, including note/pipeline events whose
+// merge request event has not arrived yet.
+func (q *Queries) StateEnsure(ctx context.Context, arg StateEnsureParams) error {
+	_, err := q.db.ExecContext(ctx, stateEnsure, arg.MrRef, arg.UpdatedAt)
+	return err
+}
+
+const stateGet = `-- name: StateGet :one
+SELECT mr_ref, title, author, url, iid, source_branch, target_branch, project_path, source_project_id, open,
+       pipeline_status, comment_count, edit_count, reviewers_done,
+       reviewers_required, last_push_count
+FROM mr_state WHERE mr_ref = $1
+`
+
+type StateGetRow struct {
+	MrRef             string
+	Title             string
+	Author            string
+	Url               string
+	Iid               int64
+	SourceBranch      string
+	TargetBranch      string
+	ProjectPath       string
+	SourceProjectID   int64
+	Open              bool
+	PipelineStatus    string
+	CommentCount      int32
+	EditCount         int32
+	ReviewersDone     int32
+	ReviewersRequired int32
+	LastPushCount     int32
+}
+
+func (q *Queries) StateGet(ctx context.Context, mrRef string) (StateGetRow, error) {
+	row := q.db.QueryRowContext(ctx, stateGet, mrRef)
+	var i StateGetRow
+	err := row.Scan(
+		&i.MrRef,
+		&i.Title,
+		&i.Author,
+		&i.Url,
+		&i.Iid,
+		&i.SourceBranch,
+		&i.TargetBranch,
+		&i.ProjectPath,
+		&i.SourceProjectID,
+		&i.Open,
+		&i.PipelineStatus,
+		&i.CommentCount,
+		&i.EditCount,
+		&i.ReviewersDone,
+		&i.ReviewersRequired,
+		&i.LastPushCount,
+	)
+	return i, err
+}
+
+const stateGetForUpdate = `-- name: StateGetForUpdate :one
+SELECT mr_ref, title, author, url, iid, source_branch, target_branch, project_path, source_project_id, open,
+       pipeline_status, comment_count, edit_count, reviewers_done,
+       reviewers_required, last_push_count
+FROM mr_state WHERE mr_ref = $1
+FOR UPDATE
+`
+
+type StateGetForUpdateRow struct {
+	MrRef             string
+	Title             string
+	Author            string
+	Url               string
+	Iid               int64
+	SourceBranch      string
+	TargetBranch      string
+	ProjectPath       string
+	SourceProjectID   int64
+	Open              bool
+	PipelineStatus    string
+	CommentCount      int32
+	EditCount         int32
+	ReviewersDone     int32
+	ReviewersRequired int32
+	LastPushCount     int32
+}
+
+func (q *Queries) StateGetForUpdate(ctx context.Context, mrRef string) (StateGetForUpdateRow, error) {
+	row := q.db.QueryRowContext(ctx, stateGetForUpdate, mrRef)
+	var i StateGetForUpdateRow
+	err := row.Scan(
+		&i.MrRef,
+		&i.Title,
+		&i.Author,
+		&i.Url,
+		&i.Iid,
+		&i.SourceBranch,
+		&i.TargetBranch,
+		&i.ProjectPath,
+		&i.SourceProjectID,
+		&i.Open,
+		&i.PipelineStatus,
+		&i.CommentCount,
+		&i.EditCount,
+		&i.ReviewersDone,
+		&i.ReviewersRequired,
+		&i.LastPushCount,
+	)
+	return i, err
+}
+
+const stateIncrComment = `-- name: StateIncrComment :execrows
+UPDATE mr_state
+SET comment_count = comment_count + 1, updated_at = $2
+WHERE mr_ref = $1
+`
+
+type StateIncrCommentParams struct {
+	MrRef     string
+	UpdatedAt time.Time
+}
+
+func (q *Queries) StateIncrComment(ctx context.Context, arg StateIncrCommentParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, stateIncrComment, arg.MrRef, arg.UpdatedAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const stateSetPipeline = `-- name: StateSetPipeline :execrows
+UPDATE mr_state
+SET pipeline_status = $2, updated_at = $3
+WHERE mr_ref = $1 AND pipeline_status <> $2
+`
+
+type StateSetPipelineParams struct {
+	MrRef          string
+	PipelineStatus string
+	UpdatedAt      time.Time
+}
+
+func (q *Queries) StateSetPipeline(ctx context.Context, arg StateSetPipelineParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, stateSetPipeline, arg.MrRef, arg.PipelineStatus, arg.UpdatedAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const threadClose = `-- name: ThreadClose :exec

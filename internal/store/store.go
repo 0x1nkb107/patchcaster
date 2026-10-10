@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/0x5a17ed/patchcaster/internal/event"
+	"github.com/0x5a17ed/patchcaster/internal/plan"
 	"github.com/0x5a17ed/patchcaster/internal/store/sqlcgen"
 )
 
@@ -24,6 +25,24 @@ type Job struct {
 	DestChannel string // frozen at ingress, immutable (SYSREQ-024)
 	Payload     []byte // normalized event.Event JSON
 	Attempts    int    // completed failed attempts
+
+	// Delivery phases already completed (SYSREQ-028, ADR-014): a retry skips
+	// them instead of repeating a posted notice.
+	NoticePosted  bool
+	RootRefreshed bool
+}
+
+// AcceptResult reports the outcome of an accept transaction.
+type AcceptResult struct {
+	// Accepted is false when the webhook identifier was already seen: a
+	// concurrent duplicate won, and neither state nor queue was touched.
+	Accepted bool
+	// Enqueued reports whether a delivery row was written; false means the
+	// delivery applied state (or attributed a push) without posting.
+	Enqueued bool
+	// Attributed counts merge requests given the commit count of a push
+	// delivery (SYSREQ-030); zero for a push that matched no open request.
+	Attributed int
 }
 
 // Event decodes the normalized event carried by the job.
@@ -119,18 +138,22 @@ func (p *Postgres) MarkOutcome(ctx context.Context, webhookID, outcome string, n
 	return nil
 }
 
-// Accept durably records the delivery as seen and enqueues its message in one
-// transaction: suppression can never mask a lost event and acceptance can
-// never be recorded without suppression (SYSREQ-014). It reports false when
-// the identifier was already seen (a concurrent duplicate won the race).
-func (p *Postgres) Accept(ctx context.Context, ev *event.Event, destChannel string, now time.Time) (bool, error) {
-	payload, err := json.Marshal(ev)
-	if err != nil {
-		return false, fmt.Errorf("encode event for project %q: %w", ev.ProjectPath, err)
+// Accept durably records the delivery as seen, applies its derived state, and
+// enqueues its message — all in one transaction (SYSREQ-014, SYSREQ-017,
+// SYSREQ-027). Ingest is the only writer of board state, so applying inside
+// the seen-mark makes every counter exactly-once: the identifier admits one
+// transaction, period. It reports (accepted, enqueued): accepted false means
+// the identifier was already seen; enqueued false means the delivery moved no
+// observable state, so no delivery row was needed. ev.Plan carries the
+// ingest-side intent; Accept finalizes its Refresh flag from what actually
+// changed.
+func (p *Postgres) Accept(ctx context.Context, ev *event.Event, destChannel string, now time.Time) (AcceptResult, error) {
+	if ev.Plan == nil {
+		ev.Plan = &event.Plan{}
 	}
 	tx, err := p.db.BeginTx(ctx, nil)
 	if err != nil {
-		return false, fmt.Errorf("begin accept: %w", err)
+		return AcceptResult{}, fmt.Errorf("begin accept: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
 	q := sqlcgen.New(tx)
@@ -141,16 +164,112 @@ func (p *Postgres) Accept(ctx context.Context, ev *event.Event, destChannel stri
 		FirstSeen: now,
 	})
 	if err != nil {
-		return false, fmt.Errorf("mark webhook %q seen: %w", ev.WebhookID, err)
+		return AcceptResult{}, fmt.Errorf("mark webhook %q seen: %w", ev.WebhookID, err)
 	}
 	inserted, err := res.RowsAffected()
 	if err != nil {
-		return false, fmt.Errorf("inspect seen insert for %q: %w", ev.WebhookID, err)
+		return AcceptResult{}, fmt.Errorf("inspect seen insert for %q: %w", ev.WebhookID, err)
 	}
 	if inserted == 0 {
-		return false, nil // duplicate: the earlier delivery owns the queue row
+		return AcceptResult{}, nil // duplicate: the earlier delivery owns state and queue row
 	}
 
+	// Push deliveries only attribute a commit count; they never own a merge
+	// request row nor a delivery (SYSREQ-030).
+	if ev.Kind == event.KindPush {
+		attributed, err := q.StateAttributePush(ctx, sqlcgen.StateAttributePushParams{
+			SourceProjectID: ev.PushProjectID,
+			SourceBranch:    ev.PushBranch,
+			LastPushCount:   int32(ev.PushCommits),
+			UpdatedAt:       now,
+		})
+		if err != nil {
+			return AcceptResult{}, fmt.Errorf("attribute push to MR board: %w", err)
+		}
+		if err := tx.Commit(); err != nil {
+			return AcceptResult{}, fmt.Errorf("commit accept: %w", err)
+		}
+		return AcceptResult{Accepted: true, Attributed: int(attributed)}, nil
+	}
+
+	// Lock the board row before mutating it: deliveries for one merge request
+	// then serialize exactly like the delivery worker serializes posts.
+	if err := q.StateEnsure(ctx, sqlcgen.StateEnsureParams{MrRef: ev.MRRef, UpdatedAt: now}); err != nil {
+		return AcceptResult{}, fmt.Errorf("ensure board state for MR %s: %w", ev.MRRef, err)
+	}
+	old, err := q.StateGetForUpdate(ctx, ev.MRRef)
+	if err != nil {
+		return AcceptResult{}, fmt.Errorf("lock board state for MR %s: %w", ev.MRRef, err)
+	}
+
+	var changed bool
+	switch ev.Kind {
+	case event.KindMergeRequest:
+		changed = mrStateChanged(old, ev)
+		if err := q.StateApplyMR(ctx, sqlcgen.StateApplyMRParams{
+			MrRef:             ev.MRRef,
+			Title:             ev.Title,
+			Author:            ev.Author,
+			Url:               ev.URL,
+			Iid:               ev.IID,
+			SourceBranch:      ev.SourceBranch,
+			TargetBranch:      ev.TargetBranch,
+			SourceProjectID:   ev.SourceProjectID,
+			Open:              ev.Open,
+			ReviewersDone:     int32(ev.ReviewersDone),
+			ReviewersRequired: int32(ev.ReviewersRequired),
+			EditCount:         editDelta(ev),
+			UpdatedAt:         now,
+			ProjectPath:       ev.ProjectPath,
+		}); err != nil {
+			return AcceptResult{}, fmt.Errorf("apply merge request state for MR %s: %w", ev.MRRef, err)
+		}
+	case event.KindNote:
+		if ev.NoteCreate && !ev.System {
+			n, err := q.StateIncrComment(ctx, sqlcgen.StateIncrCommentParams{MrRef: ev.MRRef, UpdatedAt: now})
+			if err != nil {
+				return AcceptResult{}, fmt.Errorf("count comment for MR %s: %w", ev.MRRef, err)
+			}
+			changed = n > 0
+		}
+	case event.KindPipeline:
+		n, err := q.StateSetPipeline(ctx, sqlcgen.StateSetPipelineParams{
+			MrRef:          ev.MRRef,
+			PipelineStatus: ev.PipelineStatus,
+			UpdatedAt:      now,
+		})
+		if err != nil {
+			return AcceptResult{}, fmt.Errorf("set pipeline state for MR %s: %w", ev.MRRef, err)
+		}
+		changed = n > 0
+	case event.KindPush:
+		// Handled above; keep the switch exhaustive.
+		return AcceptResult{}, fmt.Errorf("push delivery reached merge request state path")
+	default:
+		return AcceptResult{}, fmt.Errorf("unprocessed event kind %q", ev.Kind)
+	}
+
+	ev.Plan.Refresh = changed || ev.Plan.Notice != ""
+	if !planNeedsDelivery(ev.Plan) {
+		if err := tx.Commit(); err != nil {
+			return AcceptResult{}, fmt.Errorf("commit accept: %w", err)
+		}
+		return AcceptResult{Accepted: true}, nil
+	}
+
+	// Attach the attributed push count now that the row is locked and the
+	// push delivery may already have arrived (SYSREQ-030 race).
+	if ev.Plan.Notice == plan.Push {
+		if old.LastPushCount > 0 {
+			count := int(old.LastPushCount)
+			ev.PushCount = &count
+		}
+	}
+
+	payload, err := json.Marshal(ev)
+	if err != nil {
+		return AcceptResult{}, fmt.Errorf("encode event for project %q: %w", ev.ProjectPath, err)
+	}
 	if err := q.InsertOutbox(ctx, sqlcgen.InsertOutboxParams{
 		MrRef:         ev.MRRef,
 		Action:        ev.Action,
@@ -158,12 +277,43 @@ func (p *Postgres) Accept(ctx context.Context, ev *event.Event, destChannel stri
 		Payload:       payload,
 		NextAttemptAt: now,
 	}); err != nil {
-		return false, fmt.Errorf("enqueue webhook %q: %w", ev.WebhookID, err)
+		return AcceptResult{}, fmt.Errorf("enqueue webhook %q: %w", ev.WebhookID, err)
 	}
 	if err := tx.Commit(); err != nil {
-		return false, fmt.Errorf("commit accept: %w", err)
+		return AcceptResult{}, fmt.Errorf("commit accept: %w", err)
 	}
-	return true, nil
+	return AcceptResult{Accepted: true, Enqueued: true}, nil
+}
+
+// planNeedsDelivery reports whether a plan maps to any Mattermost operation.
+func planNeedsDelivery(p *event.Plan) bool {
+	return p != nil && (p.CreateRoot || p.Notice != "" || p.Refresh)
+}
+
+// editDelta counts one edit per delivery that pushed or changed the
+// description (SYSREQ-027).
+func editDelta(ev *event.Event) int32 {
+	if ev.EditChanged {
+		return 1
+	}
+	return 0
+}
+
+// mrStateChanged reports whether an merge request delivery moves any field
+// the board renders. Reviewer tallies are recomputed, never incremented, so
+// approval resets self-heal here without any explicit decrement rule.
+func mrStateChanged(old sqlcgen.StateGetForUpdateRow, ev *event.Event) bool {
+	return ev.EditChanged ||
+		ev.Title != old.Title ||
+		ev.Author != old.Author ||
+		ev.URL != old.Url ||
+		ev.IID != old.Iid ||
+		ev.SourceBranch != old.SourceBranch ||
+		ev.TargetBranch != old.TargetBranch ||
+		ev.SourceProjectID != old.SourceProjectID ||
+		ev.Open != old.Open ||
+		ev.ReviewersDone != int(old.ReviewersDone) ||
+		ev.ReviewersRequired != int(old.ReviewersRequired)
 }
 
 // PruneSeen deletes seen records older than the retention horizon.
@@ -189,12 +339,14 @@ func (p *Postgres) ClaimDue(ctx context.Context, now time.Time, lease time.Durat
 		return nil, fmt.Errorf("claim due job: %w", err)
 	}
 	return &Job{
-		ID:          row.ID,
-		MRRef:       row.MrRef,
-		Action:      row.Action,
-		DestChannel: row.DestChannel,
-		Payload:     row.Payload,
-		Attempts:    int(row.Attempts),
+		ID:            row.ID,
+		MRRef:         row.MrRef,
+		Action:        row.Action,
+		DestChannel:   row.DestChannel,
+		Payload:       row.Payload,
+		Attempts:      int(row.Attempts),
+		NoticePosted:  row.NoticePosted,
+		RootRefreshed: row.RootRefreshed,
 	}, nil
 }
 

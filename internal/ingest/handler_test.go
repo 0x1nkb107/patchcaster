@@ -21,6 +21,7 @@ import (
 	"github.com/0x5a17ed/patchcaster/internal/event"
 	"github.com/0x5a17ed/patchcaster/internal/metrics"
 	"github.com/0x5a17ed/patchcaster/internal/routing"
+	"github.com/0x5a17ed/patchcaster/internal/store"
 )
 
 var (
@@ -67,15 +68,15 @@ func (f *fakeStore) MarkOutcome(_ context.Context, id, outcome string, _ time.Ti
 	return nil
 }
 
-func (f *fakeStore) Accept(_ context.Context, ev *event.Event, dest string, _ time.Time) (bool, error) {
+func (f *fakeStore) Accept(_ context.Context, ev *event.Event, dest string, _ time.Time) (store.AcceptResult, error) {
 	if f.errAccept != nil {
-		return false, f.errAccept
+		return store.AcceptResult{}, f.errAccept
 	}
 	if f.acceptDup {
-		return false, nil
+		return store.AcceptResult{}, nil
 	}
 	f.accepted = append(f.accepted, acceptRec{ev: ev, dest: dest})
-	return true, nil
+	return store.AcceptResult{Accepted: true, Enqueued: true, Attributed: 1}, nil
 }
 
 // --- helpers ----------------------------------------------------------------
@@ -233,13 +234,28 @@ func TestHandler_Discards(t *testing.T) {
 			outcome: metrics.CauseExpired,
 		},
 		{
-			name:  "non-merge-request kind",
-			body:  []byte(`{"object_kind":"push"}`),
-			cause: metrics.CauseNotMergeRequest, outcome: metrics.CauseNotMergeRequest,
+			name:  "unprocessed kind",
+			body:  []byte(`{"object_kind":"wiki_page"}`),
+			cause: metrics.CauseUnprocessed, outcome: metrics.CauseUnprocessed,
+		},
+		{
+			name:  "note on non-merge-request names nothing",
+			body:  []byte(`{"object_kind":"note","user":{"username":"bob"},"project":{"full_path":"grp/app"},"object_attributes":{"id":9,"noteable_type":"Issue","action":"create","created_at":"` + freshTS + `"}}`),
+			cause: metrics.CauseUnlinked, outcome: metrics.CauseUnlinked,
+		},
+		{
+			name:  "branch pipeline names nothing",
+			body:  []byte(`{"object_kind":"pipeline","project":{"full_path":"grp/app"},"object_attributes":{"id":31,"status":"running","ref":"main","created_at":"` + freshTS + `"}}`),
+			cause: metrics.CauseUnlinked, outcome: metrics.CauseUnlinked,
+		},
+		{
+			name:  "tag push names no branch",
+			body:  []byte(`{"object_kind":"push","ref":"refs/tags/v1","project":{"id":42,"full_path":"grp/app"},"total_commits_count":0}`),
+			cause: metrics.CauseUnlinked, outcome: metrics.CauseUnlinked,
 		},
 		{
 			name:    "action not allowlisted",
-			body:    mrBody(t, "reopen", freshTS),
+			body:    mrBody(t, "totally_new_gitlab_action", freshTS),
 			cause:   metrics.CauseNotAllowlisted,
 			outcome: metrics.CauseNotAllowlisted,
 		},

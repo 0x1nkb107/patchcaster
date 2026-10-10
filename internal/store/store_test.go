@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/0x5a17ed/patchcaster/internal/event"
+	"github.com/0x5a17ed/patchcaster/internal/plan"
 	"github.com/0x5a17ed/patchcaster/internal/store"
 )
 
@@ -44,12 +45,15 @@ func openTestStore(t *testing.T) (*store.Postgres, *sql.DB) {
 }
 
 func newEvent(id string) *event.Event {
-	return &event.Event{
-		WebhookID: id, Kind: "merge_request", Action: "open",
+	ev := &event.Event{
+		WebhookID: id, Kind: event.KindMergeRequest, Action: "open",
 		MRRef: "1234", IID: 3, ProjectPath: "grp/app", Title: "T",
 		Author: "ada", Actor: "ada", URL: "https://x/1",
+		SourceBranch: "feat", TargetBranch: "main", Open: true,
 		When: time.Now().UTC(),
 	}
+	ev.Plan = plan.For(ev) // the ingest edge does this before Accept; tests mirror it
+	return ev
 }
 
 func TestPostgres_AcceptDedupeAndClaim(t *testing.T) {
@@ -58,18 +62,19 @@ func TestPostgres_AcceptDedupeAndClaim(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Millisecond)
 
 	// accept durably pairs seen-mark with the queue row
-	accepted, err := st.Accept(ctx, newEvent("msg-1"), "chan-1", now)
+	res, err := st.Accept(ctx, newEvent("msg-1"), "chan-1", now)
 	require.NoError(t, err)
-	assert.True(t, accepted)
+	assert.True(t, res.Accepted)
 
 	seen, err := st.Seen(ctx, "msg-1")
 	require.NoError(t, err)
 	assert.True(t, seen)
 
 	// a replay of the same identifier is refused without a second enqueue
-	accepted, err = st.Accept(ctx, newEvent("msg-1"), "chan-1", now)
+	res, err = st.Accept(ctx, newEvent("msg-1"), "chan-1", now)
 	require.NoError(t, err)
-	assert.False(t, accepted)
+	assert.False(t, res.Accepted, "the duplicate must not enqueue again")
+	assert.False(t, res.Enqueued)
 
 	var count int
 	require.NoError(t, db.QueryRowContext(ctx, "SELECT count(*) FROM outbox").Scan(&count))
@@ -216,9 +221,10 @@ func TestPostgres_PayloadRoundTrip(t *testing.T) {
 
 	ev := newEvent("msg-rt")
 	ev.Title = "unicode ✓ & \"quotes\""
-	accepted, err := st.Accept(ctx, ev, "chan-1", now)
+	res, err := st.Accept(ctx, ev, "chan-1", now)
 	require.NoError(t, err)
-	require.True(t, accepted)
+	require.True(t, res.Accepted)
+	require.True(t, res.Enqueued)
 
 	job, err := st.ClaimDue(ctx, now, time.Minute)
 	require.NoError(t, err)

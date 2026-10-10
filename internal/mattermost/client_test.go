@@ -161,3 +161,62 @@ func TestPost_TransportErrorWhenServerDown(t *testing.T) {
 	var transport *TransportError
 	require.ErrorAs(t, err, &transport)
 }
+
+func TestUpdate_SuccessSendsAuthAndBody(t *testing.T) {
+	// arrange
+	var gotMethod, gotPath, gotAuth string
+	var gotBody map[string]any
+	c, stop := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		gotAuth = r.Header.Get("Authorization")
+		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"id":"post-77"}`))
+	})
+	defer stop()
+
+	// act
+	err := c.Update(context.Background(), "post-77", "fresh status line")
+
+	// assert: PUT {site-url}/api/v4/posts/{id} with id+message (SYSREQ-004)
+	require.NoError(t, err)
+	assert.Equal(t, http.MethodPut, gotMethod)
+	assert.Equal(t, "/api/v4/posts/post-77", gotPath)
+	assert.Equal(t, "Bearer bot-token", gotAuth)
+	assert.Equal(t, "post-77", gotBody["id"])
+	assert.Equal(t, "fresh status line", gotBody["message"])
+}
+
+func TestUpdate_MissingPostIsThreadGone(t *testing.T) {
+	// arrange: the root was deleted intentionally and stays deleted
+	// (SYSREQ-026 generalizes to any root-post operation).
+	c, stop := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"id":"model.post.post_not_found.app_default"}`))
+	})
+	defer stop()
+
+	// act
+	err := c.Update(context.Background(), "post-9", "x")
+
+	// assert: terminal, never retried into futility
+	var gone *ThreadGoneError
+	require.ErrorAs(t, err, &gone)
+}
+
+func TestUpdate_RateLimitedCarriesReset(t *testing.T) {
+	// arrange
+	c, stop := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("RateLimit-Reset", "30")
+		w.WriteHeader(http.StatusTooManyRequests)
+	})
+	defer stop()
+
+	// act
+	err := c.Update(context.Background(), "post-9", "x")
+
+	// assert
+	var rl *RateLimitedError
+	require.ErrorAs(t, err, &rl)
+	assert.WithinDuration(t, time.Now().Add(30*time.Second), rl.Reset, 3*time.Second)
+}

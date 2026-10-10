@@ -14,10 +14,11 @@ const (
 
 // Discard causes (authentic deliveries with no post).
 const (
-	CauseExpired         = "expired"
-	CauseUnrouted        = "unrouted"
-	CauseNotAllowlisted  = "not_allowlisted"
-	CauseNotMergeRequest = "not_merge_request"
+	CauseExpired        = "expired"
+	CauseUnrouted       = "unrouted"
+	CauseNotAllowlisted = "not_allowlisted"
+	CauseUnprocessed    = "unprocessed_kind"
+	CauseUnlinked       = "unlinked"
 )
 
 // Skip causes (queued messages the worker must not post).
@@ -56,6 +57,14 @@ type Metrics struct {
 	Posted     prometheus.Counter
 	MMAttempts *prometheus.CounterVec
 	MMDuration prometheus.Histogram
+
+	// Live-state board funnels (SYSREQ-019, amended 2026-10-10): state
+	// applications by kind, thread notices by kind, and push deliveries whose
+	// project+branch matched no open merge request (SYSREQ-030 attribution
+	// misses — fork pushes and pushes before an MR is announced).
+	StateApplied *prometheus.CounterVec
+	Notices      *prometheus.CounterVec
+	PushAttrMiss prometheus.Counter
 }
 
 // New registers the funnel on a private registry.
@@ -100,10 +109,23 @@ func New() *Metrics {
 			Help:    "Duration of Mattermost delivery attempts.",
 			Buckets: prometheus.DefBuckets,
 		}),
+		StateApplied: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "patchcaster_state_applied_total",
+			Help: "Accepted deliveries whose board state was applied, by kind.",
+		}, []string{"kind"}),
+		Notices: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "patchcaster_notices_total",
+			Help: "Thread notices posted, by notice kind.",
+		}, []string{"notice"}),
+		PushAttrMiss: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "patchcaster_push_attribution_misses_total",
+			Help: "Push deliveries that matched no open merge request.",
+		}),
 	}
 	reg.MustRegister(
 		m.Received, m.Rejected, m.Suppressed, m.Discarded, m.Skipped,
 		m.Parked, m.Posted, m.MMAttempts, m.MMDuration,
+		m.StateApplied, m.Notices, m.PushAttrMiss,
 	)
 	return m
 }

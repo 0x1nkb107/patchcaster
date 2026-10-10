@@ -10,6 +10,26 @@ import (
 	"time"
 )
 
+type MrState struct {
+	MrRef             string
+	Title             string
+	Author            string
+	Url               string
+	Iid               int64
+	SourceBranch      string
+	TargetBranch      string
+	ProjectPath       string
+	SourceProjectID   int64
+	Open              bool
+	PipelineStatus    string
+	CommentCount      int32
+	EditCount         int32
+	ReviewersDone     int32
+	ReviewersRequired int32
+	LastPushCount     int32
+	UpdatedAt         time.Time
+}
+
 type MrThread struct {
 	MrRef      string
 	ChannelID  string
@@ -35,6 +55,8 @@ type Outbox struct {
 	SettledAt     sql.NullTime
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
+	NoticePosted  bool
+	RootRefreshed bool
 }
 
 type SeenWebhook struct {

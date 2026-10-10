@@ -15,6 +15,7 @@ import (
 	"github.com/0x5a17ed/patchcaster/internal/event"
 	"github.com/0x5a17ed/patchcaster/internal/mattermost"
 	"github.com/0x5a17ed/patchcaster/internal/metrics"
+	"github.com/0x5a17ed/patchcaster/internal/plan"
 	"github.com/0x5a17ed/patchcaster/internal/store"
 )
 
@@ -33,9 +34,16 @@ type postResult struct {
 	err    error
 }
 
+type updateCall struct {
+	postID  string
+	message string
+}
+
 type fakePoster struct {
-	calls   []postCall
-	results []postResult // consumed FIFO; default success "post-ok"
+	calls      []postCall
+	results    []postResult // consumed FIFO; default success "post-ok"
+	updates    []updateCall
+	updateErrs []error // consumed FIFO; default success
 }
 
 func (f *fakePoster) Post(_ context.Context, channel, message, rootID string) (string, error) {
@@ -48,19 +56,34 @@ func (f *fakePoster) Post(_ context.Context, channel, message, rootID string) (s
 	return "post-ok", nil
 }
 
+func (f *fakePoster) Update(_ context.Context, postID, message string) error {
+	f.updates = append(f.updates, updateCall{postID: postID, message: message})
+	if len(f.updateErrs) > 0 {
+		err := f.updateErrs[0]
+		f.updateErrs = f.updateErrs[1:]
+		return err
+	}
+	return nil
+}
+
 type settleRec struct {
 	jobID int64
 	s     store.Settlement
 }
 
 type fakeStore struct {
-	jobs      []*store.Job
-	thread    *store.Thread
-	errThread error
-	settles   []settleRec
-	opened    []string // "mr|channel|root"
-	closed    []string
-	settledCh chan struct{} // pinged on every settle when non-nil
+	jobs        []*store.Job
+	thread      *store.Thread
+	errThread   error
+	state       *store.State
+	errState    error
+	settles     []settleRec
+	opened      []string // "mr|channel|root"
+	closed      []string
+	stateClosed []string
+	noticeFlags []int64
+	rootFlags   []int64
+	settledCh   chan struct{} // pinged on every settle when non-nil
 }
 
 func (f *fakeStore) ClaimDue(_ context.Context, _ time.Time, _ time.Duration) (*store.Job, error) {
@@ -105,6 +128,25 @@ func (f *fakeStore) CloseThread(_ context.Context, mrRef string, _ time.Time) er
 	return nil
 }
 
+func (f *fakeStore) CloseState(_ context.Context, mrRef string, _ time.Time) error {
+	f.stateClosed = append(f.stateClosed, mrRef)
+	return nil
+}
+
+func (f *fakeStore) State(context.Context, string) (*store.State, error) {
+	return f.state, f.errState
+}
+
+func (f *fakeStore) MarkNoticePosted(_ context.Context, jobID int64, _ time.Time) error {
+	f.noticeFlags = append(f.noticeFlags, jobID)
+	return nil
+}
+
+func (f *fakeStore) MarkRootRefreshed(_ context.Context, jobID int64, _ time.Time) error {
+	f.rootFlags = append(f.rootFlags, jobID)
+	return nil
+}
+
 func (f *fakeStore) ReapLeases(context.Context, time.Time) error { return nil }
 
 // --- harness -------------------------------------------------------------------
@@ -114,7 +156,7 @@ func openJob(attempts int) *store.Job {
 }
 
 func openJobFor(attempts int, action string) *store.Job {
-	ev := &event.Event{
+	ev := &event.Event{Kind: event.KindMergeRequest,
 		Action: action, MRRef: "987", IID: 12, ProjectPath: "grp/app",
 		Title: "T", Author: "ada", Actor: "ada", URL: "https://x.example/1",
 	}
@@ -188,9 +230,9 @@ func TestWorker_ReplyUsesThreadChannelNotDestination(t *testing.T) {
 	// arrange: routing moved after the root existed; the thread is home.
 	h := newHarness(t)
 	h.fs.thread = &store.Thread{ChannelID: "chan-thread", RootPostID: "root-9", Open: true}
-	job := queuedJob(2, 0, "chan-dest-new", &event.Event{
-		Action: "update", MRRef: "987", IID: 12, ProjectPath: "grp/app",
-		Title: "T", Author: "ada", Actor: "ada", URL: "https://x.example/1",
+	job := queuedJob(2, 0, "chan-dest-new", &event.Event{Kind: event.KindMergeRequest,
+		Action: "approval", MRRef: "987", IID: 12, ProjectPath: "grp/app",
+		Title: "T", Author: "ada", Actor: "grace", URL: "https://x.example/1",
 	})
 
 	// act
@@ -199,7 +241,7 @@ func TestWorker_ReplyUsesThreadChannelNotDestination(t *testing.T) {
 	// assert
 	require.Len(t, h.fp.calls, 1)
 	assert.Equal(t, "chan-thread", h.fp.calls[0].channel)
-	assert.Equal(t, "root-9", h.fp.calls[0].rootID, "later actions reply into the stored thread (SYSREQ-005)")
+	assert.Equal(t, "root-9", h.fp.calls[0].rootID, "notices reply into the stored thread (SYSREQ-005)")
 	assert.Equal(t, store.SettlementSent, h.fs.settles[0].s.Kind)
 }
 
@@ -209,7 +251,7 @@ func TestWorker_ReplyWithoutMappingSkips(t *testing.T) {
 	h.fs.thread = nil
 
 	// act
-	h.w.process(context.Background(), queuedJob(2, 0, "chan-dest", &event.Event{
+	h.w.process(context.Background(), queuedJob(2, 0, "chan-dest", &event.Event{Kind: event.KindMergeRequest,
 		Action: "merge", MRRef: "987", IID: 12, ProjectPath: "grp/app",
 	}))
 
@@ -226,7 +268,7 @@ func TestWorker_ClosedThreadSkips(t *testing.T) {
 	h.fs.thread = &store.Thread{ChannelID: "c", RootPostID: "r", Open: false}
 
 	// act
-	h.w.process(context.Background(), queuedJob(2, 0, "chan-dest", &event.Event{Action: "merge", MRRef: "987"}))
+	h.w.process(context.Background(), queuedJob(2, 0, "chan-dest", &event.Event{Kind: event.KindMergeRequest, Action: "merge", MRRef: "987"}))
 
 	// assert
 	assert.Empty(t, h.fp.calls)
@@ -240,7 +282,7 @@ func TestWorker_DeletedRootParksAndClosesForever(t *testing.T) {
 	h.fp.results = []postResult{{err: &mattermost.ThreadGoneError{}}}
 
 	// act
-	h.w.process(context.Background(), queuedJob(2, 0, "chan-dest", &event.Event{Action: "update", MRRef: "987"}))
+	h.w.process(context.Background(), noticeJob(2, 0, "chan-dest"))
 
 	// assert
 	require.Len(t, h.fs.settles, 1)
@@ -269,7 +311,7 @@ func TestWorker_RetryableErrorDefersByBackoffLadder(t *testing.T) {
 
 		// act
 		h.w.process(context.Background(), queuedJob(int64(i), tc.claimedAttempts, "chan-dest",
-			&event.Event{Action: "update", MRRef: "987"}))
+			&event.Event{Kind: event.KindMergeRequest, Action: "approval", MRRef: "987", IID: 12}))
 
 		// assert
 		require.Len(t, h.fs.settles, 1)
@@ -288,7 +330,7 @@ func TestWorker_BudgetExhaustionParks(t *testing.T) {
 	h.fp.results = []postResult{{err: &mattermost.APIError{Status: 502, Body: "bad gateway"}}}
 
 	// act
-	h.w.process(context.Background(), queuedJob(9, 7, "chan-dest", &event.Event{Action: "update", MRRef: "987"}))
+	h.w.process(context.Background(), queuedJob(9, 7, "chan-dest", &event.Event{Kind: event.KindMergeRequest, Action: "approval", MRRef: "987", IID: 12}))
 
 	// assert
 	require.Len(t, h.fs.settles, 1)
@@ -305,7 +347,7 @@ func TestWorker_RateLimitResetOutranksBackoff(t *testing.T) {
 	h.fp.results = []postResult{{err: &mattermost.RateLimitedError{Reset: reset}}}
 
 	// act
-	h.w.process(context.Background(), openJobFor(0, "update"))
+	h.w.process(context.Background(), openJobFor(0, "approval"))
 
 	// assert
 	s := h.fs.settles[0].s
@@ -321,7 +363,7 @@ func TestWorker_BackoffOutranksNearReset(t *testing.T) {
 	h.fp.results = []postResult{{err: &mattermost.RateLimitedError{Reset: workerNow.Add(5 * time.Second)}}}
 
 	// act
-	h.w.process(context.Background(), openJobFor(5, "update"))
+	h.w.process(context.Background(), openJobFor(5, "approval"))
 
 	// assert
 	assert.True(t, h.fs.settles[0].s.Next.Equal(workerNow.Add(32*time.Second)),
@@ -334,7 +376,7 @@ func TestWorker_StoreFaultDoesNotBurnBudget(t *testing.T) {
 	h.fs.errThread = errors.New("store down")
 
 	// act
-	h.w.process(context.Background(), queuedJob(3, 4, "chan-dest", &event.Event{Action: "update", MRRef: "987"}))
+	h.w.process(context.Background(), queuedJob(3, 4, "chan-dest", &event.Event{Kind: event.KindMergeRequest, Action: "update", MRRef: "987"}))
 
 	// assert: requeued at the fixed store-fault delay, attempts unchanged.
 	s := h.fs.settles[0].s
@@ -365,7 +407,7 @@ func TestWorker_RunDeliversInClaimOrder(t *testing.T) {
 	// in that order, reply attached to the root that was just mapped.
 	h := newHarness(t)
 	h.fs.settledCh = make(chan struct{}, 4)
-	ev := &event.Event{Action: "open", MRRef: "987", IID: 12, ProjectPath: "grp/app",
+	ev := &event.Event{Kind: event.KindMergeRequest, Action: "open", MRRef: "987", IID: 12, ProjectPath: "grp/app",
 		Title: "T", Author: "ada", Actor: "ada", URL: "https://x/1"}
 	h.fs.jobs = []*store.Job{queuedJob(1, 0, "chan-dest", ev)}
 	update := *ev
@@ -441,4 +483,177 @@ func TestBackoffIntervalLadder(t *testing.T) {
 	for _, tc := range tests {
 		assert.Equal(t, tc.want, backoffInterval(tc.attempts), "attempt %d", tc.attempts)
 	}
+}
+
+// --- two-phase delivery (SYSREQ-028/029, ADR-014) ----------------------------------
+
+// planJob queues a comment-kind job carrying an explicit delivery plan; the
+// worker executes plans, it never re-reads GitLab dialect.
+func planJob(id int64, attempts int, p *event.Plan) *store.Job {
+	ev := &event.Event{
+		Kind: event.KindNote, Action: "create", MRRef: "987", IID: 12, ProjectPath: "grp/app",
+		Actor: "bob", Title: "T", Author: "ada", URL: "https://x.example/1", Plan: p,
+	}
+	return queuedJob(id, attempts, "chan-dest", ev)
+}
+
+func noticeJob(id int64, attempts int, dest string) *store.Job {
+	job := planJob(id, attempts, &event.Plan{Notice: plan.Comment})
+	job.DestChannel = dest
+	return job
+}
+
+func openBoardThread(h *harness) {
+	h.fs.thread = &store.Thread{ChannelID: "chan-thread", RootPostID: "root-9", Open: true}
+	h.fs.state = &store.State{
+		MrRef: "987", Title: "T", Author: "ada", URL: "https://x.example/1", IID: 12,
+		ProjectPath: "grp/app", SourceBranch: "feat", TargetBranch: "main",
+		PipelineStatus: "success", Comments: 3, ReviewersDone: 1, ReviewersRequired: 2,
+	}
+}
+
+const wantRefreshedRoot = "> @here :bell: \\\n" +
+	"> **!12 T** \\\n" +
+	"> by @ada • grp/app • `feat` ➜ `main` \\\n" +
+	"> https://x.example/1 \\\n" +
+	"> 🟢 Pipeline passed • 👀 1/2 reviewers • 💬 3 comments"
+
+func TestWorker_NoticeThenRefreshInOneDelivery(t *testing.T) {
+	// arrange: a notifying delivery with both phases pending.
+	h := newHarness(t)
+	openBoardThread(h)
+
+	// act
+	h.w.process(context.Background(), planJob(3, 0, &event.Plan{Notice: plan.Comment, Refresh: true}))
+
+	// assert: one reply, one root PUT with the current board, both phases flagged.
+	require.Len(t, h.fp.calls, 1)
+	assert.Equal(t, "chan-thread", h.fp.calls[0].channel)
+	assert.Equal(t, "root-9", h.fp.calls[0].rootID)
+	assert.Equal(t, "💬 bob commented", h.fp.calls[0].message)
+	require.Len(t, h.fp.updates, 1)
+	assert.Equal(t, "root-9", h.fp.updates[0].postID)
+	assert.Equal(t, wantRefreshedRoot, h.fp.updates[0].message)
+	assert.Equal(t, []int64{3}, h.fs.noticeFlags)
+	assert.Equal(t, []int64{3}, h.fs.rootFlags)
+	require.Len(t, h.fs.settles, 1)
+	assert.Equal(t, store.SettlementSent, h.fs.settles[0].s.Kind)
+	assert.Equal(t, 1.0, testutil.ToFloat64(h.m.Notices.WithLabelValues(plan.Comment)))
+}
+
+func TestWorker_CompletedPhasesAreNotRepeated(t *testing.T) {
+	// arrange: a retry of a delivery whose notice already reached Mattermost.
+	h := newHarness(t)
+	openBoardThread(h)
+	job := planJob(4, 1, &event.Plan{Notice: plan.Comment, Refresh: true})
+	job.NoticePosted = true
+
+	// act
+	h.w.process(context.Background(), job)
+
+	// assert: no second notice (SYSREQ-028), the refresh proceeds.
+	assert.Empty(t, h.fp.calls, "a posted notice is never reposted on retry")
+	require.Len(t, h.fp.updates, 1)
+	assert.Equal(t, []int64{4}, h.fs.rootFlags)
+	assert.Equal(t, store.SettlementSent, h.fs.settles[0].s.Kind)
+}
+
+func TestWorker_BothPhasesDoneOnlySettles(t *testing.T) {
+	// arrange: crash after both operations, before settle — the requeue must
+	// neither post nor PUT again.
+	h := newHarness(t)
+	openBoardThread(h)
+	job := planJob(5, 2, &event.Plan{Notice: plan.Comment, Refresh: true})
+	job.NoticePosted, job.RootRefreshed = true, true
+
+	// act
+	h.w.process(context.Background(), job)
+
+	// assert
+	assert.Empty(t, h.fp.calls)
+	assert.Empty(t, h.fp.updates)
+	require.Len(t, h.fs.settles, 1)
+	assert.Equal(t, store.SettlementSent, h.fs.settles[0].s.Kind)
+}
+
+func TestWorker_MergeOrdersNoticeRefreshThenClose(t *testing.T) {
+	// arrange: SYSREQ-028 — notice precedes final refresh precedes close.
+	// Accept sets Refresh (Notice != ""), so the queued plan carries all three.
+	h := newHarness(t)
+	openBoardThread(h)
+	merge := &event.Event{Kind: event.KindMergeRequest, Action: "merge", MRRef: "987", IID: 12, Actor: "ada"}
+	merge.Plan = &event.Plan{Notice: plan.Merged, Refresh: true, CloseAfter: true}
+	h.w.process(context.Background(), queuedJob(6, 0, "chan-dest", merge))
+
+	// assert
+	require.Len(t, h.fp.calls, 1, "merged notice")
+	assert.Equal(t, "🎉 ada merged !12", h.fp.calls[0].message)
+	require.Len(t, h.fp.updates, 1, "final root refresh before closing")
+	assert.Equal(t, []string{"987"}, h.fs.closed)
+	assert.Equal(t, []string{"987"}, h.fs.stateClosed, "board stops push attribution on close")
+	assert.Equal(t, store.SettlementSent, h.fs.settles[0].s.Kind)
+}
+
+func TestWorker_RefreshOnlyDeliverySkipsNotice(t *testing.T) {
+	// arrange: pipeline "running" style delivery — board moves, thread stays quiet.
+	h := newHarness(t)
+	openBoardThread(h)
+
+	// act
+	h.w.process(context.Background(), planJob(7, 0, &event.Plan{Refresh: true}))
+
+	// assert
+	assert.Empty(t, h.fp.calls)
+	require.Len(t, h.fp.updates, 1)
+	assert.Equal(t, store.SettlementSent, h.fs.settles[0].s.Kind)
+}
+
+func TestWorker_MissingBoardSkipsRefreshNotNotice(t *testing.T) {
+	// arrange: row from before migration 0002 — no board to render from.
+	h := newHarness(t)
+	h.fs.thread = &store.Thread{ChannelID: "c", RootPostID: "r", Open: true}
+	h.fs.state = nil
+
+	// act
+	h.w.process(context.Background(), planJob(8, 0, &event.Plan{Notice: plan.Comment, Refresh: true}))
+
+	// assert: notice posts (it renders from the event), refresh is skipped,
+	// the delivery still settles — a retry must not spin on the missing board.
+	require.Len(t, h.fp.calls, 1)
+	assert.Empty(t, h.fp.updates)
+	require.Len(t, h.fs.settles, 1)
+	assert.Equal(t, store.SettlementSent, h.fs.settles[0].s.Kind)
+}
+
+func TestWorker_BoardStoreFaultRequeuesWithoutBudget(t *testing.T) {
+	// arrange: store outage while reading the board (SYSREQ-007 posture).
+	h := newHarness(t)
+	openBoardThread(h)
+	h.fs.errState = errors.New("store down")
+
+	// act
+	h.w.process(context.Background(), planJob(9, 4, &event.Plan{Refresh: true}))
+
+	// assert
+	s := h.fs.settles[0].s
+	require.Equal(t, store.SettlementRetried, s.Kind)
+	assert.Equal(t, 4, s.Attempts)
+	assert.True(t, s.Next.Equal(workerNow.Add(storeFaultDelay)))
+}
+
+func TestWorker_DeletedRootOnRefreshParksAndCloses(t *testing.T) {
+	// arrange: root deleted between notice and refresh — SYSREQ-026 covers
+	// any root-post operation, update included.
+	h := newHarness(t)
+	openBoardThread(h)
+	h.fp.updateErrs = []error{&mattermost.ThreadGoneError{}}
+
+	// act
+	h.w.process(context.Background(), planJob(10, 0, &event.Plan{Refresh: true}))
+
+	// assert
+	require.Len(t, h.fs.settles, 1)
+	assert.Equal(t, store.SettlementParked, h.fs.settles[0].s.Kind)
+	assert.Equal(t, metrics.CauseThreadGone, h.fs.settles[0].s.Reason)
+	assert.Equal(t, []string{"987"}, h.fs.closed)
 }

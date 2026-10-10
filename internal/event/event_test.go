@@ -235,7 +235,7 @@ func TestParse_NoteOnMergeRequest(t *testing.T) {
 	// assert
 	require.NoError(t, err)
 	assert.True(t, ev.Processed())
-	assert.Equal(t, "987654321", ev.LinkedMRRef)
+	assert.Equal(t, "987654321", ev.MRRef)
 	assert.True(t, ev.NoteCreate)
 	assert.Equal(t, "bob", ev.Actor)
 	assert.False(t, ev.When.IsZero())
@@ -254,7 +254,7 @@ func TestParse_NoteElsewhereIsInert(t *testing.T) {
 
 	// assert
 	require.NoError(t, err)
-	assert.Empty(t, ev.LinkedMRRef, "notes off merge requests name no thread")
+	assert.Empty(t, ev.MRRef, "notes off merge requests name no thread or merge request")
 }
 
 func TestParse_PipelineLinkedAndUnlinked(t *testing.T) {
@@ -276,7 +276,7 @@ func TestParse_PipelineLinkedAndUnlinked(t *testing.T) {
 	// assert
 	require.NoError(t, err)
 	assert.Equal(t, "success", ev.PipelineStatus)
-	assert.Equal(t, "987654321", ev.LinkedMRRef)
+	assert.Equal(t, "987654321", ev.MRRef)
 	assert.True(t, ev.When.Equal(time.Date(2026, 10, 10, 9, 20, 0, 0, time.UTC)),
 		"finish time is the event time")
 
@@ -287,7 +287,7 @@ func TestParse_PipelineLinkedAndUnlinked(t *testing.T) {
 
 	// assert
 	require.NoError(t, err)
-	assert.Empty(t, ev2.LinkedMRRef)
+	assert.Empty(t, ev2.MRRef)
 }
 
 func TestParse_Push(t *testing.T) {

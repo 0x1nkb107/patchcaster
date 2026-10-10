@@ -9,22 +9,28 @@ import (
 
 	"github.com/0x5a17ed/patchcaster/internal/event"
 	"github.com/0x5a17ed/patchcaster/internal/metrics"
+	"github.com/0x5a17ed/patchcaster/internal/plan"
 	"github.com/0x5a17ed/patchcaster/internal/routing"
+	"github.com/0x5a17ed/patchcaster/internal/store"
 )
 
 // maxBodyBytes bounds one webhook payload; GitLab merge request payloads stay
 // well below this, and the cap keeps memory use predictable.
 const maxBodyBytes = 4 << 20
 
-// allowlist is the deny-by-default action table (SYSREQ-008). Anything absent
-// is acknowledged and discarded, never posted.
-var allowlist = map[string]bool{
-	"open":     true,
-	"close":    true,
-	"merge":    true,
-	"approval": true,
-	"approved": true,
-	"update":   true,
+// acceptedActions is the deny-by-default action table for merge request
+// deliveries (SYSREQ-008). Recognized actions are processed — silent ones
+// still refresh board state — anything else is acknowledged and discarded.
+var acceptedActions = map[string]bool{
+	"open":       true,
+	"close":      true,
+	"reopen":     true,
+	"update":     true,
+	"approval":   true,
+	"approved":   true,
+	"unapproval": true,
+	"unapproved": true,
+	"merge":      true,
 }
 
 // Store is what the handler needs from persistence, kept narrow so the
@@ -32,7 +38,7 @@ var allowlist = map[string]bool{
 type Store interface {
 	Seen(ctx context.Context, webhookID string) (bool, error)
 	MarkOutcome(ctx context.Context, webhookID, outcome string, now time.Time) error
-	Accept(ctx context.Context, ev *event.Event, destChannel string, now time.Time) (bool, error)
+	Accept(ctx context.Context, ev *event.Event, destChannel string, now time.Time) (store.AcceptResult, error)
 }
 
 // Handler serves the webhook endpoint.
@@ -98,9 +104,30 @@ func (h *Handler) handle(w http.ResponseWriter, r *http.Request) {
 	ev.WebhookID = id
 	log = log.With("project", ev.ProjectPath, "mr", ev.MRRef, "action", ev.Action)
 
-	if !ev.Forwardable() {
-		h.discard(w, r, log, id, metrics.CauseNotMergeRequest, "not a merge request event")
+	if !ev.Processed() {
+		h.discard(w, r, log, id, metrics.CauseUnprocessed, "event kind not processed")
 		return
+	}
+
+	// Per-kind admission (SYSREQ-008): merge requests gate on the action
+	// table, comments and pipelines must name their merge request, pushes
+	// must name a branch (tags attribute to nothing, SYSREQ-030).
+	switch ev.Kind {
+	case event.KindMergeRequest:
+		if !acceptedActions[ev.Action] {
+			h.discard(w, r, log, id, metrics.CauseNotAllowlisted, "action not allowlisted")
+			return
+		}
+	case event.KindNote, event.KindPipeline:
+		if ev.MRRef == "" {
+			h.discard(w, r, log, id, metrics.CauseUnlinked, "delivery names no merge request")
+			return
+		}
+	case event.KindPush:
+		if ev.PushBranch == "" {
+			h.discard(w, r, log, id, metrics.CauseUnlinked, "push names no branch")
+			return
+		}
 	}
 
 	// Unparseable or absent timestamps leave When zero, which is older than
@@ -110,32 +137,32 @@ func (h *Handler) handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !allowlist[ev.Action] {
-		h.discard(w, r, log, id, metrics.CauseNotAllowlisted, "action not allowlisted")
-		return
-	}
-
 	dest, ok := h.Routes.Channel(ev.ProjectPath)
 	if !ok {
 		h.discard(w, r, log, id, metrics.CauseUnrouted, "no route for project")
 		return
 	}
 
+	ev.Plan = plan.For(ev)
 	now := h.Now()
-	accepted, err := h.Store.Accept(r.Context(), ev, dest, now)
+	res, err := h.Store.Accept(r.Context(), ev, dest, now)
 	if err != nil {
 		log.Error("durable accept failed", "err", err)
 		http.Error(w, "store unavailable", http.StatusServiceUnavailable)
 		return
 	}
-	if !accepted {
+	if !res.Accepted {
 		// A concurrent duplicate won the seen-insert race.
 		h.Metrics.Suppressed.Inc()
 		log.Info("duplicate delivery suppressed at accept")
 		w.WriteHeader(http.StatusOK)
 		return
 	}
-	log.Info("delivery accepted")
+	h.Metrics.StateApplied.WithLabelValues(ev.Kind).Inc()
+	if ev.Kind == event.KindPush && res.Attributed == 0 {
+		h.Metrics.PushAttrMiss.Inc()
+	}
+	log.Info("delivery accepted", "kind", ev.Kind, "enqueued", res.Enqueued)
 	w.WriteHeader(http.StatusOK)
 }
 

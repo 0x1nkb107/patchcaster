@@ -12,8 +12,7 @@
 [Install](docs/install.md) ·
 [Configuration](docs/configuration.md) ·
 [Operations](docs/operations.md) ·
-[Development](docs/development.md) ·
-[Specs](docs/specs/README.md)
+[Development](docs/development.md)
 
 </div>
 
@@ -21,8 +20,7 @@ Forwards GitLab (19.0+) merge request activity into Mattermost channels —
 one thread per merge request whose root message is a live status board
 (pipeline, reviewer, comment and edit segments refresh in place), with thread
 replies for notable events: comments, pipeline pass/fail, review verdicts,
-pushes, merge and close. The normative behavior lives in the SARA graph under
-[`docs/specs/`](docs/specs/README.md).
+pushes, merge and close.
 
 ## Getting started
 
@@ -47,4 +45,3 @@ GitLab, Mattermost or network access.
 | [Mattermost](docs/integrations/mattermost.md) | bot account, channel membership, channel ids |
 | [Operations](docs/operations.md) | probes, metrics, drain, upgrades, delivery guarantees |
 | [Development](docs/development.md) | building, testing, sending changes upstream |
-| [Specs](docs/specs/README.md) | normative requirements and decisions (SARA) |

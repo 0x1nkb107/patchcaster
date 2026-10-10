@@ -3,7 +3,7 @@
 # Release pipeline (ADR-015, SYSREQ-031), driven by the pinned tool in
 # tools/goreleaser. Validate with `just release-check`; dry-run with
 # `just release-snapshot`. Publishing happens only from the tag-triggered
-# workflow (or an explicit `just release` with GITHUB_TOKEN exported).
+# workflow (or an explicit `just release-publish` with GITHUB_TOKEN exported).
 version: 2
 
 project_name: patchcaster
@@ -94,7 +94,8 @@ docker_signs:
       - "--yes"
       - "${artifact}@${digest}"
 
-# Release notes are the tag's changie batch (ADR-018): `just release` passes
-# .changes/<tag>.md via --release-notes, which replaces the commit-log
-# changelog. Never set changelog.disable: it skips the whole changelog step,
-# including loading that file, and would publish an empty release body.
+# Release notes are the tag's changie batch (ADR-018): `just
+# release-publish` passes .changes/<tag>.md via --release-notes, which
+# replaces the commit-log changelog. Never set changelog.disable: it skips
+# the whole changelog step, including loading that file, and would publish
+# an empty release body.

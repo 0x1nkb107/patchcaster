@@ -86,24 +86,26 @@ change *args:
 # Batch the unreleased fragments into .changes/<version>.md and rebuild
 # CHANGELOG.md (ADR-018). changie picks the version from the fragments' kinds;
 # pass major, minor or patch, or a tag such as v1.0.0, to override it.
-changelog version="auto":
+release-changelog version="auto":
 	#!/usr/bin/env bash
 	set -euo pipefail
 	{{ assert(version =~ '^(auto|major|minor|patch|v[0-9].*)$', "version must be auto, major, minor, patch or a tag such as v1.0.0") }}
 	go tool -modfile tools/changie/go.mod changie batch --allow-no-changes=false "{{version}}"
 	go tool -modfile tools/changie/go.mod changie merge
-	echo "batched $(go tool -modfile tools/changie/go.mod changie latest): review and commit it, then run 'just tag'"
+	version="$(go tool -modfile tools/changie/go.mod changie latest)"
+	echo "batched ${version}: review and commit it, then run 'just release-tag'"
 
-# Tag HEAD with the version the last `just changelog` batched (ADR-018). The
-# tag message is that release's notes, and git signs the tag when tag.gpgSign
-# is set. Pushing the tag is left to you, because the push publishes it.
-tag:
+# Tag HEAD with the version that `just release-changelog` last batched
+# (ADR-018). The tag message is that release's notes, and git signs the tag
+# when tag.gpgSign is set. Pushing the tag is left to you, because the push
+# publishes it.
+release-tag:
 	#!/usr/bin/env bash
 	set -euo pipefail
 	version="$(go tool -modfile tools/changie/go.mod changie latest)"
 	notes=".changes/${version}.md"
 	if ! git cat-file -e "HEAD:${notes}" 2>/dev/null; then
-		echo "no committed ${notes}: run 'just changelog' and commit its result first" >&2
+		echo "no committed ${notes}: run 'just release-changelog' and commit its result first" >&2
 		exit 1
 	fi
 	git tag -a "${version}" --cleanup=whitespace -F "${notes}"
@@ -125,13 +127,13 @@ release-snapshot +args="":
 # (ADR-016), and signs before it publishes anything. The release notes are
 # the tag's batched changelog; an untagged HEAD or a tag without notes fails
 # here, before anything is built.
-release:
+release-publish:
 	#!/usr/bin/env bash
 	set -euo pipefail
 	tag="$(git describe --tags --exact-match)"
 	notes=".changes/${tag}.md"
 	if [[ ! -f "${notes}" ]]; then
-		echo "no ${notes}: run 'just changelog ${tag}' and commit it before tagging" >&2
+		echo "no ${notes}: run 'just release-changelog ${tag}' and commit it before tagging" >&2
 		exit 1
 	fi
 	exec go tool -modfile tools/goreleaser/go.mod goreleaser release --clean --release-notes "${notes}"

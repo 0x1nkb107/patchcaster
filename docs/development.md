@@ -58,8 +58,8 @@ just test-integration # store contract tests against the dev database
 just sqlc             # regenerate query code after touching internal/store/{queries,migrations}
 just container        # OCI image patchcaster:dev (`just container arm64` for arm64)
 just change           # record a changelog fragment (prompts for kind and body)
-just changelog        # batch the fragments into CHANGELOG.md as the next version
-just tag              # tag HEAD with that version (pushing the tag releases)
+just release-changelog # batch the fragments into CHANGELOG.md as the next version
+just release-tag      # tag HEAD with that version (pushing the tag releases)
 just release-check    # validate the goreleaser pipeline (ADR-015)
 just release-snapshot # release dry run: builds; publishes and signs nothing
 ```
@@ -172,13 +172,13 @@ just change -k Fixed -b "Retry posts after a Mattermost restart."
 
 To cut a release:
 
-1. `just changelog` batches the fragments into `.changes/<version>.md` and
-   rebuilds `CHANGELOG.md`. changie picks the version from the kinds (the
-   Bump column above); `just changelog minor` or `just changelog v1.0.0`
-   overrides it. It refuses an empty batch.
+1. `just release-changelog` batches the fragments into
+   `.changes/<version>.md` and rebuilds `CHANGELOG.md`. changie picks the
+   version from the kinds (the Bump column above); an argument such as
+   `minor` or `v1.0.0` overrides it. It refuses an empty batch.
 2. Review both files, then commit them together with the removed fragments.
-3. `just tag` tags that commit with the new version, using the release notes
-   as the tag message.
+3. `just release-tag` tags that commit with the new version, using the
+   release notes as the tag message.
 4. `git push origin <version>` publishes it. The Release workflow uses
    `.changes/<version>.md` as the GitHub release notes, and fails before
    building anything if that file is missing.
@@ -186,5 +186,5 @@ To cut a release:
    with the same version so the chart's `appVersion` follows (ADR-017).
 
 Breaking bumps the minor version while the project is on 0.x. Cut 1.0.0 with
-`just changelog major`, then set Breaking's `auto` level in `.changie.yaml`
-to `major`.
+`just release-changelog major`, then set Breaking's `auto` level in
+`.changie.yaml` to `major`.

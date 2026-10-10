@@ -28,10 +28,10 @@ that pinned toolchain — release images via buildx multi-arch (ADR-015), local 
 `just container`. Common tasks —
 `build`, `test`, `lint`, `migrate`, `container`, `devdb` — live in the `justfile` (ADR-007),
 with `lint` running the version-pinned `golangci-lint` gate (ADR-011). Release artifacts are cut
-by the version-pinned goreleaser pipeline of ADR-015 (`just release`), which cross-builds both
-claimed architectures and publishes the images and GitHub release of SYSREQ-031, signing images
-and archives keylessly per ADR-016 (SYSREQ-032), with release notes taken from the changie
-changelog (ADR-018). The Helm chart of SYSREQ-033 ships out-of-band
+by the version-pinned goreleaser pipeline of ADR-015 (`just release-publish`), which
+cross-builds both claimed architectures and publishes the images and GitHub release of
+SYSREQ-031, signing images and archives keylessly per ADR-016 (SYSREQ-032), with release notes
+taken from the changie changelog (ADR-018). The Helm chart of SYSREQ-033 ships out-of-band
 from the sibling charts repository, signed under that repository's own workflow identity
 (ADR-017).
 

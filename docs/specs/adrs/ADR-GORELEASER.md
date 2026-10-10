@@ -24,7 +24,7 @@ first-order concern, not a nicety.
 
 Release with goreleaser v2, pinned as a tools module exactly like the lint and codegen tools
 (ADR-011, ADR-010): `go tool -modfile tools/goreleaser/go.mod goreleaser`, driven by
-`just release` (publish) and `just release-snapshot` (local dry run, never publishes).
+`just release-publish` (publish) and `just release-snapshot` (local dry run, never publishes).
 
 - Builds are CGO-free static binaries for `linux/amd64` and `linux/arm64`, `-trimpath`,
   `-s -w`, with the version injected via `-X main.version` and surfaced by a `--version`

@@ -30,25 +30,25 @@ follows Keep a Changelog 1.1.0 and Semantic Versioning 2.0.0.
   Changelog's Added, Changed, Deprecated, Removed, Fixed and Security, plus two the owner added:
   **Breaking** for user-facing changes that need action on upgrade, listed first in every
   release, and **Updated** for updated dependencies that ship in the binary or image.
-- **Batching**: before a release, `just changelog` batches the fragments into
-  `.changes/<version>.md` and rebuilds `CHANGELOG.md` from the header and every version file.
-  A batch without fragments is refused rather than producing an empty release.
+- **Batching**: before a release, `just release-changelog` batches the fragments into
+  `.changes/<version>.md` and rebuilds `CHANGELOG.md` from the header and every version file. A
+  batch without fragments is refused rather than producing an empty release.
 - **Versioning**: changie picks the version. Every kind carries a bump level, and the highest
   level among the unreleased fragments wins: Breaking, Added, Changed, Deprecated and Removed
-  bump the minor version, Fixed, Security and Updated the patch version. Breaking stays at
-  minor while the project is on 0.x, as the compatibility contract promises, and moves to
-  major once 1.0.0 is out; 1.0.0 itself is cut with `just changelog major`. An explicit level
-  or version still overrides the choice. The owner switched to these levels on 2026-10-10;
-  until then every version was named by hand.
-- **Tagging**: `just tag` creates the annotated tag for the version just batched, with that
-  release's notes as the tag message, and only once the notes are committed. Pushing the tag
-  stays a manual step because the push publishes the release.
-- **Format**: `CHANGELOG.md` opens with the Keep a Changelog 1.1.0 and Semantic Versioning
-  2.0.0 statement; versions appear newest first as `## [vX.Y.Z](release URL) - YYYY-MM-DD`
-  with one `###` section per kind and `-` bullets.
-- **Release notes**: `just release` passes the tag's `.changes/<tag>.md` to goreleaser as
-  `--release-notes`, replacing the commit-log changelog, and fails before building anything if
-  the tag has no batched notes. `changelog.disable` stays unset: goreleaser skips loading the
+  bump the minor version, Fixed, Security and Updated the patch version. Breaking stays at minor
+  while the project is on 0.x, as the compatibility contract promises, and moves to major once
+  1.0.0 is out; 1.0.0 itself is cut with `just release-changelog major`. An explicit level or
+  version still overrides the choice. The owner switched to these levels on 2026-10-10; until
+  then every version was named by hand.
+- **Tagging**: `just release-tag` creates the annotated tag for the version just batched, with
+  that release's notes as the tag message, and only once the notes are committed. Pushing the
+  tag stays a manual step because the push publishes the release.
+- **Format**: `CHANGELOG.md` opens with the Keep a Changelog 1.1.0 and Semantic Versioning 2.0.0
+  statement; versions appear newest first as `## [vX.Y.Z](release URL) - YYYY-MM-DD` with one
+  `###` section per kind and `-` bullets.
+- **Release notes**: `just release-publish` passes the tag's `.changes/<tag>.md` to goreleaser
+  as `--release-notes`, replacing the commit-log changelog, and fails before building anything
+  if the tag has no batched notes. `changelog.disable` stays unset: goreleaser skips loading the
   notes file when the changelog step is disabled.
 - **Distribution**: `CHANGELOG.md` ships in the release archives next to the README.
 

@@ -22,6 +22,9 @@ builds:
       - -trimpath
     ldflags:
       - -s -w -X main.version={{ .Version }}
+    # Reproducible builds (ADR-021): the binary carries the commit's time,
+    # not the time of the build.
+    mod_timestamp: "{{ .CommitTimestamp }}"
 
 checksum:
   name_template: "checksums.txt"
@@ -29,10 +32,24 @@ checksum:
 # Archives carry the binary and LICENSE only (ADR-020). Setting files
 # replaces goreleaser's defaults, which would also pack the README and the
 # changelog. LICENSE stays because MIT requires its notice in every copy.
+#
+# Every entry's metadata is pinned so that the same tag packs the same bytes
+# on any machine (ADR-021). Otherwise the archive records the builder's
+# clock, user, group and umask.
 archives:
   - name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    builds_info:
+      owner: root
+      group: root
+      mode: 0755
+      mtime: "{{ .CommitDate }}"
     files:
-      - LICENSE
+      - src: LICENSE
+        info:
+          owner: root
+          group: root
+          mode: 0644
+          mtime: "{{ .CommitDate }}"
 
 # Draft releases keep cuts reviewable before they become public.
 release:

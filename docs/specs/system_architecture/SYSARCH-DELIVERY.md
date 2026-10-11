@@ -22,7 +22,10 @@ the Mattermost REST API v4.
 
 ## Technical Strategy
 
-A small pool of workers polls the outbox for due `pending` rows (claim → attempt → settle). The
+A small pool of workers claims due `pending` rows from the outbox (claim → attempt → settle).
+Workers wake as soon as ingest commits a row, through a PostgreSQL notification heard on a
+dedicated listening connection, and poll at a longer fallback interval for retries coming due,
+expired leases, and notifications lost while no session listened (ADR-019). The
 Mattermost client is a narrow wrapper over `POST /api/v4/posts` and `PUT /api/v4/posts/{id}`
 with an explicit per-request
 timeout, typed errors for retryable vs. terminal outcomes (ADR-005), and no other API surface —
@@ -34,11 +37,15 @@ interpolating payload text (SYSREQ-003).
 Components: `Renderer` (named `text/template` templates over the escaped view model —
 SYSREQ-025, ADR-009), `MattermostClient`
 (API v4 posts: create and update only), `Worker` (claim loop, backoff policy from SYSREQ-016),
-`Store` repository (SYSARCH-002). Configuration supplies site URL and bot token (SYSREQ-022); the
+`Wakeup` (supervises the listening session, reconnects with backoff, and turns notifications
+into coalesced wake-ups for the worker), `Store` repository (SYSARCH-002). Configuration supplies site URL and bot token (SYSREQ-022); the
 token reaches the client only, never the renderer or logging path.
 
 ## Dynamic View (Behavior)
 
+Each claim pass, started by a wake-up or a poll tick, claims due rows one after another until
+none is due. A listening session counts only once a probe notification it sent to itself comes
+back, and each such session wakes the worker once to cover rows committed while nobody listened.
 Worker claims a due row, resolves `mr_thread` (root vs. reply decision → SYSREQ-002,
 SYSREQ-005): no mapping skips the row with a log (SYSREQ-007), a closed thread skips it likewise,
 and Mattermost's missing-root answer parks the row and closes the thread (SYSREQ-026). A delivery

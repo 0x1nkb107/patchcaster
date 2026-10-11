@@ -45,7 +45,10 @@ state apply), delivery (claim, render-read, settle) and by readiness (ping).
 Enqueue, the seen-mark, and the derived-state application of the same delivery commit together in
 one PostgreSQL transaction in the ingest request path (SYSREQ-014, SYSREQ-017, SYSREQ-027) — that
 commit is the point where the `2xx` becomes honest, and a failed commit means none of them
-happened, leaving GitLab's retry to be processed normally. Ingest is the only writer of derived
+happened, leaving GitLab's retry to be processed normally. A transaction that enqueues a row also
+notifies the `patchcaster_outbox` channel with an empty payload; PostgreSQL delivers that
+notification only on commit, so it wakes listening workers for rows they can already see
+(ADR-019). Ingest is the only writer of derived
 state, which is what makes counts exactly-once: delivery workers only read state to render. Workers claim due rows with a lease (`claimed_at` + expiry, so a
 crashed worker's rows come back), claiming in an order that serializes each merge request to one
 worker at a time, which is what preserves SYSREQ-002's exactly-one-root under the worker pool:

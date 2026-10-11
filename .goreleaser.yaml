@@ -26,23 +26,13 @@ builds:
 checksum:
   name_template: "checksums.txt"
 
-# Setting files replaces goreleaser's defaults, so LICENSE (whose notice MIT
-# requires in every copy) and CHANGELOG.md are listed explicitly. The
-# operator docs keep their docs/ paths, so the README's operator links
-# resolve inside the archive.
+# Archives carry the binary and LICENSE only (ADR-020). Setting files
+# replaces goreleaser's defaults, which would also pack the README and the
+# changelog. LICENSE stays because MIT requires its notice in every copy.
 archives:
   - name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     files:
-      - src: README.md
-        strip_parent: true
-      - src: LICENSE
-        strip_parent: true
-      - src: CHANGELOG.md
-        strip_parent: true
-      - docs/install.md
-      - docs/configuration.md
-      - docs/operations.md
-      - docs/integrations/*.md
+      - LICENSE
 
 # Draft releases keep cuts reviewable before they become public.
 release:

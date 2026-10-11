@@ -441,6 +441,44 @@ func TestWorker_RunDeliversInClaimOrder(t *testing.T) {
 	assert.Equal(t, 2.0, testutil.ToFloat64(h.m.Posted))
 }
 
+func TestWorker_RunDrainsBacklogWithoutWaitingForTicks(t *testing.T) {
+	// arrange: a poll interval far beyond the test's patience, so only a loop
+	// that delivers every due job between ticks can settle the whole backlog.
+	h := newHarness(t)
+	h.w.cfg.Poll = time.Hour
+	h.fs.settledCh = make(chan struct{}, 3)
+	openBoardThread(h)
+	h.fs.jobs = []*store.Job{
+		noticeJob(1, 0, "chan-dest"),
+		noticeJob(2, 0, "chan-dest"),
+		noticeJob(3, 0, "chan-dest"),
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan error, 1)
+	go func() { done <- h.w.Run(ctx) }()
+
+	// act: wait for every settle.
+	for i := 0; i < 3; i++ {
+		select {
+		case <-h.fs.settledCh:
+		case <-time.After(2 * time.Second):
+			t.Fatalf("settle %d never happened: the loop waited for a tick", i+1)
+		}
+	}
+	cancel()
+
+	// assert: the backlog drained in claim order within one pass.
+	require.ErrorIs(t, <-done, context.Canceled)
+	require.Len(t, h.fs.settles, 3)
+	for i, rec := range h.fs.settles {
+		assert.Equal(t, int64(i+1), rec.jobID)
+		assert.Equal(t, store.SettlementSent, rec.s.Kind)
+	}
+	assert.Len(t, h.fp.calls, 3)
+}
+
 // --- schedule unit ----------------------------------------------------------------
 
 func TestWorker_StopAfterCurrentJobExitsCleanly(t *testing.T) {

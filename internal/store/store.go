@@ -325,8 +325,9 @@ func (p *Postgres) PruneSeen(ctx context.Context, olderThan time.Time) error {
 }
 
 // ClaimDue takes the oldest due job under a lease, or nil when none is due.
-// Arrival order plus the single-writer v1 deployment preserve one message per
-// merge request at a time (SYSREQ-020 serialization).
+// A job waits while an older job of its merge request is pending or claimed,
+// so each merge request delivers one message at a time in arrival order, even
+// across retries and concurrent workers (SYSARCH-002, SYSREQ-002).
 func (p *Postgres) ClaimDue(ctx context.Context, now time.Time, lease time.Duration) (*Job, error) {
 	row, err := p.base.ClaimDue(ctx, sqlcgen.ClaimDueParams{
 		ClaimedAt:   sql.NullTime{Time: now, Valid: true},

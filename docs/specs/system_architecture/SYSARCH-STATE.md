@@ -48,7 +48,10 @@ commit is the point where the `2xx` becomes honest, and a failed commit means no
 happened, leaving GitLab's retry to be processed normally. Ingest is the only writer of derived
 state, which is what makes counts exactly-once: delivery workers only read state to render. Workers claim due rows with a lease (`claimed_at` + expiry, so a
 crashed worker's rows come back), claiming in an order that serializes each merge request to one
-worker at a time, which is what preserves SYSREQ-002's exactly-one-root under the worker pool.
+worker at a time, which is what preserves SYSREQ-002's exactly-one-root under the worker pool:
+a row is claimable only while no older row of its merge request is pending or claimed, so a
+delivery that waits for a retry holds back the later ones instead of being overtaken by them.
+Parked and skipped rows are settled and hold nothing back.
 A periodic task prunes `seen_webhook` past retention. Readiness is a pool ping against a writable
 store (SYSREQ-018): database unavailability fails readiness, never liveness (SCEN-008). v1
 deploys a single replica; the lease design is the groundwork, not the promise, of any future

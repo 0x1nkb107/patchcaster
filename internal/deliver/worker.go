@@ -63,8 +63,9 @@ type Config struct {
 // request, notices and root refreshes afterwards (SYSREQ-004/005/028/029).
 //
 // A single worker goroutine is run per replica (v1 deployment is one replica
-// by choice, ADR-010). Claiming in arrival order then serializes all activity
-// per merge request, which is what makes "exactly one root post" robust.
+// by choice, ADR-010). The store's claim serializes all activity per merge
+// request in arrival order, which is what makes "exactly one root post"
+// robust.
 type Worker struct {
 	store    Store
 	poster   Poster
@@ -97,40 +98,61 @@ func NewWorker(st Store, poster Poster, r *Renderer, m *metrics.Metrics, log *sl
 	return &Worker{store: st, poster: poster, renderer: r, metrics: m, log: log, cfg: cfg, now: now}
 }
 
-// Run claims and delivers until ctx ends. Mid-delivery work is abandoned
-// promptly; its lease is reaped for the next worker (or the next start).
+// Run claims and delivers until ctx ends. It delivers every due job before it
+// idles until the next poll tick, so a backlog drains at delivery speed rather
+// than one job per tick. Mid-delivery work is abandoned promptly; its lease is
+// reaped for the next worker (or the next start).
 func (w *Worker) Run(ctx context.Context) error {
 	ticker := time.NewTicker(w.cfg.Poll)
 	defer ticker.Stop()
 	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-ticker.C:
+		if err := w.deliverDue(ctx); err != nil {
+			return err
 		}
 		if w.stopping.Load() {
 			return nil
 		}
 
-		if err := w.store.ReapLeases(ctx, w.now()); err != nil {
-			w.log.Error("lease reap failed", "err", err)
-			continue
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
 		}
+	}
+}
+
+// deliverDue reaps expired leases, then claims and delivers jobs until none
+// is due, a store call fails, or a stop is requested. A failed store call is
+// logged and waits for the next tick. The error is ctx's, once ctx ends.
+func (w *Worker) deliverDue(ctx context.Context) error {
+	if err := w.store.ReapLeases(ctx, w.now()); err != nil {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		w.log.Error("lease reap failed", "err", err)
+		return nil
+	}
+
+	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if w.stopping.Load() {
+			return nil
+		}
+
 		job, err := w.store.ClaimDue(ctx, w.now(), w.cfg.Lease)
 		if err != nil {
 			if ctx.Err() != nil {
 				return ctx.Err()
 			}
 			w.log.Error("claim failed", "err", err)
-			continue
-		}
-		if job == nil {
-			continue
-		}
-		w.process(ctx, job)
-		if w.stopping.Load() {
 			return nil
 		}
+		if job == nil {
+			return nil
+		}
+		w.process(ctx, job)
 	}
 }
 

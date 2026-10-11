@@ -113,11 +113,9 @@ func flagName(path []string) string {
 	return field
 }
 
-// Run serves until ctx ends. It wires every component and owns the shutdown
-// choreography (SYSREQ-023): on SIGTERM readiness flips false, the public
-// listener stops accepting, and the worker gets the drain budget to finish
-// what is in flight. The deployment's terminationGracePeriodSeconds must
-// exceed --drain-timeout.
+// Run serves until ctx ends. It wires every component and hands them to the
+// lifecycle, which owns the shutdown choreography (SYSREQ-023). The
+// deployment's terminationGracePeriodSeconds must exceed --drain-timeout.
 func (c *ServeCmd) Run(ctx context.Context) error {
 	log := newLogger(c.LogLevel)
 
@@ -184,62 +182,24 @@ func (c *ServeCmd) Run(ctx context.Context) error {
 		return fmt.Errorf("bind internal listener %s: %w", c.InternalAddr, err)
 	}
 
-	pubCtx, cancelPub := context.WithCancel(ctx)
-	wrkCtx, cancelWrk := context.WithCancel(ctx)
-	intCtx, cancelInt := context.WithCancel(ctx)
-	// Belt for early-return paths; the shutdown choreography below cancels
-	// these deliberately, and repeated cancel is a no-op.
-	defer cancelPub()
-	defer cancelWrk()
-	defer cancelInt()
-
-	// One buffered slot per goroutine so late returns never block on a
-	// channel nobody drains during shutdown.
-	errc := make(chan error, 5)
-	workerDone := make(chan struct{})
-	go func() { errc <- ops.ListenAndServe(intCtx, intLn, probe.Mux(), c.DrainTimeout) }()
-	go func() { errc <- ops.ListenAndServe(pubCtx, pubLn, handler.Mux(), c.DrainTimeout) }()
-	go func() {
-		err := worker.Run(wrkCtx)
-		close(workerDone)
-		errc <- err
-	}()
-	go func() { errc <- pruneLoop(wrkCtx, st, c.SeenRetention, log) }()
-	go func() { errc <- wakeup.Run(wrkCtx) }()
-
-	probe.MarkReady(true)
-	log.Info("serving", "public", c.Addr, "internal", c.InternalAddr)
-
-	var errs []error
-	select {
-	case err := <-errc:
-		// Component failure at startup: tear everything down at once.
-		record(err, &errs)
-		cancelPub()
-		cancelWrk()
-		cancelInt()
-		recordAll(collect(errc, 4), &errs)
-
-	case <-ctx.Done():
-		probe.MarkReady(false)
-		log.Info("shutdown signaled", "drain_budget", c.DrainTimeout)
-		cancelPub() // webhooks stop being accepted immediately
-		worker.StopAfterCurrentJob()
-
-		select {
-		case <-workerDone:
-			log.Info("worker finished within drain budget")
-		case <-time.After(c.DrainTimeout):
-			log.Warn("drain budget exhausted; releasing worker")
-			cancelWrk()
-			<-workerDone
-		}
-		cancelInt()
-		recordAll(collect(errc, 5), &errs)
+	lc := &lifecycle{
+		internal: func(ctx context.Context) error {
+			return ops.ListenAndServe(ctx, intLn, probe.Mux(), c.DrainTimeout)
+		},
+		public: func(ctx context.Context) error {
+			return ops.ListenAndServe(ctx, pubLn, handler.Mux(), c.DrainTimeout)
+		},
+		worker: worker,
+		background: []func(context.Context) error{
+			func(ctx context.Context) error { return pruneLoop(ctx, st, c.SeenRetention, log) },
+			wakeup.Run,
+		},
+		markReady:   probe.MarkReady,
+		drainBudget: c.DrainTimeout,
+		log:         log,
 	}
-
-	probe.MarkReady(false)
-	return errors.Join(errs...)
+	log.Info("serving", "public", c.Addr, "internal", c.InternalAddr)
+	return lc.run(ctx)
 }
 
 // pruneLoop keeps the dedupe table bounded: seen rows older than the
@@ -260,27 +220,6 @@ func pruneLoop(ctx context.Context, st *store.Postgres, retention time.Duration,
 		case <-ticker.C:
 			prune()
 		}
-	}
-}
-
-func collect(errc chan error, n int) []error {
-	out := make([]error, 0, n)
-	for i := 0; i < n; i++ {
-		out = append(out, <-errc)
-	}
-	return out
-}
-
-func record(err error, errs *[]error) {
-	if err == nil || errors.Is(err, context.Canceled) || errors.Is(err, ops.ErrStopped) {
-		return
-	}
-	*errs = append(*errs, err)
-}
-
-func recordAll(errs []error, into *[]error) {
-	for _, err := range errs {
-		record(err, into)
 	}
 }
 

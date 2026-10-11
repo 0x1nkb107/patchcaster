@@ -44,9 +44,20 @@ type fakePoster struct {
 	results    []postResult // consumed FIFO; default success "post-ok"
 	updates    []updateCall
 	updateErrs []error // consumed FIFO; default success
+
+	// entered and release, when non-nil, hold every post in flight: Post
+	// reports on entered, then waits until release is closed.
+	entered chan struct{}
+	release chan struct{}
 }
 
 func (f *fakePoster) Post(_ context.Context, channel, message, rootID string) (string, error) {
+	if f.entered != nil {
+		f.entered <- struct{}{}
+	}
+	if f.release != nil {
+		<-f.release
+	}
 	f.calls = append(f.calls, postCall{channel: channel, message: message, rootID: rootID})
 	if len(f.results) > 0 {
 		r := f.results[0]
@@ -550,6 +561,72 @@ func TestWorker_StopAfterCurrentJobExitsCleanly(t *testing.T) {
 		t.Fatal("worker did not exit after stop request")
 	}
 	require.Len(t, h.fp.calls, 1)
+}
+
+func TestWorker_StopDuringDeliveryFinishesItAndClaimsNoMore(t *testing.T) {
+	// arrange: two queued notices; the first post stays in flight until the
+	// test releases it.
+	h := newHarness(t)
+	openBoardThread(h)
+	h.fp.entered = make(chan struct{}, 1)
+	h.fp.release = make(chan struct{})
+	h.fs.jobs = []*store.Job{noticeJob(1, 0, "chan-dest"), noticeJob(2, 0, "chan-dest")}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan error, 1)
+	go func() { done <- h.w.Run(ctx) }()
+
+	select {
+	case <-h.fp.entered:
+	case <-time.After(2 * time.Second):
+		t.Fatal("the first post never started")
+	}
+
+	// act: request the stop mid-delivery, then let the post finish.
+	h.w.StopAfterCurrentJob()
+	close(h.fp.release)
+
+	// assert: the delivery in hand completes; the next job stays queued.
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(2 * time.Second):
+		t.Fatal("worker did not exit after its delivery finished")
+	}
+	require.Len(t, h.fs.settles, 1)
+	assert.Equal(t, int64(1), h.fs.settles[0].jobID)
+	assert.Equal(t, store.SettlementSent, h.fs.settles[0].s.Kind)
+	assert.Len(t, h.fs.jobs, 1, "the second job stays pending for the next start")
+}
+
+func TestWorker_StopEndsAnIdleWorkerAtOnce(t *testing.T) {
+	// arrange: an hour-long poll, so only the stop request can end the wait.
+	h := newHarness(t)
+	h.w.cfg.Poll = time.Hour
+	h.fs.idleCh = make(chan struct{}, 1)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan error, 1)
+	go func() { done <- h.w.Run(ctx) }()
+
+	select {
+	case <-h.fs.idleCh:
+	case <-time.After(2 * time.Second):
+		t.Fatal("the first pass never ran")
+	}
+
+	// act
+	h.w.StopAfterCurrentJob()
+
+	// assert: a graceful nil return, without waiting for the next tick.
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(2 * time.Second):
+		t.Fatal("an idle worker kept waiting for the next tick")
+	}
 }
 
 func TestBackoffIntervalLadder(t *testing.T) {

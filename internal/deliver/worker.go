@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
-	"sync/atomic"
+	"sync"
 	"time"
 
 	"github.com/cenkalti/backoff/v5"
@@ -79,14 +79,30 @@ type Worker struct {
 	cfg      Config
 	now      func() time.Time
 
-	// stopping requests a graceful end: finish the job in hand, claim
-	// nothing more. Context cancellation stays the hard stop.
-	stopping atomic.Bool
+	// stop requests a graceful end: finish the job in hand, claim nothing
+	// more. Closing it also ends an idle wait at once, because the drain no
+	// longer cancels the worker's context. Context cancellation stays the
+	// hard stop.
+	stop     chan struct{}
+	stopOnce sync.Once
 }
 
 // StopAfterCurrentJob ends the claim loop once the in-flight delivery
-// completes (drain, SYSREQ-023).
-func (w *Worker) StopAfterCurrentJob() { w.stopping.Store(true) }
+// completes, or at once when the worker is idle (drain, SYSREQ-023). It is
+// safe to call more than once.
+func (w *Worker) StopAfterCurrentJob() {
+	w.stopOnce.Do(func() { close(w.stop) })
+}
+
+// stopRequested reports whether StopAfterCurrentJob has been called.
+func (w *Worker) stopRequested() bool {
+	select {
+	case <-w.stop:
+		return true
+	default:
+		return false
+	}
+}
 
 // NewWorker wires a worker; a nil clock defaults to time.Now.
 func NewWorker(st Store, poster Poster, r *Renderer, m *metrics.Metrics, log *slog.Logger, cfg Config, now func() time.Time) *Worker {
@@ -99,7 +115,16 @@ func NewWorker(st Store, poster Poster, r *Renderer, m *metrics.Metrics, log *sl
 	if cfg.Lease <= 0 {
 		cfg.Lease = time.Minute
 	}
-	return &Worker{store: st, poster: poster, renderer: r, metrics: m, log: log, cfg: cfg, now: now}
+	return &Worker{
+		store:    st,
+		poster:   poster,
+		renderer: r,
+		metrics:  m,
+		log:      log,
+		cfg:      cfg,
+		now:      now,
+		stop:     make(chan struct{}),
+	}
 }
 
 // Run claims and delivers until ctx ends. It delivers every due job before it
@@ -113,13 +138,15 @@ func (w *Worker) Run(ctx context.Context) error {
 		if err := w.deliverDue(ctx); err != nil {
 			return err
 		}
-		if w.stopping.Load() {
+		if w.stopRequested() {
 			return nil
 		}
 
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
+		case <-w.stop:
+			return nil
 		case <-w.cfg.Wake:
 		case <-ticker.C:
 		}
@@ -142,7 +169,7 @@ func (w *Worker) deliverDue(ctx context.Context) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		if w.stopping.Load() {
+		if w.stopRequested() {
 			return nil
 		}
 

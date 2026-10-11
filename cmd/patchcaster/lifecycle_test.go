@@ -166,3 +166,62 @@ func TestLifecycle_FailedPartTearsDownTheRest(t *testing.T) {
 	assert.True(t, h.worker.cancelled())
 	assert.Equal(t, []bool{true, false}, h.readiness)
 }
+
+func TestLifecycle_SignalLetsTheDeliveryInHandFinish(t *testing.T) {
+	// arrange: record what the parts see at the two turning points of the
+	// drain, the stop request and the end of the delivery in hand.
+	h := newLifecycleHarness(time.Minute)
+	var readyAtStop, publicEndedAtStop, workerCancelledAtStop bool
+	h.worker.onStop = func() {
+		readyAtStop = h.readiness[len(h.readiness)-1]
+		publicEndedAtStop = h.public.ended()
+		workerCancelledAtStop = h.worker.cancelled()
+	}
+	var internalEndedAtFinish, backgroundEndedAtFinish bool
+	h.worker.onFinish = func() {
+		internalEndedAtFinish = h.internal.ended()
+		backgroundEndedAtFinish = h.background.ended()
+	}
+	signalCtx, signal := context.WithCancel(context.Background())
+	defer signal()
+	done := h.start(t, signalCtx)
+
+	// act: SIGTERM arrives, then the delivery in hand completes.
+	signal()
+	select {
+	case <-h.worker.stopped:
+	case <-time.After(2 * time.Second):
+		t.Fatal("the worker was never asked to stop")
+	}
+	close(h.worker.finish)
+	err := awaitReturn(t, done)
+
+	// assert: the documented order, with the worker untouched by the signal.
+	require.NoError(t, err)
+	assert.False(t, readyAtStop, "readiness flips before the drain starts")
+	assert.True(t, publicEndedAtStop, "webhooks stop before the drain starts")
+	assert.False(t, workerCancelledAtStop, "SIGTERM must not cancel the delivery in hand")
+	assert.False(t, internalEndedAtFinish, "probes and metrics stay up during the drain")
+	assert.False(t, backgroundEndedAtFinish, "background tasks end after the worker")
+	assert.True(t, h.background.ended())
+	assert.True(t, h.internal.ended())
+}
+
+func TestLifecycle_DrainBudgetReleasesAStuckWorker(t *testing.T) {
+	// arrange: a delivery that never finishes on its own.
+	h := newLifecycleHarness(10 * time.Millisecond)
+	signalCtx, signal := context.WithCancel(context.Background())
+	defer signal()
+	done := h.start(t, signalCtx)
+
+	// act
+	signal()
+	err := awaitReturn(t, done)
+
+	// assert: the budget cancels the worker, and cancellation is an
+	// orderly stop rather than an error.
+	require.NoError(t, err)
+	assert.True(t, h.worker.cancelled())
+	assert.True(t, h.background.ended())
+	assert.True(t, h.internal.ended())
+}

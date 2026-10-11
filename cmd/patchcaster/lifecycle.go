@@ -56,9 +56,14 @@ type lifecycle struct {
 // worker gets the drain budget to finish what is in flight before the
 // internal listener stops last.
 func (l *lifecycle) run(ctx context.Context) error {
-	pubCtx, cancelPub := context.WithCancel(ctx)
-	wrkCtx, cancelWrk := context.WithCancel(ctx)
-	intCtx, cancelInt := context.WithCancel(ctx)
+	// ctx only signals the shutdown; it must not end the parts itself.
+	// Parts derived from it would all stop the moment SIGTERM arrives,
+	// cancelling the delivery in hand and the probes with it. Only the
+	// sequence below ends them, each at its turn.
+	detached := context.WithoutCancel(ctx)
+	pubCtx, cancelPub := context.WithCancel(detached)
+	wrkCtx, cancelWrk := context.WithCancel(detached)
+	intCtx, cancelInt := context.WithCancel(detached)
 	// Belt for early-return paths; the shutdown choreography below cancels
 	// these deliberately, and repeated cancel is a no-op.
 	defer cancelPub()
@@ -107,6 +112,7 @@ func (l *lifecycle) run(ctx context.Context) error {
 			cancelWrk()
 			<-workerDone
 		}
+		cancelWrk() // background tasks end with the worker
 		cancelInt()
 		recordAll(collect(errc, parts), &errs)
 	}

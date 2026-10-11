@@ -34,6 +34,7 @@ type ServeCmd struct {
 	EventMaxAge     time.Duration `flag:"" default:"4h" env:"PATCHCASTER_EVENT_MAX_AGE" help:"Freshness cap; older verified events are discarded."`
 	SeenRetention   time.Duration `flag:"" default:"24h" env:"PATCHCASTER_SEEN_RETENTION" help:"Seen-webhook retention; GitLab retries stay inside it."`
 	ClaimLease      time.Duration `flag:"" default:"60s" env:"PATCHCASTER_CLAIM_LEASE" help:"Job claim lease before reaping."`
+	PollInterval    time.Duration `flag:"" default:"10s" env:"PATCHCASTER_POLL_INTERVAL" help:"Fallback claim interval for retries, expired leases and missed wake-ups."`
 	LogLevel        string        `flag:"" default:"info" env:"PATCHCASTER_LOG_LEVEL" help:"Log level: debug|info|warn|error."`
 }
 
@@ -50,6 +51,7 @@ var serveSchema = z.Struct(z.Shape{
 	"EventMaxAge":    positiveDuration(),
 	"SeenRetention":  positiveDuration(),
 	"ClaimLease":     positiveDuration(),
+	"PollInterval":   positiveDuration(),
 })
 
 // replayLoopSchema keeps the replay loop closed: dedupe must outlive the
@@ -82,6 +84,7 @@ var flagNames = map[string]string{
 	"EventMaxAge":    "--event-max-age",
 	"SeenRetention":  "--seen-retention",
 	"ClaimLease":     "--claim-lease",
+	"PollInterval":   "--poll-interval",
 }
 
 // Validate enforces the startup invariants; kong calls it on the selected
@@ -156,11 +159,16 @@ func (c *ServeCmd) Run(ctx context.Context) error {
 		Log:     log,
 		Metrics: m,
 	}
+	listener, err := store.NewOutboxListener(c.DatabaseURL)
+	if err != nil {
+		return err
+	}
+	wakeup := deliver.NewWakeup(listener, m, log)
 	worker := deliver.NewWorker(
 		st,
 		mattermost.New(c.MattermostURL, c.MattermostToken),
 		renderer, m, log,
-		deliver.Config{Poll: time.Second, Lease: c.ClaimLease},
+		deliver.Config{Poll: c.PollInterval, Lease: c.ClaimLease, Wake: wakeup.C()},
 		nil,
 	)
 
@@ -187,7 +195,7 @@ func (c *ServeCmd) Run(ctx context.Context) error {
 
 	// One buffered slot per goroutine so late returns never block on a
 	// channel nobody drains during shutdown.
-	errc := make(chan error, 4)
+	errc := make(chan error, 5)
 	workerDone := make(chan struct{})
 	go func() { errc <- ops.ListenAndServe(intCtx, intLn, probe.Mux(), c.DrainTimeout) }()
 	go func() { errc <- ops.ListenAndServe(pubCtx, pubLn, handler.Mux(), c.DrainTimeout) }()
@@ -197,6 +205,7 @@ func (c *ServeCmd) Run(ctx context.Context) error {
 		errc <- err
 	}()
 	go func() { errc <- pruneLoop(wrkCtx, st, c.SeenRetention, log) }()
+	go func() { errc <- wakeup.Run(wrkCtx) }()
 
 	probe.MarkReady(true)
 	log.Info("serving", "public", c.Addr, "internal", c.InternalAddr)
@@ -209,7 +218,7 @@ func (c *ServeCmd) Run(ctx context.Context) error {
 		cancelPub()
 		cancelWrk()
 		cancelInt()
-		recordAll(collect(errc, 3), &errs)
+		recordAll(collect(errc, 4), &errs)
 
 	case <-ctx.Done():
 		probe.MarkReady(false)
@@ -226,7 +235,7 @@ func (c *ServeCmd) Run(ctx context.Context) error {
 			<-workerDone
 		}
 		cancelInt()
-		recordAll(collect(errc, 4), &errs)
+		recordAll(collect(errc, 5), &errs)
 	}
 
 	probe.MarkReady(false)

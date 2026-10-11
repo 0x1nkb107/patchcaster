@@ -21,10 +21,17 @@ non-zero before anything listens, naming every offending option at once.
 | `--event-max-age` | `PATCHCASTER_EVENT_MAX_AGE` | `4h` |
 | `--seen-retention` | `PATCHCASTER_SEEN_RETENTION` | `24h` |
 | `--claim-lease` | `PATCHCASTER_CLAIM_LEASE` | `60s` |
+| `--poll-interval` | `PATCHCASTER_POLL_INTERVAL` | `10s` |
 | `--log-level` | `PATCHCASTER_LOG_LEVEL` | `info` |
 
 `--seen-retention` must exceed `--event-max-age` — that inequality is what
 closes the replay loop (dedupe outlives the freshness cap).
+
+A new message wakes the delivery worker at once through PostgreSQL
+notifications. `--poll-interval` bounds how late the worker picks up retries
+that come due, messages whose worker died mid-delivery, and messages whose
+wake-up was missed. It is also how quickly messages go out when wake-ups are
+unavailable (see [database connection](operations.md#database-connection)).
 
 Durations use Go syntax (`90s`, `15m`, `4h`) and must be positive.
 `--log-level` is one of `debug`, `info`, `warn` or `error`.

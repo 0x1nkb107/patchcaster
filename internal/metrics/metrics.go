@@ -1,5 +1,6 @@
-// Package metrics defines the ingest-to-post funnel counters (SYSREQ-019).
-// Names and label causes live here and only here.
+// Package metrics defines the ingest-to-post funnel counters (SYSREQ-019)
+// and the wake-up listener gauge (ADR-019). Names and label causes live here
+// and only here.
 package metrics
 
 import (
@@ -65,6 +66,10 @@ type Metrics struct {
 	StateApplied *prometheus.CounterVec
 	Notices      *prometheus.CounterVec
 	PushAttrMiss prometheus.Counter
+
+	// ListenerUp is 1 while a confirmed session listens for new outbox rows
+	// and 0 while the worker relies on polling alone (ADR-019).
+	ListenerUp prometheus.Gauge
 }
 
 // New registers the funnel on a private registry.
@@ -121,11 +126,16 @@ func New() *Metrics {
 			Name: "patchcaster_push_attribution_misses_total",
 			Help: "Push deliveries that matched no open merge request.",
 		}),
+		ListenerUp: prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "patchcaster_outbox_listener_up",
+			Help: "1 while the worker is woken for new messages, 0 while it only polls.",
+		}),
 	}
 	reg.MustRegister(
 		m.Received, m.Rejected, m.Suppressed, m.Discarded, m.Skipped,
 		m.Parked, m.Posted, m.MMAttempts, m.MMDuration,
 		m.StateApplied, m.Notices, m.PushAttrMiss,
+		m.ListenerUp,
 	)
 	return m
 }

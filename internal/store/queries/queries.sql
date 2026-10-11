@@ -14,6 +14,9 @@ INSERT INTO outbox (mr_ref, action, dest_channel, payload, state, attempts,
                     next_attempt_at, created_at, updated_at)
 VALUES ($1, $2, $3, $4, 'pending', 0, $5, $5, $5);
 
+-- name: NotifyOutbox :exec
+SELECT pg_notify(sqlc.arg(channel)::text, '');
+
 -- name: PruneSeen :exec
 DELETE FROM seen_webhook WHERE first_seen < $1;
 

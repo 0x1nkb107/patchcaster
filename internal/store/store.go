@@ -146,7 +146,7 @@ func (p *Postgres) MarkOutcome(ctx context.Context, webhookID, outcome string, n
 // the identifier was already seen; enqueued false means the delivery moved no
 // observable state, so no delivery row was needed. ev.Plan carries the
 // ingest-side intent; Accept finalizes its Refresh flag from what actually
-// changed.
+// changed. An enqueue wakes OutboxListener sessions once it commits.
 func (p *Postgres) Accept(ctx context.Context, ev *event.Event, destChannel string, now time.Time) (AcceptResult, error) {
 	if ev.Plan == nil {
 		ev.Plan = &event.Plan{}
@@ -278,6 +278,11 @@ func (p *Postgres) Accept(ctx context.Context, ev *event.Event, destChannel stri
 		NextAttemptAt: now,
 	}); err != nil {
 		return AcceptResult{}, fmt.Errorf("enqueue webhook %q: %w", ev.WebhookID, err)
+	}
+	// PostgreSQL delivers the notification only if this transaction commits,
+	// so a woken worker always finds the row (ADR-019).
+	if err := q.NotifyOutbox(ctx, outboxChannel); err != nil {
+		return AcceptResult{}, fmt.Errorf("notify outbox listeners: %w", err)
 	}
 	if err := tx.Commit(); err != nil {
 		return AcceptResult{}, fmt.Errorf("commit accept: %w", err)

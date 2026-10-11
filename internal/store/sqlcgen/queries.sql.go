@@ -138,6 +138,15 @@ func (q *Queries) MarkSeen(ctx context.Context, arg MarkSeenParams) (sql.Result,
 	return q.db.ExecContext(ctx, markSeen, arg.WebhookID, arg.Outcome, arg.FirstSeen)
 }
 
+const notifyOutbox = `-- name: NotifyOutbox :exec
+SELECT pg_notify($1::text, '')
+`
+
+func (q *Queries) NotifyOutbox(ctx context.Context, channel string) error {
+	_, err := q.db.ExecContext(ctx, notifyOutbox, channel)
+	return err
+}
+
 const ping = `-- name: Ping :one
 SELECT 1
 `

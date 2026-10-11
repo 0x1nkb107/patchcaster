@@ -84,10 +84,17 @@ type fakeStore struct {
 	noticeFlags []int64
 	rootFlags   []int64
 	settledCh   chan struct{} // pinged on every settle when non-nil
+	idleCh      chan struct{} // pinged when a claim finds nothing, when non-nil
 }
 
 func (f *fakeStore) ClaimDue(_ context.Context, _ time.Time, _ time.Duration) (*store.Job, error) {
 	if len(f.jobs) == 0 {
+		if f.idleCh != nil {
+			select {
+			case f.idleCh <- struct{}{}:
+			default:
+			}
+		}
 		return nil, nil
 	}
 	job := f.jobs[0]
@@ -477,6 +484,45 @@ func TestWorker_RunDrainsBacklogWithoutWaitingForTicks(t *testing.T) {
 		assert.Equal(t, store.SettlementSent, rec.s.Kind)
 	}
 	assert.Len(t, h.fp.calls, 3)
+}
+
+func TestWorker_RunWakesWithoutWaitingForATick(t *testing.T) {
+	// arrange: an hour-long poll, so only the wake-up can start the pass
+	// that finds the job queued after the first, empty pass.
+	h := newHarness(t)
+	wake := make(chan struct{}, 1)
+	h.w.cfg.Poll = time.Hour
+	h.w.cfg.Wake = wake
+	h.fs.idleCh = make(chan struct{}, 1)
+	h.fs.settledCh = make(chan struct{}, 1)
+	openBoardThread(h)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan error, 1)
+	go func() { done <- h.w.Run(ctx) }()
+
+	select {
+	case <-h.fs.idleCh:
+	case <-time.After(2 * time.Second):
+		t.Fatal("the first pass never ran")
+	}
+
+	// act: queue a job while the worker idles, then wake it.
+	h.fs.jobs = []*store.Job{noticeJob(1, 0, "chan-dest")}
+	wake <- struct{}{}
+
+	// assert
+	select {
+	case <-h.fs.settledCh:
+	case <-time.After(2 * time.Second):
+		t.Fatal("the wake-up did not start a claim pass")
+	}
+	cancel()
+	require.ErrorIs(t, <-done, context.Canceled)
+	require.Len(t, h.fs.settles, 1)
+	assert.Equal(t, store.SettlementSent, h.fs.settles[0].s.Kind)
+	assert.Len(t, h.fp.calls, 1)
 }
 
 // --- schedule unit ----------------------------------------------------------------

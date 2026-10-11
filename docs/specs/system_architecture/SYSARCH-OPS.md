@@ -28,7 +28,7 @@ argument through every call.
 ## Static View (Structure)
 
 Components: `InternalServer` (probes + metrics), `Readiness` (store writability check), `Metrics`
-(registry and the funnel counters of SYSREQ-019), `Logging` (handler setup at `main`). No
+(registry, the funnel counters of SYSREQ-019, and the wake-up listener gauge of ADR-019), `Logging` (handler setup at `main`). No
 component outside this package writes metrics or decides log-handler shape.
 
 ## Dynamic View (Behavior)

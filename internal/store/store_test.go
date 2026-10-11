@@ -17,17 +17,24 @@ import (
 	"github.com/patchcaster-app/patchcaster/internal/store"
 )
 
+// testDatabaseURL names the disposable test database, or skips the test when
+// none is configured.
+func testDatabaseURL(t *testing.T) string {
+	t.Helper()
+	url := os.Getenv("PATCHCASTER_TEST_DATABASE_URL")
+	if url == "" {
+		t.Skip("PATCHCASTER_TEST_DATABASE_URL not set")
+	}
+	return url
+}
+
 // The PostgreSQL contract (ADR-010/ADR-006): these tests run against a real
 // database pointed at by PATCHCASTER_TEST_DATABASE_URL and RECREATE its
 // public schema. Point them only at a disposable database. Without the
 // variable they skip, keeping offline unit runs green.
 func openTestStore(t *testing.T) (*store.Postgres, *sql.DB) {
 	t.Helper()
-	url := os.Getenv("PATCHCASTER_TEST_DATABASE_URL")
-	if url == "" {
-		t.Skip("PATCHCASTER_TEST_DATABASE_URL not set")
-	}
-	cfg, err := pgx.ParseConfig(url)
+	cfg, err := pgx.ParseConfig(testDatabaseURL(t))
 	require.NoError(t, err)
 	db := pgxstdlib.OpenDB(*cfg)
 	t.Cleanup(func() { _ = db.Close() })

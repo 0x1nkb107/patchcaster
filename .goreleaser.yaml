@@ -71,6 +71,26 @@ dockers_v2:
     platforms:
       - linux/amd64
       - linux/arm64
+    # Every pushed image carries an SBOM attestation per platform (ADR-022).
+    # This is goreleaser's default, set here so the decision stays visible.
+    sbom: "true"
+    # OCI metadata, twice: labels sit in each image's config, where `docker
+    # inspect` shows them, and annotations sit on the image index, where
+    # GitHub's registry reads the source, description and licence of a
+    # multi-architecture image. The created time is the commit's, so the
+    # metadata does not depend on when the image was built (ADR-021).
+    labels: &oci_metadata
+      org.opencontainers.image.title: "{{ .ProjectName }}"
+      org.opencontainers.image.description: "From forge to chat: one live thread per merge request."
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+      org.opencontainers.image.created: "{{ .CommitDate }}"
+      org.opencontainers.image.source: "https://github.com/patchcaster-app/patchcaster"
+      org.opencontainers.image.documentation: "https://github.com/patchcaster-app/patchcaster/tree/{{ .Tag }}/docs"
+      org.opencontainers.image.licenses: "MIT"
+      org.opencontainers.image.base.name: "{{ .BaseImage }}"
+      org.opencontainers.image.base.digest: "{{ .BaseImageDigest }}"
+    annotations: *oci_metadata
 
 # Keyless cosign signing (ADR-016, SYSREQ-032). No keys exist: on GitHub
 # Actions cosign obtains the workflow's OIDC identity, Fulcio issues a short

@@ -56,6 +56,30 @@ func newEvent(id string) *event.Event {
 	return ev
 }
 
+// enqueueAll accepts each delivery in order and requires a queue row for it.
+func enqueueAll(t *testing.T, st *store.Postgres, at time.Time, events ...*event.Event) {
+	t.Helper()
+	for _, ev := range events {
+		res, err := st.Accept(context.Background(), ev, "chan-1", at)
+		require.NoError(t, err)
+		require.True(t, res.Enqueued, "delivery %q must enqueue", ev.WebhookID)
+	}
+}
+
+// claimDelivery claims the next due job and names it by webhook identifier.
+// It returns nil and an empty name when nothing is claimable.
+func claimDelivery(t *testing.T, st *store.Postgres, at time.Time) (*store.Job, string) {
+	t.Helper()
+	job, err := st.ClaimDue(context.Background(), at, time.Minute)
+	require.NoError(t, err)
+	if job == nil {
+		return nil, ""
+	}
+	ev, err := job.Event()
+	require.NoError(t, err)
+	return job, ev.WebhookID
+}
+
 func TestPostgres_AcceptDedupeAndClaim(t *testing.T) {
 	st, db := openTestStore(t)
 	ctx := context.Background()
@@ -160,6 +184,39 @@ func TestPostgres_SettleVariantsAndRetry(t *testing.T) {
 		states = append(states, s)
 	}
 	assert.Equal(t, []string{"sent:", "parked:attempt_budget", "skipped:no_mapping"}, states)
+}
+
+// A deferred delivery holds back the rest of its merge request. A comment
+// claimed ahead of its retrying root would find no thread and be skipped for
+// good, so the backlog must drain oldest-first per merge request (SCEN-005).
+func TestPostgres_RetryingDeliveryHoldsBackItsMergeRequest(t *testing.T) {
+	st, _ := openTestStore(t)
+	ctx := context.Background()
+	now := time.Now().UTC().Truncate(time.Millisecond)
+	later := now.Add(time.Hour + time.Second)
+
+	otherOpen := newEvent("b-open")
+	otherOpen.MRRef = "5678"
+	enqueueAll(t, st, now, newEvent("a-open"), noteEvent("a-note", "create", false), otherOpen)
+
+	root, id := claimDelivery(t, st, now)
+	require.Equal(t, "a-open", id)
+	require.NoError(t, st.Settle(ctx, root.ID, now,
+		store.Retried(1, now.Add(time.Hour), "http 503")))
+
+	other, id := claimDelivery(t, st, now)
+	require.Equal(t, "b-open", id, "the comment must not overtake its deferred root")
+	require.NoError(t, st.Settle(ctx, other.ID, now, store.Sent()))
+
+	_, id = claimDelivery(t, st, now)
+	assert.Empty(t, id, "nothing is claimable while the root waits")
+
+	root, id = claimDelivery(t, st, later)
+	require.Equal(t, "a-open", id, "the deferred root returns first once due")
+	require.NoError(t, st.Settle(ctx, root.ID, later, store.Sent()))
+
+	_, id = claimDelivery(t, st, later)
+	assert.Equal(t, "a-note", id, "the comment follows its sent root")
 }
 
 func TestPostgres_ThreadLifecycle(t *testing.T) {

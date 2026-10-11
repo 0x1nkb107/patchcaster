@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/patchcaster-app/patchcaster/internal/ops"
+	"github.com/patchcaster-app/patchcaster/internal/graceful"
 )
 
 // collect receives n results from errc.
@@ -20,7 +20,7 @@ func collect(errc chan error, n int) []error {
 
 // record keeps err unless it only reports an orderly stop.
 func record(err error, errs *[]error) {
-	if err == nil || errors.Is(err, context.Canceled) || errors.Is(err, ops.ErrStopped) {
+	if err == nil || errors.Is(err, context.Canceled) || errors.Is(err, graceful.ErrStopped) {
 		return
 	}
 	*errs = append(*errs, err)

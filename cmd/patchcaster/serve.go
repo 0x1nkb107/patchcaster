@@ -13,6 +13,7 @@ import (
 	"github.com/lmittmann/tint"
 
 	"github.com/patchcaster-app/patchcaster/internal/deliver"
+	"github.com/patchcaster-app/patchcaster/internal/graceful"
 	"github.com/patchcaster-app/patchcaster/internal/ingest"
 	"github.com/patchcaster-app/patchcaster/internal/mattermost"
 	"github.com/patchcaster-app/patchcaster/internal/metrics"
@@ -184,10 +185,10 @@ func (c *ServeCmd) Run(ctx context.Context) error {
 
 	lc := &lifecycle{
 		internal: func(ctx context.Context) error {
-			return ops.ListenAndServe(ctx, intLn, probe.Mux(), c.DrainTimeout)
+			return graceful.Serve(ctx, intLn, probe.Mux(), c.DrainTimeout)
 		},
 		public: func(ctx context.Context) error {
-			return ops.ListenAndServe(ctx, pubLn, handler.Mux(), c.DrainTimeout)
+			return graceful.Serve(ctx, pubLn, handler.Mux(), c.DrainTimeout)
 		},
 		worker: worker,
 		background: []func(context.Context) error{

@@ -1,12 +1,11 @@
-// Package ops serves the internal listener: liveness, readiness, and
-// Prometheus metrics (SYSARCH-004). It never depends on Mattermost health —
-// Mattermost outages must not restart the pod via liveness.
+// Package ops provides the internal listener's handlers: liveness,
+// readiness, and Prometheus metrics (SYSARCH-004). It never depends on
+// Mattermost health — Mattermost outages must not restart the pod via
+// liveness. Package graceful serves the handlers.
 package ops
 
 import (
 	"context"
-	"errors"
-	"net"
 	"net/http"
 	"sync/atomic"
 	"time"
@@ -21,7 +20,7 @@ type Pinger interface {
 	Ping(ctx context.Context) error
 }
 
-// Server owns the internal listener and its readiness bit.
+// Server holds the internal listener's handlers and its readiness bit.
 type Server struct {
 	pinger  Pinger
 	metrics *metrics.Metrics
@@ -58,27 +57,4 @@ func (s *Server) Mux() http.Handler {
 	mux.Handle("GET /metrics", promhttp.HandlerFor(
 		s.metrics.Registry, promhttp.HandlerOpts{Registry: s.metrics.Registry}))
 	return mux
-}
-
-// ErrStopped distinguishes normal http.Server.Shutdown termination.
-var ErrStopped = errors.New("listener stopped")
-
-// ListenAndServe serves the given listener until ctx ends, then drains
-// in-flight requests within the shutdown budget. Callers bind the socket
-// first so a bind failure surfaces before the service claims readiness.
-func ListenAndServe(ctx context.Context, ln net.Listener, handler http.Handler, shutdown time.Duration) error {
-	srv := &http.Server{Handler: handler, ReadHeaderTimeout: 5 * time.Second}
-	errCh := make(chan error, 1)
-	go func() { errCh <- srv.Serve(ln) }()
-
-	<-ctx.Done()
-	drain, cancel := context.WithTimeout(context.Background(), shutdown)
-	defer cancel()
-	if err := srv.Shutdown(drain); err != nil {
-		return err
-	}
-	if err := <-errCh; errors.Is(err, http.ErrServerClosed) {
-		return ErrStopped
-	}
-	return nil
 }

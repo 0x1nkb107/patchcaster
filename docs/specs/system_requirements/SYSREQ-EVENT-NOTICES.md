@@ -44,7 +44,7 @@ push) would drown the very thread they announce. Silence by default keeps the al
   system `approvals_reset_on_push`, reviewer re-requests, and title/label-only updates.
 - Human-only comments notify: deliveries flagged `system: true` never produce a notice, so
   GitLab's own notes (including "added 1 commit" system notes) stay out of the thread.
-- Every notice targets the thread's own root (SYSREQ-020 semantics) and is bound by the
+- Every notice targets the thread's own root (SYSREQ-005 semantics) and is bound by the
   no-duplicate-on-retry rule (SYSREQ-028) and the unmapped-skip rule (SYSREQ-007).
 - The merge notice precedes the final root refresh and the mapping close.
 

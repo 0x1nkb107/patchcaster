@@ -38,7 +38,7 @@ Release with goreleaser v2, pinned as a tools module exactly like the lint and c
 - Images are published to the GitHub Container Registry (`ghcr.io`) under the version tag plus
   a `latest` floating tag tracking the most recent release; the GitHub release carries the
   archives and their checksums. SBOMs and Homebrew taps are explicitly out of scope
-  for v1; artifact signing is ADR-016.
+  for v1; artifact signing is ADR-016. (Amended by ADR-022: images now carry SBOM attestations, while the archives still ship none.)
 - Publishing is triggered by pushing a `v*` tag in a dedicated GitHub Actions workflow using
   the workflow `GITHUB_TOKEN`; ordinary pushes run the same pipeline with `--snapshot` and
   publish nothing.

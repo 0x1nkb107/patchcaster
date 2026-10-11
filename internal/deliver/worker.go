@@ -55,8 +55,12 @@ type Store interface {
 
 // Config tunes the claim loop.
 type Config struct {
-	Poll  time.Duration // idle wait between claim attempts
+	Poll  time.Duration // idle wait between claim passes without a wake-up
 	Lease time.Duration // claim lease before the reaper may requeue
+
+	// Wake starts a claim pass before the next tick. Wakeup.C supplies it
+	// (ADR-019); nil leaves the worker polling only.
+	Wake <-chan struct{}
 }
 
 // Worker delivers queued messages to Mattermost: one thread root per merge
@@ -99,9 +103,9 @@ func NewWorker(st Store, poster Poster, r *Renderer, m *metrics.Metrics, log *sl
 }
 
 // Run claims and delivers until ctx ends. It delivers every due job before it
-// idles until the next poll tick, so a backlog drains at delivery speed rather
-// than one job per tick. Mid-delivery work is abandoned promptly; its lease is
-// reaped for the next worker (or the next start).
+// idles until the next wake-up or poll tick, so a backlog drains at delivery
+// speed rather than one job per tick. Mid-delivery work is abandoned promptly;
+// its lease is reaped for the next worker (or the next start).
 func (w *Worker) Run(ctx context.Context) error {
 	ticker := time.NewTicker(w.cfg.Poll)
 	defer ticker.Stop()
@@ -116,6 +120,7 @@ func (w *Worker) Run(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
+		case <-w.cfg.Wake:
 		case <-ticker.C:
 		}
 	}

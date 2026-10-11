@@ -77,6 +77,13 @@ cosign verify-blob --bundle checksums.txt.sigstore.json \
 sha256sum --ignore-missing -c checksums.txt
 ```
 
+Each image also carries a software bill of materials (SBOM) for every platform. It lists the packages of the image's base layer and the Go modules built into the binary, and it is part of the signed image index. Read it with Docker:
+
+```sh
+docker buildx imagetools inspect ghcr.io/patchcaster-app/patchcaster:vX.Y.Z \
+  --format '{{ json .SBOM }}'
+```
+
 ## First start
 
 On startup PatchCaster loads the routing table, connects to PostgreSQL,

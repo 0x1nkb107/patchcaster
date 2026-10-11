@@ -44,6 +44,7 @@ func TestDefaults(t *testing.T) {
 	assert.Equal(t, 30*time.Second, cli.Serve.DrainTimeout)
 	assert.Equal(t, 4*time.Hour, cli.Serve.EventMaxAge)
 	assert.Equal(t, 24*time.Hour, cli.Serve.SeenRetention)
+	assert.Equal(t, 10*time.Second, cli.Serve.PollInterval)
 	assert.Equal(t, "info", cli.Serve.LogLevel)
 }
 
@@ -96,6 +97,7 @@ func TestValidateInvariants(t *testing.T) {
 		{"retention not beyond cap", append(minimalFlags, "--event-max-age=24h", "--seen-retention=24h")},
 		{"retention below cap", append(minimalFlags, "--event-max-age=48h", "--seen-retention=24h")},
 		{"zero drain", append(minimalFlags, "--drain-timeout=0s")},
+		{"zero poll interval", append(minimalFlags, "--poll-interval=0s")},
 		{"bad log level", append(minimalFlags, "--log-level=trace")},
 	}
 	for _, tc := range tests {

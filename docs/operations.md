@@ -34,6 +34,10 @@ A rising `deliveries_discarded_total{cause="unprocessed_kind"}` usually means
 a GitLab trigger is enabled that PatchCaster does not use; a missing trigger
 shows up as silence instead (see [GitLab triggers](integrations/gitlab.md#triggers)).
 
+`outbox_listener_up` is a gauge, not a count: 1 while new messages wake the
+delivery worker at once, 0 while the worker only polls (see
+[database connection](#database-connection)).
+
 ## Drain and shutdown
 
 SIGTERM stops acceptance and gives in-flight work `--drain-timeout`; set
@@ -87,6 +91,20 @@ FROM outbox
 WHERE state = 'parked'
 ORDER BY settled_at DESC;
 ```
+
+## Database connection
+
+Besides its connection pool, each instance keeps one connection to
+PostgreSQL that listens for new messages, so the worker delivers a message as
+soon as its webhook is accepted. That connection must reach PostgreSQL
+directly or through a pooler in session mode. A pooler in transaction mode,
+such as PgBouncer with `pool_mode = transaction`, never forwards
+notifications. PatchCaster checks for this whenever the listener connects,
+logs a warning and tries again later.
+
+Without the listener nothing is lost: the worker still picks up messages
+every `--poll-interval`, only later. `patchcaster_outbox_listener_up` shows
+which mode an instance is in, so alert on it staying at 0.
 
 ## Scaling
 

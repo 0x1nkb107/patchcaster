@@ -36,7 +36,8 @@ the release workflow installs it.
 | `internal/deliver` | outbox worker and the embedded message templates |
 | `internal/mattermost` | bot-account client that posts and updates messages |
 | `internal/store` | PostgreSQL queue, thread mappings and dedupe records; migrations, queries, generated `sqlcgen` |
-| `internal/routing`, `internal/metrics`, `internal/ops` | routing table, funnel counters, probe and metrics listener |
+| `internal/routing`, `internal/metrics`, `internal/ops` | routing table, funnel counters, probe and metrics handlers |
+| `internal/graceful` | HTTP serving with a drain budget, for both listeners |
 | `contrib/` | the example routing table `just run` serves with |
 | `demo/` | stub Mattermost and signed-webhook simulator |
 | `docs/specs/` | requirements, architecture and ADRs (SARA) |

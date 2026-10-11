@@ -16,6 +16,7 @@ import (
 
 // server is one Serve call on a loopback listener.
 type server struct {
+	ln     net.Listener
 	addr   string
 	cancel context.CancelFunc
 	done   chan error
@@ -28,7 +29,7 @@ func startServe(t *testing.T, handler http.Handler, budget time.Duration) *serve
 
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
-	s := &server{addr: ln.Addr().String(), cancel: cancel, done: make(chan error, 1)}
+	s := &server{ln: ln, addr: ln.Addr().String(), cancel: cancel, done: make(chan error, 1)}
 	go func() { s.done <- graceful.Serve(ctx, ln, handler, budget) }()
 	return s
 }
@@ -122,17 +123,43 @@ func TestServe_LetsAnInFlightRequestFinish(t *testing.T) {
 	assert.ErrorIs(t, s.awaitEnd(t), graceful.ErrStopped)
 }
 
-func TestServe_ReportsAnExpiredBudget(t *testing.T) {
-	// arrange: a request that outlives the shutdown budget.
+func TestServe_CutsOffRequestsBeyondTheBudget(t *testing.T) {
+	// arrange: a request that outlives the shutdown budget. The handler is
+	// released only when the test ends, so a response before that can only
+	// mean the connection was cut.
 	handler, entered, release := heldHandler()
 	t.Cleanup(func() { close(release) })
 	s := startServe(t, handler, 20*time.Millisecond)
-	get(s.addr)
+	status := get(s.addr)
 	<-entered
 
 	// act
 	s.cancel()
 
-	// assert
-	assert.ErrorIs(t, s.awaitEnd(t), context.DeadlineExceeded)
+	// assert: the expired budget is reported, and the held request fails.
+	err := s.awaitEnd(t)
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
+	assert.ErrorContains(t, err, "shut down "+s.addr)
+	select {
+	case code := <-status:
+		assert.Zero(t, code, "the held request must fail, not answer late")
+	case <-time.After(2 * time.Second):
+		t.Fatal("the held connection was left open")
+	}
+}
+
+func TestServe_ReportsAFailedListenerAtOnce(t *testing.T) {
+	// arrange
+	ok := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+	s := startServe(t, ok, time.Second)
+	require.Equal(t, http.StatusOK, <-get(s.addr))
+
+	// act: the listener breaks while the context is still live.
+	require.NoError(t, s.ln.Close())
+
+	// assert: Serve returns the failure without waiting for shutdown.
+	err := s.awaitEnd(t)
+	assert.NotErrorIs(t, err, graceful.ErrStopped)
+	assert.ErrorContains(t, err, "serve "+s.addr)
+	assert.ErrorIs(t, err, net.ErrClosed)
 }

@@ -91,7 +91,7 @@ func (l *lifecycle) run(ctx context.Context) error {
 	var errs []error
 	select {
 	case err := <-errc:
-		// Component failure at startup: tear everything down at once.
+		// A part failed, at startup or later: tear everything down at once.
 		record(err, &errs)
 		cancelPub()
 		cancelWrk()

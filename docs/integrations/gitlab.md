@@ -9,7 +9,7 @@ which projects reach a channel.
 
 Use a **Standard Webhooks**-capable hook (system, group, or project) with the
 signing token enabled. PatchCaster verifies only the `webhook-signature` HMAC
-(`v1,{base64}` over `{webhook-id}.{timestamp}.{body}`, ADR-002); the legacy
+(`v1,{base64}` over `{webhook-id}.{timestamp}.{body}`); the legacy
 `X-Gitlab-Token` is never trusted.
 
 * **URL**: `https://<patchcaster-host>/webhook` — the endpoint is

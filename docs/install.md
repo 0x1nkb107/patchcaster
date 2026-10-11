@@ -19,8 +19,8 @@ then point GitLab at it.
 
 The chart is `oci://ghcr.io/patchcaster-app/charts/patchcaster`, built in the
 sibling [`patchcaster-app/charts`](https://github.com/patchcaster-app/charts)
-repository (SYSREQ-033, ADR-017). Its README is the reference for installing
-it, its values, and verifying it. Chart versions follow releases
+repository. Its README is the reference for installing it, its values, and
+verifying it. Chart versions follow releases
 (`appVersion` = tag) and sign under *that* repository's workflow identity, so
 the verify regexp differs from the one below — its README carries the exact
 command.
@@ -57,8 +57,8 @@ runtime libraries; run it under your service manager with the
 ## Verify what you deploy
 
 Release images, and the checksum file covering the archives, are signed
-keylessly with cosign v3 by the release workflow (ADR-016), so verify them
-with cosign v3 or later. Verify an image before deploying it:
+keylessly with cosign v3 by the release workflow, so verify them with cosign
+v3 or later. Verify an image before deploying it:
 
 ```sh
 cosign verify ghcr.io/patchcaster-app/patchcaster:vX.Y.Z \

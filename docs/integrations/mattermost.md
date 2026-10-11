@@ -1,9 +1,9 @@
 # Mattermost
 
-PatchCaster posts as a Mattermost **bot account** through the REST API v4
-(SYSREQ-004): it creates each thread's root post and replies with
-`POST /api/v4/posts`, and refreshes the root's status board by editing the
-bot's own post with `PUT /api/v4/posts/{id}`. Incoming webhooks are never
+PatchCaster posts as a Mattermost **bot account** through the REST API v4:
+it creates each thread's root post and replies with `POST /api/v4/posts`, and
+refreshes the root's status board by editing the bot's own post with
+`PUT /api/v4/posts/{id}`. Incoming webhooks are never
 used: each is fixed to one channel and cannot thread replies reliably.
 
 ## Bot account
@@ -49,9 +49,9 @@ curl -s -H "Authorization: Bearer $PATCHCASTER_MATTERMOST_TOKEN" \
   (`patchcaster_messages_parked_total{cause="attempt_budget"}`); the refusal
   is kept in the outbox row's `last_error`. See
   [delivery guarantees](../operations.md#delivery-guarantees).
-* **A deleted root post** counts as an intentional removal (SYSREQ-026): work
-  for that thread parks with `cause="thread_gone"`, and PatchCaster does not
-  post the thread again.
+* **A deleted root post** counts as an intentional removal: work for that
+  thread parks with `cause="thread_gone"`, and PatchCaster does not post the
+  thread again.
 * **A post edit time limit** (`ServiceSettings.PostEditTimeLimit`) also
   binds the bot: once a root post is older than the limit, its status board
   can no longer be refreshed. Keep the limit off on servers PatchCaster

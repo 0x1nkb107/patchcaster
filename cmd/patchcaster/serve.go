@@ -30,9 +30,9 @@ type ServeCmd struct {
 	MattermostToken string        `flag:"" required:"" env:"PATCHCASTER_MATTERMOST_TOKEN" help:"Bot account auth token."`
 	SigningSecrets  []string      `flag:"" name:"signing-secret" sep:"," env:"PATCHCASTER_SIGNING_SECRETS" required:"" help:"GitLab Standard Webhooks signing secret; repeat or comma-separate for rotation."`
 	RoutingFile     string        `flag:"" required:"" env:"PATCHCASTER_ROUTING_FILE" help:"Routing table YAML."`
-	DrainTimeout    time.Duration `flag:"" default:"30s" env:"PATCHCASTER_DRAIN_TIMEOUT" help:"In-flight budget after SIGTERM; deployment grace period must exceed it (SYSREQ-023)."`
-	EventMaxAge     time.Duration `flag:"" default:"4h" env:"PATCHCASTER_EVENT_MAX_AGE" help:"Freshness cap; older verified events are discarded (SYSREQ-013)."`
-	SeenRetention   time.Duration `flag:"" default:"24h" env:"PATCHCASTER_SEEN_RETENTION" help:"Seen-webhook retention; GitLab retries stay inside it (SYSREQ-014)."`
+	DrainTimeout    time.Duration `flag:"" default:"30s" env:"PATCHCASTER_DRAIN_TIMEOUT" help:"In-flight budget after SIGTERM; the deployment grace period must exceed it."`
+	EventMaxAge     time.Duration `flag:"" default:"4h" env:"PATCHCASTER_EVENT_MAX_AGE" help:"Freshness cap; older verified events are discarded."`
+	SeenRetention   time.Duration `flag:"" default:"24h" env:"PATCHCASTER_SEEN_RETENTION" help:"Seen-webhook retention; GitLab retries stay inside it."`
 	ClaimLease      time.Duration `flag:"" default:"60s" env:"PATCHCASTER_CLAIM_LEASE" help:"Job claim lease before reaping."`
 	LogLevel        string        `flag:"" default:"info" env:"PATCHCASTER_LOG_LEVEL" help:"Log level: debug|info|warn|error."`
 }

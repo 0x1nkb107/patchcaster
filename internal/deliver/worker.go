@@ -63,8 +63,9 @@ type Config struct {
 // request, notices and root refreshes afterwards (SYSREQ-004/005/028/029).
 //
 // A single worker goroutine is run per replica (v1 deployment is one replica
-// by choice, ADR-010). Claiming in arrival order then serializes all activity
-// per merge request, which is what makes "exactly one root post" robust.
+// by choice, ADR-010). The store's claim serializes all activity per merge
+// request in arrival order, which is what makes "exactly one root post"
+// robust.
 type Worker struct {
 	store    Store
 	poster   Poster

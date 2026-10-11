@@ -219,6 +219,59 @@ func TestPostgres_RetryingDeliveryHoldsBackItsMergeRequest(t *testing.T) {
 	assert.Equal(t, "a-note", id, "the comment follows its sent root")
 }
 
+// An in-flight delivery holds back the rest of its merge request, so a second
+// worker never posts a reply beside a root that is still being posted.
+func TestPostgres_ClaimedDeliveryHoldsBackItsMergeRequest(t *testing.T) {
+	st, _ := openTestStore(t)
+	ctx := context.Background()
+	now := time.Now().UTC().Truncate(time.Millisecond)
+
+	otherOpen := newEvent("b-open")
+	otherOpen.MRRef = "5678"
+	enqueueAll(t, st, now, newEvent("a-open"), noteEvent("a-note", "create", false), otherOpen)
+
+	root, id := claimDelivery(t, st, now)
+	require.Equal(t, "a-open", id)
+
+	_, id = claimDelivery(t, st, now)
+	require.Equal(t, "b-open", id, "the comment must wait for its claimed root")
+
+	_, id = claimDelivery(t, st, now)
+	assert.Empty(t, id, "nothing is claimable while both roots are in flight")
+
+	require.NoError(t, st.Settle(ctx, root.ID, now, store.Sent()))
+	_, id = claimDelivery(t, st, now)
+	assert.Equal(t, "a-note", id, "the comment follows its sent root")
+}
+
+// A settled delivery releases its merge request whatever the outcome. A
+// parked or skipped head must not wedge every later delivery behind it.
+func TestPostgres_SettledDeliveryReleasesItsMergeRequest(t *testing.T) {
+	tests := []struct {
+		name       string
+		settlement store.Settlement
+	}{
+		{name: "parked", settlement: store.Parked("attempt_budget", 8, "http 500")},
+		{name: "skipped", settlement: store.Skipped("duplicate_open")},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			st, _ := openTestStore(t)
+			ctx := context.Background()
+			now := time.Now().UTC().Truncate(time.Millisecond)
+
+			enqueueAll(t, st, now, newEvent("a-open"), noteEvent("a-note", "create", false))
+
+			root, id := claimDelivery(t, st, now)
+			require.Equal(t, "a-open", id)
+			require.NoError(t, st.Settle(ctx, root.ID, now, tc.settlement))
+
+			_, id = claimDelivery(t, st, now)
+			assert.Equal(t, "a-note", id, "a %s root must release its merge request", tc.name)
+		})
+	}
+}
+
 func TestPostgres_ThreadLifecycle(t *testing.T) {
 	st, _ := openTestStore(t)
 	ctx := context.Background()

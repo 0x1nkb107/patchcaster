@@ -17,13 +17,24 @@ VALUES ($1, $2, $3, $4, 'pending', 0, $5, $5, $5);
 -- name: PruneSeen :exec
 DELETE FROM seen_webhook WHERE first_seen < $1;
 
+-- A row waits while an older row of its merge request is still pending or
+-- claimed: a retrying or in-flight delivery holds back the rest of its merge
+-- request, so replies never overtake their root (SYSARCH-002). Parked and
+-- skipped rows are settled and hold nothing back.
+
 -- name: ClaimDue :one
 UPDATE outbox
 SET claimed_at = $1, lease_expiry = $2, state = 'claimed', updated_at = $1
 WHERE id = (
-    SELECT id FROM outbox
-    WHERE state = 'pending' AND next_attempt_at <= $1
-    ORDER BY id ASC
+    SELECT candidate.id FROM outbox AS candidate
+    WHERE candidate.state = 'pending' AND candidate.next_attempt_at <= $1
+      AND NOT EXISTS (
+          SELECT 1 FROM outbox AS earlier
+          WHERE earlier.mr_ref = candidate.mr_ref
+            AND earlier.id < candidate.id
+            AND earlier.state IN ('pending', 'claimed')
+      )
+    ORDER BY candidate.id ASC
     FOR UPDATE SKIP LOCKED
     LIMIT 1
 )

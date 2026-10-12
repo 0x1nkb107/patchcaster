@@ -29,6 +29,7 @@ jobs:
             go.sum
             tools/golangci/go.sum
             tools/sqlc/go.sum
+            tools/goreleaser/go.sum
 
       - uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
         with:
@@ -36,6 +37,11 @@ jobs:
 
       - name: Quality gate
         run: just quality
+
+      # The release rehearsal runs only on main (ADR-023). Validating the
+      # config here keeps a broken one from merging.
+      - name: Validate release config
+        run: just release-check
 
   # The PostgreSQL service is not optional comfort: without the URL the
   # store contract suite skips, and CI coverage would vanish silently.

@@ -7,7 +7,7 @@
 [![CI](https://github.com/patchcaster-app/patchcaster/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/patchcaster-app/patchcaster/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/patchcaster-app/patchcaster?sort=semver)](https://github.com/patchcaster-app/patchcaster/releases)
 [![Go](https://img.shields.io/github/go-mod/go-version/patchcaster-app/patchcaster)](go.mod)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License: AGPL-3.0-only](https://img.shields.io/badge/license-AGPL--3.0--only-blue.svg)](LICENSE)
 
 [Install](docs/install.md) ·
 [Configuration](docs/configuration.md) ·
@@ -46,3 +46,7 @@ GitLab, Mattermost or network access.
 | [Operations](docs/operations.md) | probes, metrics, drain, upgrades, delivery guarantees |
 | [Changelog](CHANGELOG.md) | what changed in each release |
 | [Development](docs/development.md) | building, testing, sending changes upstream |
+
+## License
+
+PatchCaster is free software under the [GNU Affero General Public License, version 3](LICENSE). Later versions of that licence apply once the project's licence proxy has accepted them, as the [proxy grant](LICENSES/LicenseRef-PatchCaster-Accepted-AGPL.txt) sets out. If you modify PatchCaster and let others interact with it over a network, the licence requires you to offer them the source of your modified version.

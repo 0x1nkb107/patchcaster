@@ -1,0 +1,10 @@
+version = 1
+
+# Every file in the repository is licensed under the GNU Affero General
+# Public License, version 3, with the section 14 proxy grant in
+# LICENSES/LicenseRef-PatchCaster-Accepted-AGPL.txt (ADR-024). A file
+# with its own SPDX header overrides this annotation.
+[[annotations]]
+path = "**"
+SPDX-FileCopyrightText = "2026 The patchcaster Authors"
+SPDX-License-Identifier = "AGPL-3.0-only OR LicenseRef-PatchCaster-Accepted-AGPL"

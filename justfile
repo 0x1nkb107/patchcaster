@@ -34,9 +34,9 @@ fmt-check:
 test-integration:
 	PATCHCASTER_TEST_DATABASE_URL="{{test_database_url}}" go test -count=1 ./internal/store/
 
-# CI quality gate: formatting, the CGO-free build contract, vet, and the
-# pinned golangci-lint (lint pulls in vet).
-quality: fmt-check build lint
+# CI quality gate: formatting, the CGO-free build contract, generated query
+# code that matches sqlc's output, and vet with the pinned golangci-lint.
+quality: fmt-check build sqlc-check lint
 
 # Vet and the pinned golangci-lint.
 # -modfile resolves the tool from the pinned tools/golangci module while the
@@ -51,6 +51,11 @@ build:
 # Regenerate sqlc query code after editing internal/store/queries or migrations (ADR-010).
 sqlc:
 	go tool -modfile tools/sqlc/go.mod sqlc generate
+
+# Generated query code is never edited by hand or left stale: fail when the
+# committed code differs from what sqlc generates.
+sqlc-check:
+	go tool -modfile tools/sqlc/go.mod sqlc diff
 
 # Apply migrations from the embedded set against the target database.
 migrate:

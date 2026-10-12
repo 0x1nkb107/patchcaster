@@ -41,7 +41,7 @@ Release with goreleaser v2, pinned as a tools module exactly like the lint and c
   for v1; artifact signing is ADR-016. (Amended by ADR-022: images now carry SBOM attestations, while the archives still ship none.)
 - Publishing is triggered by pushing a `v*` tag in a dedicated GitHub Actions workflow using
   the workflow `GITHUB_TOKEN`; ordinary pushes run the same pipeline with `--snapshot` and
-  publish nothing.
+  publish nothing. (Amended by ADR-023: pushes to `main` now rehearse the full release procedure, still publishing nothing.)
 
 ## Consequences
 

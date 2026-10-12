@@ -34,10 +34,10 @@ itself is the ADR-015 goreleaser run.
 
 ## Verification Plan
 
-- **Method**: Manual + configuration check.
+- **Method**: Manual + pipeline.
 - **Procedure**: `goreleaser check` validates the pipeline configuration in CI; end to end,
   push a `v*` tag to a staging clone and confirm the release listing and that both manifest
-  digests serve. A snapshot run (`--skip=publish`) is the routine smoke test.
+  digests serve. Every push to `main` rehearses the release without publishing (ADR-023): it tags locally, runs the real release into a throwaway registry and checks that the version tag serves an index with exactly `linux/amd64` and `linux/arm64`, that `latest` moves to it, and that the archives match their checksums.
 
 ## Notes
 

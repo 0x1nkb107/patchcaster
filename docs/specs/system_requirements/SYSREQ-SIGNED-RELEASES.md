@@ -37,7 +37,7 @@ identity-based verification it natively supports.
 
 - **Method**: Manual + pipeline.
 - **Procedure**: After a tag push, run the verification commands in `docs/install.md` against the image and
-  the archive bundle; the CI snapshot job proves non-Actions runs skip signing cleanly
+  the archive bundle; the CI release rehearsal (ADR-023) proves that runs without a release identity skip signing cleanly
   (`--skip=sign`) instead of attempting identities they cannot obtain.
 
 ## Notes

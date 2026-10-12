@@ -133,10 +133,7 @@ Then, depending on what the change touches:
 * **SQL queries or migrations** (`internal/store/queries`,
   `internal/store/migrations`): run `just sqlc` and commit the regenerated
   `internal/store/sqlcgen`. CI does not regenerate it.
-* **Release pipeline** (`.goreleaser.yaml`, `Dockerfile`, build flags): run
-  `just release-check` and `just release-snapshot`; pull requests repeat both
-  in the Release workflow's smoke job. Without a Docker daemon,
-  `just release-snapshot --skip=docker` still builds the binaries.
+* **Release pipeline** (`.goreleaser.yaml`, `Dockerfile`, build flags): run `just release-check` and `just release-snapshot`. Without a Docker daemon, `just release-snapshot --skip=docker` still builds the binaries. Pull requests run `just release-check` in CI. Every push to `main` goes further in the Release workflow's rehearsal job: it batches the changelog, tags and runs `just release-publish` inside the runner, pushes the images to a throwaway registry and checks the result, without publishing anything (ADR-023).
 * **Behaviour**: the specs are normative, so a change in what PatchCaster does
   needs the matching requirement, architecture item or ADR under
   [`specs/`](specs/README.md) updated too. Run `sara check` after editing

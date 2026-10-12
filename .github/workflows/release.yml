@@ -2,12 +2,13 @@
 ---
 name: Release
 
-# Tags cut releases; everything else exercises the same pipeline as a
-# snapshot that publishes nothing (ADR-015).
+# Tags cut releases. Every push to main rehearses the same release
+# procedure inside the runner and publishes nothing (ADR-023). Pull requests
+# only validate the release config, in the CI workflow.
 on:
   push:
+    branches: [main]
     tags: ["v*"]
-  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -17,16 +18,31 @@ env:
   GOTOOLCHAIN: local
 
 jobs:
-  # The drift alarm: config validity, both cross-compiled binaries run, and
-  # the multi-arch image build (buildx) succeeds — without an external
-  # publish in sight.
-  smoke:
-    if: github.event_name != 'push'
+  # The release rehearsal (ADR-023): the documented release procedure, run
+  # inside the runner. It batches the changelog, commits, tags and pushes
+  # multi-platform images with their SBOM attestations, then checks the
+  # result against the release contract. Nothing leaves the runner: the
+  # commit and the tag are never pushed, the registry service dies with the
+  # job, the GitHub release is switched off and nothing is signed. Pushes to
+  # main and manual runs rehearse; tag pushes release for real instead.
+  rehearsal:
+    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
+    services:
+      registry:
+        image: registry:3
+        ports:
+          - 5000:5000
+    env:
+      PATCHCASTER_IMAGE_REPO: localhost:5000/patchcaster
+      PATCHCASTER_RELEASE_REHEARSAL: "true"
     steps:
+      # Full history and tags: changie and goreleaser derive versions from
+      # them, as in the release job.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
           persist-credentials: false
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -34,6 +50,7 @@ jobs:
           go-version-file: go.mod
           cache-dependency-path: |
             go.sum
+            tools/changie/go.sum
             tools/golangci/go.sum
             tools/sqlc/go.sum
             tools/goreleaser/go.sum
@@ -42,22 +59,39 @@ jobs:
         with:
           just-version: '1.58.0'
 
-      # A docker-container builder supports multi-platform pushes, index
-      # annotations and SBOM attestations, whatever image store the
-      # runner's Docker daemon uses (ADR-022).
+      # The release job's builder, plus host networking so that BuildKit
+      # can reach the registry service on localhost.
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          driver-opts: network=host
 
       - name: Validate release config
         run: just release-check
 
-      - name: Snapshot build (binaries and images, no publish)
-        run: just release-snapshot
+      # A placeholder fragment keeps the batch working right after a
+      # release, when no fragments are pending.
+      - name: Batch the changelog as for a release
+        run: |
+          git config user.name "Release rehearsal"
+          git config user.email "release-rehearsal@invalid"
+          just change --interactive=false -k Fixed -b "Release rehearsal placeholder."
+          just release-changelog
+          git add --all
+          git commit --quiet --message "Rehearse the release changelog"
 
-      - name: Built binary knows its version
-        run: ./dist/patchcaster_linux_amd64*/patchcaster --version
+      - name: Tag as for a release
+        run: just release-tag
 
+      - name: Release into the throwaway registry
+        run: just release-publish --skip=sign
+
+      - name: Check the rehearsed release
+        run: .github/scripts/check-release-rehearsal.sh
+
+  # Only a pushed v* tag publishes. A push to main matches the push event
+  # too, so the ref decides.
   release:
-    if: github.event_name == 'push'
+    if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:

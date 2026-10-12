@@ -1,0 +1,41 @@
+PatchCaster licence grant with a proxy under section 14 of the
+GNU Affero General Public License
+
+Copyright (C) 2026 The patchcaster Authors
+
+PatchCaster is free software: you can redistribute it and/or modify it
+under the terms of the GNU Affero General Public License as published
+by the Free Software Foundation, version 3 of the License, or any later
+version of that License which the proxy named below has accepted. The
+proxy decides which future versions of the License can be used, as
+section 14 of version 3 of the GNU Affero General Public License
+provides.
+
+The proxy is the PatchCaster maintainer known as 0x5a17ed.
+
+The proxy accepts a version of the License by a public statement that
+names that version, is signed with the proxy's signing key and is
+published in the PatchCaster source repository, which is currently at
+https://github.com/patchcaster-app/patchcaster. A statement counts as
+the proxy's only if it carries a valid signature by the proxy's current
+signing key.
+
+The proxy's signing key is the SSH key
+
+  sk-ssh-ed25519@openssh.com AAAAGnNrLXNzaC1lZDI1NTE5QG9wZW5zc2guY29tAAAAIHtSwmcpKsIdKo3ADpY0Vg+m+Rj9Vimq1BdH9DiO96U0AAAAE3NzaDp4NWExN2VkLXNpZ25rZXk=
+
+with the fingerprint SHA256:VkmVOLeXOaLEBGdFw/GhN6Bsm2FYkQ2bnnTmvwUXQQk.
+
+By a statement signed with the current signing key and published in the
+same way, the proxy may replace that key, or may name a successor proxy
+together with the successor's signing key. From the publication of that
+statement on, the new key or the successor takes the place of the
+current one.
+
+PatchCaster is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero
+General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with PatchCaster. If not, see <https://www.gnu.org/licenses/>.

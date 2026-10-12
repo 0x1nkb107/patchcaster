@@ -29,9 +29,10 @@ builds:
 checksum:
   name_template: "checksums.txt"
 
-# Archives carry the binary and LICENSE only (ADR-020). Setting files
-# replaces goreleaser's defaults, which would also pack the README and the
-# changelog. LICENSE stays because MIT requires its notice in every copy.
+# Archives carry the binary and the licence only (ADR-020, ADR-024): the
+# AGPL text and the proxy grant, because the AGPL requires a copy of the
+# licence in every copy. Setting files replaces goreleaser's defaults, which
+# would also pack the README and the changelog.
 #
 # Every entry's metadata is pinned so that the same tag packs the same bytes
 # on any machine (ADR-021). Otherwise the archive records the builder's
@@ -45,11 +46,13 @@ archives:
       mtime: "{{ .CommitDate }}"
     files:
       - src: LICENSE
-        info:
+        info: &pinned_licence_file
           owner: root
           group: root
           mode: 0644
           mtime: "{{ .CommitDate }}"
+      - src: LICENSES/LicenseRef-PatchCaster-Accepted-AGPL.txt
+        info: *pinned_licence_file
 
 # Draft releases keep cuts reviewable before they become public. The CI
 # release rehearsal sets PATCHCASTER_RELEASE_REHEARSAL, which switches the
@@ -76,6 +79,11 @@ dockers_v2:
     platforms:
       - linux/amd64
       - linux/arm64
+    # The licence texts travel into the build context, where the Dockerfile
+    # copies them into the image (ADR-024).
+    extra_files:
+      - LICENSE
+      - LICENSES/LicenseRef-PatchCaster-Accepted-AGPL.txt
     # Every pushed image carries an SBOM attestation per platform (ADR-022).
     # This is goreleaser's default, set here so the decision stays visible.
     sbom: "true"
@@ -92,7 +100,7 @@ dockers_v2:
       org.opencontainers.image.created: "{{ .CommitDate }}"
       org.opencontainers.image.source: "https://github.com/patchcaster-app/patchcaster"
       org.opencontainers.image.documentation: "https://github.com/patchcaster-app/patchcaster/tree/{{ .Tag }}/docs"
-      org.opencontainers.image.licenses: "MIT"
+      org.opencontainers.image.licenses: "AGPL-3.0-only OR LicenseRef-PatchCaster-Accepted-AGPL"
       org.opencontainers.image.base.name: "{{ .BaseImage }}"
       org.opencontainers.image.base.digest: "{{ .BaseImageDigest }}"
     annotations: *oci_metadata

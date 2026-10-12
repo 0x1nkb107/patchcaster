@@ -22,27 +22,34 @@ builds:
       - -trimpath
     ldflags:
       - -s -w -X main.version={{ .Version }}
+    # Reproducible builds (ADR-021): the binary carries the commit's time,
+    # not the time of the build.
+    mod_timestamp: "{{ .CommitTimestamp }}"
 
 checksum:
   name_template: "checksums.txt"
 
-# Setting files replaces goreleaser's defaults, so LICENSE (whose notice MIT
-# requires in every copy) and CHANGELOG.md are listed explicitly. The
-# operator docs keep their docs/ paths, so the README's operator links
-# resolve inside the archive.
+# Archives carry the binary and LICENSE only (ADR-020). Setting files
+# replaces goreleaser's defaults, which would also pack the README and the
+# changelog. LICENSE stays because MIT requires its notice in every copy.
+#
+# Every entry's metadata is pinned so that the same tag packs the same bytes
+# on any machine (ADR-021). Otherwise the archive records the builder's
+# clock, user, group and umask.
 archives:
   - name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    builds_info:
+      owner: root
+      group: root
+      mode: 0755
+      mtime: "{{ .CommitDate }}"
     files:
-      - src: README.md
-        strip_parent: true
       - src: LICENSE
-        strip_parent: true
-      - src: CHANGELOG.md
-        strip_parent: true
-      - docs/install.md
-      - docs/configuration.md
-      - docs/operations.md
-      - docs/integrations/*.md
+        info:
+          owner: root
+          group: root
+          mode: 0644
+          mtime: "{{ .CommitDate }}"
 
 # Draft releases keep cuts reviewable before they become public.
 release:
@@ -64,6 +71,26 @@ dockers_v2:
     platforms:
       - linux/amd64
       - linux/arm64
+    # Every pushed image carries an SBOM attestation per platform (ADR-022).
+    # This is goreleaser's default, set here so the decision stays visible.
+    sbom: "true"
+    # OCI metadata, twice: labels sit in each image's config, where `docker
+    # inspect` shows them, and annotations sit on the image index, where
+    # GitHub's registry reads the source, description and licence of a
+    # multi-architecture image. The created time is the commit's, so the
+    # metadata does not depend on when the image was built (ADR-021).
+    labels: &oci_metadata
+      org.opencontainers.image.title: "{{ .ProjectName }}"
+      org.opencontainers.image.description: "From forge to chat: one live thread per merge request."
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+      org.opencontainers.image.created: "{{ .CommitDate }}"
+      org.opencontainers.image.source: "https://github.com/patchcaster-app/patchcaster"
+      org.opencontainers.image.documentation: "https://github.com/patchcaster-app/patchcaster/tree/{{ .Tag }}/docs"
+      org.opencontainers.image.licenses: "MIT"
+      org.opencontainers.image.base.name: "{{ .BaseImage }}"
+      org.opencontainers.image.base.digest: "{{ .BaseImageDigest }}"
+    annotations: *oci_metadata
 
 # Keyless cosign signing (ADR-016, SYSREQ-032). No keys exist: on GitHub
 # Actions cosign obtains the workflow's OIDC identity, Fulcio issues a short

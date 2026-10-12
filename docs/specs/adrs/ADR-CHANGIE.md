@@ -50,7 +50,7 @@ follows Keep a Changelog 1.1.0 and Semantic Versioning 2.0.0.
   as `--release-notes`, replacing the commit-log changelog, and fails before building anything
   if the tag has no batched notes. `changelog.disable` stays unset: goreleaser skips loading the
   notes file when the changelog step is disabled.
-- **Distribution**: `CHANGELOG.md` ships in the release archives next to the README.
+- **Distribution**: `CHANGELOG.md` ships in the release archives next to the README. (Amended by ADR-020: the archives no longer carry the changelog, and the GitHub release body stays the published notes.)
 
 ## Consequences
 

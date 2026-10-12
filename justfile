@@ -69,11 +69,14 @@ devdb:
 	  -p 127.0.0.1:5433:5432 docker.io/library/postgres:18
 
 # Build the OCI image locally (single architecture; pass `arm64` to build
-# that one). The pinned host toolchain compiles, then the binary is staged
-# in the layout the shared release Dockerfile reads (ADR-015) — no compiler
-# ever runs inside the image.
+# that one). The pinned host toolchain compiles, then the binary and the
+# licence files are staged in the layout the shared release Dockerfile reads
+# (ADR-015, ADR-024) — no compiler ever runs inside the image.
 container arch="amd64":
 	CGO_ENABLED=0 GOARCH={{arch}} go build -trimpath -ldflags "-s -w" -o dist/container/linux/{{arch}}/patchcaster ./cmd/patchcaster
+	mkdir -p dist/container/LICENSES
+	cp LICENSE dist/container/LICENSE
+	cp LICENSES/LicenseRef-PatchCaster-Accepted-AGPL.txt dist/container/LICENSES/
 	{{engine}} build --pull=missing -t patchcaster:dev --platform=linux/{{arch}} -f Dockerfile --build-arg TARGETPLATFORM=linux/{{arch}} dist/container
 
 # Record a changelog fragment for the next release (ADR-018). Prompts for the

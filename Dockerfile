@@ -8,6 +8,9 @@
 #     (SYSARCH-005: go.mod + CGO off) into the same linux/<arch>/ layout and
 #     builds the single-architecture image with podman.
 #
+# Both also stage LICENSE and LICENSES/LicenseRef-PatchCaster-Accepted-AGPL.txt
+# at the context root: every image carries the licence (ADR-024).
+#
 # TARGETPLATFORM below is buildx's per-platform injection in the release
 # flow; the local flow passes the identical value explicitly. Both resolve
 # to exactly one staged file.
@@ -19,6 +22,7 @@ FROM ${BASE_IMAGE}
 
 ARG TARGETPLATFORM
 COPY $TARGETPLATFORM/* /usr/local/bin/
+COPY LICENSE LICENSES/LicenseRef-PatchCaster-Accepted-AGPL.txt /usr/share/doc/patchcaster/
 
 EXPOSE 8080 9090
 USER nonroot

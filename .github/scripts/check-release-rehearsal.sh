@@ -12,6 +12,7 @@ version="${tag#v}"
 revision="$(git rev-parse HEAD)"
 commit_date="$(TZ=UTC git log -1 --format=%cd --date=format-local:%Y-%m-%dT%H:%M:%SZ)"
 platforms=$'linux/amd64\nlinux/arm64'
+licence_files=(LICENSE LICENSES/LicenseRef-PatchCaster-Accepted-AGPL.txt)
 failures=0
 
 # fail records a failed check and keeps going, so one run reports them all.
@@ -57,7 +58,7 @@ check_index() {
 		[org.opencontainers.image.revision]="${revision}"
 		[org.opencontainers.image.created]="${commit_date}"
 		[org.opencontainers.image.source]="https://github.com/patchcaster-app/patchcaster"
-		[org.opencontainers.image.licenses]="MIT"
+		[org.opencontainers.image.licenses]="AGPL-3.0-only OR LicenseRef-PatchCaster-Accepted-AGPL"
 	)
 	for key in "${!annotations[@]}"; do
 		want="${annotations[${key}]}"
@@ -130,13 +131,28 @@ check_archives() {
 			fail "missing ${archive}"
 			continue
 		fi
-		expect_equal "contents of ${archive}" $'LICENSE\npatchcaster' "$(tar -tzf "${archive}" | sort)"
+		expect_equal "contents of ${archive}" \
+			"$(printf '%s\n' "${licence_files[@]}" patchcaster | LC_ALL=C sort)" \
+			"$(tar -tzf "${archive}" | LC_ALL=C sort)"
 	done
 	if (cd dist && sha256sum --strict --quiet -c checksums.txt); then
 		pass "checksums.txt matches the archives"
 	else
 		fail "checksums.txt does not match the archives"
 	fi
+}
+
+# check_image_licence_files requires the image to carry the licence texts
+# exactly as the repository holds them (ADR-024).
+check_image_licence_files() {
+	local container file shipped
+	docker pull --quiet --platform linux/amd64 "${repo}:${tag}" >/dev/null
+	container="$(docker create --platform linux/amd64 "${repo}:${tag}")"
+	for file in "${licence_files[@]}"; do
+		shipped="$(docker cp "${container}:/usr/share/doc/patchcaster/$(basename "${file}")" - | tar -xO | sha256sum)"
+		expect_equal "image carries ${file}" "$(sha256sum <"${file}")" "${shipped}"
+	done
+	docker rm "${container}" >/dev/null
 }
 
 check_binary_version() {
@@ -155,6 +171,7 @@ check_sbom_attestations
 check_sbom_content
 check_labels
 check_archives
+check_image_licence_files
 check_binary_version
 
 if ((failures > 0)); then

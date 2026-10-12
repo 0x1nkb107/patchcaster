@@ -18,7 +18,7 @@ The release archives of ADR-015 shipped `README.md`, `CHANGELOG.md` and the oper
 
 ## Decision
 
-- Each archive contains the `patchcaster` binary and `LICENSE`, nothing else. `LICENSE` stays because the MIT licence requires its notice in every copy of the software.
+- Each archive contains the `patchcaster` binary and `LICENSE`, nothing else. `LICENSE` stays because the MIT licence requires its notice in every copy of the software. (Amended by ADR-024: the project is now under the AGPL, which requires a copy of the licence in every copy, and the archives also carry the proxy grant.)
 - `README.md`, `CHANGELOG.md` and the operator docs are no longer packaged. The release notes remain the body of the GitHub release, built from the same changie batch as `CHANGELOG.md` (ADR-018).
 - This amends the distribution rule of ADR-018. The archive names, platforms, checksums and signatures of ADR-015 and ADR-016 stay as they are.
 

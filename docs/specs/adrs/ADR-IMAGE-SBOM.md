@@ -28,5 +28,5 @@ ADR-015 declared SBOMs out of scope for v1. goreleaser's `dockers_v2` step nonet
 ## Consequences
 
 - Good: operators can inspect what an image contains, from the registry, before they deploy it.
-- Bad: snapshot builds do not attach attestations, so CI exercises the SBOM step for the first time at a real release. The `docker-container` builder keeps that step on the path goreleaser documents and tests.
+- Bad: snapshot builds do not attach attestations, so CI exercises the SBOM step for the first time at a real release. The `docker-container` builder keeps that step on the path goreleaser documents and tests. (Amended by ADR-023: the release rehearsal now pushes with attestations to a throwaway registry on every push to `main`.)
 - The SBOM content follows BuildKit's scanner. It can change between releases even when the code does not, because the scanner image is not pinned.

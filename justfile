@@ -122,12 +122,14 @@ release-snapshot +args="":
 	go tool -modfile tools/goreleaser/go.mod goreleaser release --snapshot --clean --skip=publish,sign {{args}}
 
 # Cut and publish a release; normally runs tag-triggered in CI, not here
-# (keyless signing needs the workflow's OIDC identity). goreleaser calls
-# cosign from PATH, where the release workflow's installer puts it
-# (ADR-016), and signs before it publishes anything. The release notes are
-# the tag's batched changelog; an untagged HEAD or a tag without notes fails
-# here, before anything is built.
-release-publish:
+# (keyless signing needs the workflow's OIDC identity). Extra args go to
+# goreleaser: the CI release rehearsal passes `--skip=sign` (ADR-023).
+# goreleaser calls cosign from PATH, where the release workflow's installer
+# puts it (ADR-016), and signs before it publishes anything. The release
+# notes are the tag's batched changelog; an untagged HEAD or a tag without
+# notes fails here, before anything is built.
+[positional-arguments]
+release-publish *args:
 	#!/usr/bin/env bash
 	set -euo pipefail
 	tag="$(git describe --tags --exact-match)"
@@ -136,4 +138,4 @@ release-publish:
 		echo "no ${notes}: run 'just release-changelog ${tag}' and commit it before tagging" >&2
 		exit 1
 	fi
-	exec go tool -modfile tools/goreleaser/go.mod goreleaser release --clean --release-notes "${notes}"
+	exec go tool -modfile tools/goreleaser/go.mod goreleaser release --clean --release-notes "${notes}" "$@"

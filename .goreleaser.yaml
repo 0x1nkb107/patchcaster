@@ -51,9 +51,12 @@ archives:
           mode: 0644
           mtime: "{{ .CommitDate }}"
 
-# Draft releases keep cuts reviewable before they become public.
+# Draft releases keep cuts reviewable before they become public. The CI
+# release rehearsal sets PATCHCASTER_RELEASE_REHEARSAL, which switches the
+# GitHub release off entirely (ADR-023). Real releases leave it unset.
 release:
   draft: true
+  disable: '{{ isEnvSet "PATCHCASTER_RELEASE_REHEARSAL" }}'
 
 # One entry, both platforms: goreleaser runs `docker buildx build
 # --platform linux/amd64,linux/arm64` and publishes a manifest list per
@@ -63,8 +66,10 @@ release:
 # v2.18 OSS has no docker_login step.
 dockers_v2:
   - id: patchcaster
+    # The CI release rehearsal points PATCHCASTER_IMAGE_REPO at a throwaway
+    # local registry (ADR-023). Real releases leave it unset.
     images:
-      - "ghcr.io/patchcaster-app/patchcaster"
+      - '{{ envOrDefault "PATCHCASTER_IMAGE_REPO" "ghcr.io/patchcaster-app/patchcaster" }}'
     tags:
       - "{{ .Tag }}"
       - "latest"

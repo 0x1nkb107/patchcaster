@@ -6,9 +6,12 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 // botToken is the Mattermost bot token the service is started with.
@@ -26,6 +29,10 @@ type post struct {
 // and updating one. It records what it accepted. It can answer every new
 // post with 503 to simulate an outage, and it can hold new posts in flight
 // until the test releases them.
+//
+// Every request is first checked against the published Mattermost API
+// (ADR-027). A request the real server would reject is answered with 400,
+// as Mattermost answers it, and fails the test when the test ends.
 type fakeMattermost struct {
 	server *httptest.Server
 	held   chan struct{} // receives one value for every post that starts waiting
@@ -37,21 +44,43 @@ type fakeMattermost struct {
 	abandoned int           // held posts whose client went away before the release
 	failing   bool          // answer create requests with 503 while set
 	hold      chan struct{} // while non-nil, new posts wait until it is closed
+	breaches  []string      // requests that broke the Mattermost API, as messages
 }
 
 func newFakeMattermost(t *testing.T) *fakeMattermost {
 	t.Helper()
+	api, err := loadMattermostAPI()
+	require.NoError(t, err)
+
 	m := &fakeMattermost{held: make(chan struct{}, 16)}
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/v4/posts", m.createPost)
 	mux.HandleFunc("PUT /api/v4/posts/{id}", m.updatePost)
-	m.server = httptest.NewServer(requireBotToken(mux))
+	m.server = httptest.NewServer(m.enforceAPI(api, requireBotToken(mux)))
 	t.Cleanup(func() {
 		// Close waits for every request, so held posts must go first.
 		m.release()
 		m.server.Close()
+		if breaches := m.apiBreaches(); len(breaches) > 0 {
+			t.Errorf("the service called Mattermost outside its API:\n%s", strings.Join(breaches, "\n"))
+		}
 	})
 	return m
+}
+
+// enforceAPI answers a request that breaks the Mattermost API with 400 and
+// records it, and passes every valid call on.
+func (m *fakeMattermost) enforceAPI(api *mattermostAPI, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := api.check(r.Context(), r); err != nil {
+			m.mu.Lock()
+			m.breaches = append(m.breaches, err.Error())
+			m.mu.Unlock()
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // requireBotToken answers 401 to any request without the bot token, as
@@ -177,6 +206,12 @@ func (m *fakeMattermost) attemptCount() int {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return m.attempts
+}
+
+func (m *fakeMattermost) apiBreaches() []string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return append([]string(nil), m.breaches...)
 }
 
 func (m *fakeMattermost) abandonedCount() int {

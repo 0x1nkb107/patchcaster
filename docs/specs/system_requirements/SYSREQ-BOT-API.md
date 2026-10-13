@@ -32,7 +32,7 @@ root. One credential and one surface keep the trust model simple.
 
 - **Method**: Test.
 - **Procedure**: `httptest` Mattermost mock asserts method, path, and headers on every delivery
-  path (root, reply, retry).
+  path (root, reply, retry). The end-to-end suite's fake also validates every request against the published Mattermost API description of a pinned release (ADR-027).
 
 ## Notes
 

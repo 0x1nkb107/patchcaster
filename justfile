@@ -1,17 +1,25 @@
 # PatchCaster development tasks (ADR-007).
 # Toolchain binaries are pinned tools modules, never ambient installs. The
 # one exception is cosign, which the release workflow installs (ADR-016).
+#
+# Every recipe carries one group for `just --list`: dev changes sources or
+# the local environment, test runs a test suite, check only reports, and
+# release prepares or cuts a release. A rare maintenance step belongs next
+# to what it maintains, not here.
 
 engine := env_var_or_default("ENGINE", "podman")
 database_url := "postgres://patchcaster:dev@127.0.0.1:5433/patchcaster?sslmode=disable"
 
+[group('dev')]
 all: fmt vet test
 
 # Format Go sources in place.
+[group('dev')]
 fmt:
 	gofmt -w cmd internal e2e
 
 # Vet without building tests of unrelated packages.
+[group('check')]
 vet:
 	go vet ./...
 
@@ -20,19 +28,23 @@ vet:
 # be reachable. With podman, export DOCKER_HOST to podman's socket and set
 # TESTCONTAINERS_RYUK_DISABLED=true.
 # Unit and store contract tests.
+[group('test')]
 test +args="":
 	go test {{args}} ./...
 
 # Run the suite under the race detector; needs cgo, which -race requires.
+[group('test')]
 race +args="":
 	CGO_ENABLED=1 go test -race {{args}} ./...
 
 # Fail on unformatted files (CI form of fmt; fmt writes, this only reports).
 # Note: just passes $ through untouched (only {{...}} is just's syntax).
+[group('check')]
 fmt-check:
 	@unformatted="$(gofmt -l cmd internal e2e)"; test -z "$unformatted" || { printf 'unformatted files:\n%s\n' "$unformatted"; exit 1; }
 
 # Store contract tests only, against their own PostgreSQL container.
+[group('test')]
 test-integration:
 	go test -count=1 ./internal/store/
 
@@ -40,45 +52,54 @@ test-integration:
 # API. With podman, export DOCKER_HOST to podman's socket and set
 # TESTCONTAINERS_RYUK_DISABLED=true.
 # End-to-end tests: the real binary against PostgreSQL and a fake Mattermost (ADR-025).
+[group('test')]
 [working-directory: 'e2e']
 test-e2e +args="":
 	go test -count=1 {{args}} ./...
 
 # CI quality gate: formatting, the CGO-free build contract, generated query
 # code that matches sqlc's output, and vet with the pinned golangci-lint.
+[group('check')]
 quality: fmt-check build sqlc-check lint
 
 # Vet and the pinned golangci-lint.
 # -modfile resolves the tool from the pinned tools/golangci module while the
 # working directory stays at the service module root.
+[group('check')]
 lint: vet
 	go tool -modfile tools/golangci/go.mod golangci-lint run
 	cd e2e && go vet ./... && go tool -modfile ../tools/golangci/go.mod golangci-lint run
 
 # Compile the static binary (CGO off is the build contract).
+[group('check')]
 build:
 	CGO_ENABLED=0 go build ./...
 
 # Regenerate sqlc query code after editing internal/store/queries or migrations (ADR-010).
+[group('dev')]
 sqlc:
 	go tool -modfile tools/sqlc/go.mod sqlc generate
 
 # Generated query code is never edited by hand or left stale: fail when the
 # committed code differs from what sqlc generates.
+[group('check')]
 sqlc-check:
 	go tool -modfile tools/sqlc/go.mod sqlc diff
 
 # Apply migrations from the embedded set against the target database.
+[group('dev')]
 migrate:
 	go run ./cmd/patchcaster migrate --database-url "{{database_url}}"
 
 # Run the service locally against the dev database.
+[group('dev')]
 run:
 	go run ./cmd/patchcaster serve \
 	  --database-url "{{database_url}}" \
 	  --routing-file ./contrib/routing.example.yaml
 
 # Disposable PostgreSQL 18 for local work (podman or docker via $ENGINE).
+[group('dev')]
 devdb:
 	{{engine}} run -d --name patchcaster-pg --replace \
 	  -e POSTGRES_USER=patchcaster -e POSTGRES_PASSWORD=dev -e POSTGRES_DB=patchcaster \
@@ -88,6 +109,7 @@ devdb:
 # that one). The pinned host toolchain compiles, then the binary and the
 # licence files are staged in the layout the shared release Dockerfile reads
 # (ADR-015, ADR-024) — no compiler ever runs inside the image.
+[group('dev')]
 container arch="amd64":
 	CGO_ENABLED=0 GOARCH={{arch}} go build -trimpath -ldflags "-s -w" -o dist/container/linux/{{arch}}/patchcaster ./cmd/patchcaster
 	mkdir -p dist/container/LICENSES
@@ -98,6 +120,7 @@ container arch="amd64":
 # Record a changelog fragment for the next release (ADR-018). Prompts for the
 # kind and body; flags skip the prompts, e.g.
 # `just change -k Fixed -b "Retry posts after a Mattermost restart."`.
+[group('release')]
 [positional-arguments]
 change *args:
 	go tool -modfile tools/changie/go.mod changie new "$@"
@@ -105,6 +128,7 @@ change *args:
 # Batch the unreleased fragments into .changes/<version>.md and rebuild
 # CHANGELOG.md (ADR-018). changie picks the version from the fragments' kinds;
 # pass major, minor or patch, or a tag such as v1.0.0, to override it.
+[group('release')]
 release-changelog version="auto":
 	#!/usr/bin/env bash
 	set -euo pipefail
@@ -118,6 +142,7 @@ release-changelog version="auto":
 # (ADR-018). The tag message is that release's notes, and git signs the tag
 # when tag.gpgSign is set. Pushing the tag is left to you, because the push
 # publishes it.
+[group('release')]
 release-tag:
 	#!/usr/bin/env bash
 	set -euo pipefail
@@ -131,12 +156,14 @@ release-tag:
 	echo "tagged ${version}: run 'git push origin ${version}' to release it"
 
 # Validate the release pipeline config against the pinned tool (ADR-015).
+[group('release')]
 release-check:
 	go tool -modfile tools/goreleaser/go.mod goreleaser check
 
 # Full release dry run: builds binaries and images, publishes and signs
 # nothing (keyless signing has no identity outside Actions, ADR-016).
 # Extra args go to goreleaser, e.g. `--skip=docker` without a daemon.
+[group('release')]
 release-snapshot +args="":
 	go tool -modfile tools/goreleaser/go.mod goreleaser release --snapshot --clean --skip=publish,sign {{args}}
 
@@ -147,6 +174,7 @@ release-snapshot +args="":
 # puts it (ADR-016), and signs before it publishes anything. The release
 # notes are the tag's batched changelog; an untagged HEAD or a tag without
 # notes fails here, before anything is built.
+[group('release')]
 [positional-arguments]
 release-publish *args:
 	#!/usr/bin/env bash

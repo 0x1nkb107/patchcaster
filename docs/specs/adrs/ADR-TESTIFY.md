@@ -22,7 +22,7 @@ idiom so a failing test reads the same everywhere.
 - Owner directive: tests use stretchr/testify following arrange-act-assert.
 - Table-driven tests remain the Go idiom for parameterized checks (repository policy).
 - Determinism: injected clocks, `httptest` doubles, and a disposable PostgreSQL database via a
-  test connection URL — no external network or wall-clock reliance.
+  test connection URL — no external network or wall-clock reliance. (Amended by ADR-026: the store tests now start their own PostgreSQL container instead of reading a URL.)
 
 ## Considered options
 

@@ -61,7 +61,7 @@ future engine change a package-internal affair.
 - Local development needs a reachable PostgreSQL; the `justfile` exposes a `devdb` recipe so the
   loop stays one command (ADR-007).
 - Test determinism now depends on a disposable database supplied via a test connection URL
-  (ADR-006 updated accordingly).
+  (ADR-006 updated accordingly). (Amended by ADR-026: the tests now start that database themselves in a container.)
 
 ## Pros and Cons of the Options
 

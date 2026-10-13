@@ -1,3 +1,0 @@
-kind: Added
-body: 'Forward GitLab merge request activity into Mattermost: each merge request gets one thread whose root post is a live status board for its pipeline, reviewers, comments and edits.'
-time: 2026-10-10T21:21:13.937344675+02:00

@@ -1,3 +1,0 @@
-kind: Added
-body: Serve liveness, readiness and Prometheus metrics on an internal listener, and drain in-flight work on shutdown.
-time: 2026-10-10T21:21:19.832221018+02:00

@@ -46,6 +46,9 @@ the release workflow installs it.
 
 ## Tasks
 
+`just --list` shows every recipe, grouped into dev, test, check and
+release. These are the common ones:
+
 ```sh
 just test             # unit and store contract tests (needs a Docker API)
 just fmt              # gofmt in place

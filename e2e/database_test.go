@@ -1,5 +1,3 @@
-//go:build e2e
-
 package e2e
 
 import (
@@ -11,9 +9,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// freshDatabase recreates the public schema, so that the test starts from an
-// empty store, and returns a handle for reading the outcome. The service
-// applies its migrations itself when it starts.
+// freshDatabase recreates the public schema of the suite's container, so
+// that the test starts from an empty store, and returns a handle for reading
+// the outcome. The service applies its migrations itself when it starts.
 func freshDatabase(t *testing.T) *sql.DB {
 	t.Helper()
 	db, err := sql.Open("pgx", databaseURL)
@@ -21,7 +19,7 @@ func freshDatabase(t *testing.T) *sql.DB {
 	t.Cleanup(func() { _ = db.Close() })
 
 	_, err = db.Exec("DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
-	require.NoError(t, err, "the e2e database must be disposable")
+	require.NoError(t, err)
 	return db
 }
 

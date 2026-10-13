@@ -33,7 +33,7 @@ condition that the deployment grants a termination grace period of at least this
 
 - **Method**: Test.
 - **Procedure**: Send `SIGTERM` to the running process mid-delivery against a slow Mattermost
-  mock; assert completion, exit code, and pending-row state.
+  mock; assert completion, exit code, and pending-row state. The end-to-end suite implements it as `TestSIGTERMLetsTheDeliveryInHandFinish` (ADR-025).
 
 ## Notes
 

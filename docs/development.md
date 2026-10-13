@@ -49,13 +49,14 @@ the release workflow installs it.
 ```sh
 just test             # offline unit suite (store contract tests skip)
 just fmt              # gofmt in place
-just quality          # CI gate: fmt check + CGO-free build + vet + lint
+just quality          # CI gate: fmt check + CGO-free build + sqlc check + vet + lint
 just lint             # vet + pinned golangci-lint
 just race             # full suite under the race detector (needs cgo)
 just devdb            # PostgreSQL 18 on 127.0.0.1:5433 (podman)
 just migrate          # apply the embedded schema to the dev database
 just run              # serve with the example routing table (see below)
 just test-integration # store contract tests against the dev database
+just test-e2e         # end-to-end tests: the real binary against its own PostgreSQL container
 just sqlc             # regenerate query code after touching internal/store/{queries,migrations}
 just sqlc-check       # fail if the committed query code differs from sqlc's output
 just container        # OCI image patchcaster:dev (`just container arm64` for arm64)
@@ -107,20 +108,21 @@ provides one).
 `just devdb`, which wipes whatever `just run` stored there. Set
 `PATCHCASTER_TEST_DATABASE_URL` to another database to keep it.
 
+The end-to-end tests in `e2e/` build the binary and drive it as a separate process against PostgreSQL, a fake Mattermost and signed webhooks (ADR-025). They are a separate Go module, so `go test ./...` at the root skips them. They start their own PostgreSQL container through testcontainers-go, which needs a Docker API. With podman, export `DOCKER_HOST=unix:///run/user/$(id -u)/podman/podman.sock` and `TESTCONTAINERS_RYUK_DISABLED=true` before `just test-e2e`.
+
 Tests use testify with an arrange-act-assert layout (ADR-006).
 
 ## Before sending a change upstream
 
-CI runs on every push and pull request. Its three jobs map to three local
-commands; run them against the dev database so the store contract tests take
-part (`-count=1` bypasses the test cache, as CI does):
+CI runs on every push and pull request. Its four jobs map to four local commands. Run them against the dev database so that the store contract tests take part (`-count=1` bypasses the test cache, as CI does):
 
 ```sh
 just devdb
 export PATCHCASTER_TEST_DATABASE_URL='postgres://patchcaster:dev@127.0.0.1:5433/patchcaster?sslmode=disable'
-just quality         # CI "quality": gofmt check, CGO-free build, vet, golangci-lint
+just quality         # CI "quality": gofmt check, CGO-free build, sqlc check, vet, golangci-lint
 just test -count=1   # CI "test": unit and store contract tests
 just race -count=1   # CI "race": the same suite under the race detector
+just test-e2e        # CI "e2e": the real binary end to end
 ```
 
 Then, depending on what the change touches:

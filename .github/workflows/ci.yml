@@ -27,6 +27,7 @@ jobs:
           go-version-file: go.mod
           cache-dependency-path: |
             go.sum
+            e2e/go.sum
             tools/golangci/go.sum
             tools/sqlc/go.sum
             tools/goreleaser/go.sum
@@ -114,3 +115,28 @@ jobs:
 
       - name: Test with race detection
         run: just race -count=1
+
+  # The real binary as a separate process: signals, restarts, wake-ups and
+  # the queue against PostgreSQL and a fake Mattermost (ADR-025). The suite
+  # starts its own PostgreSQL container through the runner's Docker.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: |
+            go.sum
+            e2e/go.sum
+
+      - uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+        with:
+          just-version: '1.58.0'
+
+      - name: End-to-end tests
+        run: just test-e2e -v

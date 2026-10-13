@@ -44,25 +44,11 @@ jobs:
       - name: Validate release config
         run: just release-check
 
-  # The PostgreSQL service is not optional comfort: without the URL the
-  # store contract suite skips, and CI coverage would vanish silently.
+  # The store contract tests start their own PostgreSQL container on the
+  # runner's Docker (ADR-026) and fail rather than skip without one.
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    services:
-      postgres:
-        image: postgres:18
-        env:
-          POSTGRES_PASSWORD: ci
-          POSTGRES_DB: patchcaster
-        ports: ["5432:5432"]
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 10
-    env:
-      PATCHCASTER_TEST_DATABASE_URL: postgres://postgres:ci@localhost:5432/patchcaster?sslmode=disable
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -81,24 +67,11 @@ jobs:
         run: just test -count=1
 
   # Concurrent code (lease reaping, drain, claim loop) earns its keep under
-  # -race; the store suite runs here too so pgx paths get race coverage.
+  # -race; the store suite runs here too so pgx paths get race coverage. It
+  # starts its own PostgreSQL container, as in the test job.
   race:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    services:
-      postgres:
-        image: postgres:18
-        env:
-          POSTGRES_PASSWORD: ci
-          POSTGRES_DB: patchcaster
-        ports: ["5432:5432"]
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 10
-    env:
-      PATCHCASTER_TEST_DATABASE_URL: postgres://postgres:ci@localhost:5432/patchcaster?sslmode=disable
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

@@ -22,7 +22,7 @@ const outboxChannel = "patchcaster_outbox"
 func listenRaw(t *testing.T) *pgx.Conn {
 	t.Helper()
 	ctx := context.Background()
-	conn, err := pgx.Connect(ctx, testDatabaseURL(t))
+	conn, err := pgx.Connect(ctx, databaseURL)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = conn.Close(context.Background()) })
 
@@ -56,7 +56,7 @@ func countNotificationsBeforeSentinel(t *testing.T, conn *pgx.Conn) int {
 // reports each wake-up and the session's final error.
 func startListener(t *testing.T, ctx context.Context) (<-chan struct{}, <-chan error) {
 	t.Helper()
-	listener, err := store.NewOutboxListener(testDatabaseURL(t))
+	listener, err := store.NewOutboxListener(databaseURL)
 	require.NoError(t, err)
 
 	wakes := make(chan struct{}, 8)

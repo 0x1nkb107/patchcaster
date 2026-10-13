@@ -3,7 +3,6 @@ package store_test
 import (
 	"context"
 	"database/sql"
-	"os"
 	"testing"
 	"time"
 
@@ -17,31 +16,19 @@ import (
 	"github.com/patchcaster-app/patchcaster/internal/store"
 )
 
-// testDatabaseURL names the disposable test database, or skips the test when
-// none is configured.
-func testDatabaseURL(t *testing.T) string {
-	t.Helper()
-	url := os.Getenv("PATCHCASTER_TEST_DATABASE_URL")
-	if url == "" {
-		t.Skip("PATCHCASTER_TEST_DATABASE_URL not set")
-	}
-	return url
-}
-
-// The PostgreSQL contract (ADR-010/ADR-006): these tests run against a real
-// database pointed at by PATCHCASTER_TEST_DATABASE_URL and RECREATE its
-// public schema. Point them only at a disposable database. Without the
-// variable they skip, keeping offline unit runs green.
+// The PostgreSQL contract (ADR-010/ADR-006): these tests run against the
+// real database that TestMain starts in a container, and recreate its
+// public schema before every test (ADR-026).
 func openTestStore(t *testing.T) (*store.Postgres, *sql.DB) {
 	t.Helper()
-	cfg, err := pgx.ParseConfig(testDatabaseURL(t))
+	cfg, err := pgx.ParseConfig(databaseURL)
 	require.NoError(t, err)
 	db := pgxstdlib.OpenDB(*cfg)
 	t.Cleanup(func() { _ = db.Close() })
 
 	ctx := context.Background()
 	_, err = db.ExecContext(ctx, "DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
-	require.NoError(t, err, "test database must be disposable")
+	require.NoError(t, err)
 
 	// Migrate through the production path (provider + session locker).
 	applied, err := store.Migrate(ctx, db)

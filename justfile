@@ -4,7 +4,6 @@
 
 engine := env_var_or_default("ENGINE", "podman")
 database_url := "postgres://patchcaster:dev@127.0.0.1:5433/patchcaster?sslmode=disable"
-test_database_url := env_var_or_default("PATCHCASTER_TEST_DATABASE_URL", database_url)
 
 all: fmt vet test
 
@@ -16,8 +15,11 @@ fmt:
 vet:
 	go vet ./...
 
-# Fast offline unit suite (PostgreSQL tests skip without the URL).
-# Variadic: `just test -count=1` forwards to go test.
+# Variadic: `just test -count=1` forwards to go test. The store contract
+# tests start their own PostgreSQL container (ADR-026), so a Docker API must
+# be reachable. With podman, export DOCKER_HOST to podman's socket and set
+# TESTCONTAINERS_RYUK_DISABLED=true.
+# Unit and store contract tests.
 test +args="":
 	go test {{args}} ./...
 
@@ -30,9 +32,9 @@ race +args="":
 fmt-check:
 	@unformatted="$(gofmt -l cmd internal e2e)"; test -z "$unformatted" || { printf 'unformatted files:\n%s\n' "$unformatted"; exit 1; }
 
-# Store contract tests against a real PostgreSQL (disposable database!).
+# Store contract tests only, against their own PostgreSQL container.
 test-integration:
-	PATCHCASTER_TEST_DATABASE_URL="{{test_database_url}}" go test -count=1 ./internal/store/
+	go test -count=1 ./internal/store/
 
 # The suite is its own module and starts its own PostgreSQL through a Docker
 # API. With podman, export DOCKER_HOST to podman's socket and set

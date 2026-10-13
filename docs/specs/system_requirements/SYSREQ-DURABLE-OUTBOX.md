@@ -43,7 +43,7 @@ end to end.
 
 - **Method**: Test.
 - **Procedure**: Kill-and-restart integration test against a disposable PostgreSQL database; inspect row
-  state after the kill and assert delivery after restart.
+  state after the kill and assert delivery after restart. The end-to-end suite implements it as `TestAnAcceptedDeliverySurvivesAKill` (ADR-025).
 
 ## Notes
 

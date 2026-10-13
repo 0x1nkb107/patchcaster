@@ -1,8 +1,8 @@
 # Mattermost REST API v4, posts endpoints only (ADR-027).
-# Assembled by `just mattermost-api-spec` from mattermost/mattermost v11.11.1
-# (commit 3acb3a7f684d11ccfcec4e5bd11c79f64e3eabf9): introduction.yaml, posts.yaml and
-# definitions.yaml, concatenated in that order as Mattermost's own build does.
-# Do not edit by hand.
+# Assembled by refresh-mattermost-api.sh, next to this file, from
+# mattermost/mattermost v11.11.1 (commit 3acb3a7f684d11ccfcec4e5bd11c79f64e3eabf9):
+# introduction.yaml, posts.yaml and definitions.yaml, concatenated in
+# that order as Mattermost's own build does. Do not edit by hand.
 openapi: 3.0.0
 info:
   description: >

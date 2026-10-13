@@ -57,7 +57,6 @@ just migrate          # apply the embedded schema to the dev database
 just run              # serve with the example routing table (see below)
 just test-integration # store contract tests only, in their own PostgreSQL container
 just test-e2e         # end-to-end tests: the real binary against its own PostgreSQL container
-just mattermost-api-spec # refresh the pinned Mattermost API description the e2e fake enforces
 just sqlc             # regenerate query code after touching internal/store/{queries,migrations}
 just sqlc-check       # fail if the committed query code differs from sqlc's output
 just container        # OCI image patchcaster:dev (`just container arm64` for arm64)
@@ -132,7 +131,7 @@ Then, depending on what the change touches:
   change. Write it for operators, not developers. Refactors, tests, CI and
   development tool pins need none.
 * **SQL queries or migrations** (`internal/store/queries`, `internal/store/migrations`): run `just sqlc` and commit the regenerated `internal/store/sqlcgen`. Never edit the generated code by hand: CI runs `just sqlc-check` and fails when the committed code differs from what sqlc generates. Each query file holds the queries of one table, and a comment directly after a query's `-- name:` line becomes the doc comment of the generated method.
-* **Mattermost client** (`internal/mattermost`): run `just test-e2e`. Its fake Mattermost rejects any request that breaks the published API of the Mattermost release pinned in the justfile (ADR-027). To move to a newer release, change `mattermost_api_release` and `mattermost_api_commit`, run `just mattermost-api-spec` and commit the regenerated description.
+* **Mattermost client** (`internal/mattermost`): run `just test-e2e`. Its fake Mattermost rejects any request that breaks the published API of the Mattermost release pinned in `e2e/testdata/refresh-mattermost-api.sh` (ADR-027). To move to a newer release, change the two pins at the top of that script, run it and commit the regenerated description.
 * **Release pipeline** (`.goreleaser.yaml`, `Dockerfile`, build flags): run `just release-check` and `just release-snapshot`. Without a Docker daemon, `just release-snapshot --skip=docker` still builds the binaries. Pull requests run `just release-check` in CI. Every push to `main` goes further in the Release workflow's rehearsal job: it batches the changelog, tags and runs `just release-publish` inside the runner, pushes the images to a throwaway registry and checks the result, without publishing anything (ADR-023).
 * **Behaviour**: the specs are normative, so a change in what PatchCaster does
   needs the matching requirement, architecture item or ADR under

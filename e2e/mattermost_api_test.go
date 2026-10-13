@@ -19,8 +19,8 @@ import (
 )
 
 // mattermostAPISpec describes the posts endpoints of a pinned Mattermost
-// release. `just mattermost-api-spec` assembles it from Mattermost's own
-// sources (ADR-027).
+// release. testdata/refresh-mattermost-api.sh assembles it from Mattermost's
+// own sources (ADR-027).
 //
 //go:embed testdata/mattermost-openapi-v4-posts.yaml
 var mattermostAPISpec []byte

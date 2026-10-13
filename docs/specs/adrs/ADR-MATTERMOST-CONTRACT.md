@@ -18,7 +18,8 @@ The end-to-end suite of ADR-025 drives PatchCaster against a fake Mattermost. Th
 
 ## Decision
 
-- The suite embeds the posts endpoints of a pinned Mattermost release, currently v11.11.1 at commit `3acb3a7f684d11ccfcec4e5bd11c79f64e3eabf9`. `just mattermost-api-spec` assembles `e2e/testdata/mattermost-openapi-v4-posts.yaml` from `introduction.yaml`, `posts.yaml` and `definitions.yaml` at that commit, in the order of Mattermost's own build, under a provenance header. The pin names a commit because tags can move, and the same commit always gives the same bytes.
+- The suite embeds the posts endpoints of a pinned Mattermost release, currently v11.11.1 at commit `3acb3a7f684d11ccfcec4e5bd11c79f64e3eabf9`. The script `e2e/testdata/refresh-mattermost-api.sh` holds the pin and assembles `mattermost-openapi-v4-posts.yaml` next to it from `introduction.yaml`, `posts.yaml` and `definitions.yaml` at that commit, in the order of Mattermost's own build, under a provenance header. The pin names a commit because tags can move, and the same commit always gives the same bytes.
+- The refresh is a rare maintenance step of the e2e module, not one of the common project tasks of ADR-007. It is therefore no justfile recipe, so the pin, the script and the file it produces stay together in the module that uses them.
 - The fake matches every request to an operation of that description and validates its path, parameters and body with kin-openapi. A request that matches no operation, or breaks its schema, is answered with 400, as Mattermost answers it, and recorded. Any recorded breach fails the test when it ends, even if the service went on.
 - The description's security requirements are left to the fake's own token check.
 - A table test of the check proves it rejects missing required fields, misspelled fields, wrong types and undocumented endpoints, and accepts the calls PatchCaster makes.

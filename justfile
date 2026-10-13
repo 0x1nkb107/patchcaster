@@ -10,7 +10,7 @@ all: fmt vet test
 
 # Format Go sources in place.
 fmt:
-	gofmt -w cmd internal
+	gofmt -w cmd internal e2e
 
 # Vet without building tests of unrelated packages.
 vet:
@@ -28,16 +28,19 @@ race +args="":
 # Fail on unformatted files (CI form of fmt; fmt writes, this only reports).
 # Note: just passes $ through untouched (only {{...}} is just's syntax).
 fmt-check:
-	@unformatted="$(gofmt -l cmd internal)"; test -z "$unformatted" || { printf 'unformatted files:\n%s\n' "$unformatted"; exit 1; }
+	@unformatted="$(gofmt -l cmd internal e2e)"; test -z "$unformatted" || { printf 'unformatted files:\n%s\n' "$unformatted"; exit 1; }
 
 # Store contract tests against a real PostgreSQL (disposable database!).
 test-integration:
 	PATCHCASTER_TEST_DATABASE_URL="{{test_database_url}}" go test -count=1 ./internal/store/
 
-# The suite recreates the database's public schema (disposable database!).
+# The suite is its own module and starts its own PostgreSQL through a Docker
+# API. With podman, export DOCKER_HOST to podman's socket and set
+# TESTCONTAINERS_RYUK_DISABLED=true.
 # End-to-end tests: the real binary against PostgreSQL and a fake Mattermost (ADR-025).
+[working-directory: 'e2e']
 test-e2e +args="":
-	PATCHCASTER_TEST_DATABASE_URL="{{test_database_url}}" go test -tags e2e -count=1 {{args}} ./e2e/
+	go test -count=1 {{args}} ./...
 
 # CI quality gate: formatting, the CGO-free build contract, generated query
 # code that matches sqlc's output, and vet with the pinned golangci-lint.
@@ -48,6 +51,7 @@ quality: fmt-check build sqlc-check lint
 # working directory stays at the service module root.
 lint: vet
 	go tool -modfile tools/golangci/go.mod golangci-lint run
+	cd e2e && go vet ./... && go tool -modfile ../tools/golangci/go.mod golangci-lint run
 
 # Compile the static binary (CGO off is the build contract).
 build:

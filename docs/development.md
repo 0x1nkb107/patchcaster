@@ -56,7 +56,7 @@ just devdb            # PostgreSQL 18 on 127.0.0.1:5433 (podman)
 just migrate          # apply the embedded schema to the dev database
 just run              # serve with the example routing table (see below)
 just test-integration # store contract tests against the dev database
-just test-e2e         # end-to-end tests: the real binary against the dev database
+just test-e2e         # end-to-end tests: the real binary against its own PostgreSQL container
 just sqlc             # regenerate query code after touching internal/store/{queries,migrations}
 just sqlc-check       # fail if the committed query code differs from sqlc's output
 just container        # OCI image patchcaster:dev (`just container arm64` for arm64)
@@ -108,7 +108,7 @@ provides one).
 `just devdb`, which wipes whatever `just run` stored there. Set
 `PATCHCASTER_TEST_DATABASE_URL` to another database to keep it.
 
-The end-to-end tests in `e2e/` build the binary and drive it as a separate process against PostgreSQL, a fake Mattermost and signed webhooks (ADR-025). They sit behind the `e2e` build tag, so `go test ./...` skips them. They also recreate the `public` schema, and `just test-e2e` runs them against the same database as `just test-integration`.
+The end-to-end tests in `e2e/` build the binary and drive it as a separate process against PostgreSQL, a fake Mattermost and signed webhooks (ADR-025). They are a separate Go module, so `go test ./...` at the root skips them. They start their own PostgreSQL container through testcontainers-go, which needs a Docker API. With podman, export `DOCKER_HOST=unix:///run/user/$(id -u)/podman/podman.sock` and `TESTCONTAINERS_RYUK_DISABLED=true` before `just test-e2e`.
 
 Tests use testify with an arrange-act-assert layout (ADR-006).
 

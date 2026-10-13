@@ -10,6 +10,7 @@
 engine := env_var_or_default("ENGINE", "podman")
 database_url := "postgres://patchcaster:dev@127.0.0.1:5433/patchcaster?sslmode=disable"
 
+# Format, vet and run the unit and store contract tests (the default).
 [group('dev')]
 all: fmt vet test
 
@@ -37,8 +38,8 @@ test +args="":
 race +args="":
 	CGO_ENABLED=1 go test -race {{args}} ./...
 
-# Fail on unformatted files (CI form of fmt; fmt writes, this only reports).
 # Note: just passes $ through untouched (only {{...}} is just's syntax).
+# Fail on unformatted files (CI form of fmt; fmt writes, this only reports).
 [group('check')]
 fmt-check:
 	@unformatted="$(gofmt -l cmd internal e2e)"; test -z "$unformatted" || { printf 'unformatted files:\n%s\n' "$unformatted"; exit 1; }
@@ -57,14 +58,13 @@ test-integration:
 test-e2e +args="":
 	go test -count=1 {{args}} ./...
 
-# CI quality gate: formatting, the CGO-free build contract, generated query
-# code that matches sqlc's output, and vet with the pinned golangci-lint.
+# CI quality gate: formatting, the CGO-free build, sqlc output, vet and lint.
 [group('check')]
 quality: fmt-check build sqlc-check lint
 
-# Vet and the pinned golangci-lint.
 # -modfile resolves the tool from the pinned tools/golangci module while the
 # working directory stays at the service module root.
+# Vet and the pinned golangci-lint.
 [group('check')]
 lint: vet
 	go tool -modfile tools/golangci/go.mod golangci-lint run
@@ -80,8 +80,8 @@ build:
 sqlc:
 	go tool -modfile tools/sqlc/go.mod sqlc generate
 
-# Generated query code is never edited by hand or left stale: fail when the
-# committed code differs from what sqlc generates.
+# Generated query code is never edited by hand or left stale.
+# Fail when the committed query code differs from what sqlc generates.
 [group('check')]
 sqlc-check:
 	go tool -modfile tools/sqlc/go.mod sqlc diff
@@ -105,10 +105,10 @@ devdb:
 	  -e POSTGRES_USER=patchcaster -e POSTGRES_PASSWORD=dev -e POSTGRES_DB=patchcaster \
 	  -p 127.0.0.1:5433:5432 docker.io/library/postgres:18
 
-# Build the OCI image locally (single architecture; pass `arm64` to build
-# that one). The pinned host toolchain compiles, then the binary and the
-# licence files are staged in the layout the shared release Dockerfile reads
-# (ADR-015, ADR-024) — no compiler ever runs inside the image.
+# The pinned host toolchain compiles, then the binary and the licence files
+# are staged in the layout the shared release Dockerfile reads (ADR-015,
+# ADR-024) — no compiler ever runs inside the image.
+# Build the OCI image locally (single architecture; pass `arm64` for arm64).
 [group('dev')]
 container arch="amd64":
 	CGO_ENABLED=0 GOARCH={{arch}} go build -trimpath -ldflags "-s -w" -o dist/container/linux/{{arch}}/patchcaster ./cmd/patchcaster
@@ -117,17 +117,18 @@ container arch="amd64":
 	cp LICENSES/LicenseRef-PatchCaster-Accepted-AGPL.txt dist/container/LICENSES/
 	{{engine}} build --pull=missing -t patchcaster:dev --platform=linux/{{arch}} -f Dockerfile --build-arg TARGETPLATFORM=linux/{{arch}} dist/container
 
-# Record a changelog fragment for the next release (ADR-018). Prompts for the
-# kind and body; flags skip the prompts, e.g.
+# Prompts for the kind and body; flags skip the prompts, e.g.
 # `just change -k Fixed -b "Retry posts after a Mattermost restart."`.
+# Record a changelog fragment for the next release (ADR-018).
 [group('release')]
 [positional-arguments]
 change *args:
 	go tool -modfile tools/changie/go.mod changie new "$@"
 
-# Batch the unreleased fragments into .changes/<version>.md and rebuild
-# CHANGELOG.md (ADR-018). changie picks the version from the fragments' kinds;
-# pass major, minor or patch, or a tag such as v1.0.0, to override it.
+# The fragments go to .changes/<version>.md, and CHANGELOG.md is rebuilt.
+# changie picks the version from the fragments' kinds; pass major, minor or
+# patch, or a tag such as v1.0.0, to override it.
+# Batch the unreleased fragments into the next release's notes (ADR-018).
 [group('release')]
 release-changelog version="auto":
 	#!/usr/bin/env bash
@@ -138,10 +139,10 @@ release-changelog version="auto":
 	version="$(go tool -modfile tools/changie/go.mod changie latest)"
 	echo "batched ${version}: review and commit it, then run 'just release-tag'"
 
-# Tag HEAD with the version that `just release-changelog` last batched
-# (ADR-018). The tag message is that release's notes, and git signs the tag
-# when tag.gpgSign is set. Pushing the tag is left to you, because the push
+# The tag message is that release's notes, and git signs the tag when
+# tag.gpgSign is set. Pushing the tag is left to you, because the push
 # publishes it.
+# Tag HEAD with the version that release-changelog last batched (ADR-018).
 [group('release')]
 release-tag:
 	#!/usr/bin/env bash
@@ -160,20 +161,21 @@ release-tag:
 release-check:
 	go tool -modfile tools/goreleaser/go.mod goreleaser check
 
-# Full release dry run: builds binaries and images, publishes and signs
-# nothing (keyless signing has no identity outside Actions, ADR-016).
-# Extra args go to goreleaser, e.g. `--skip=docker` without a daemon.
+# Keyless signing has no identity outside Actions (ADR-016). Extra args go
+# to goreleaser, e.g. `--skip=docker` without a daemon.
+# Release dry run: builds binaries and images, publishes and signs nothing.
 [group('release')]
 release-snapshot +args="":
 	go tool -modfile tools/goreleaser/go.mod goreleaser release --snapshot --clean --skip=publish,sign {{args}}
 
-# Cut and publish a release; normally runs tag-triggered in CI, not here
-# (keyless signing needs the workflow's OIDC identity). Extra args go to
-# goreleaser: the CI release rehearsal passes `--skip=sign` (ADR-023).
-# goreleaser calls cosign from PATH, where the release workflow's installer
-# puts it (ADR-016), and signs before it publishes anything. The release
-# notes are the tag's batched changelog; an untagged HEAD or a tag without
-# notes fails here, before anything is built.
+# This normally runs tag-triggered in CI, not here, because keyless signing
+# needs the workflow's OIDC identity. Extra args go to goreleaser: the CI
+# release rehearsal passes `--skip=sign` (ADR-023). goreleaser calls cosign
+# from PATH, where the release workflow's installer puts it (ADR-016), and
+# signs before it publishes anything. The release notes are the tag's
+# batched changelog; an untagged HEAD or a tag without notes fails here,
+# before anything is built.
+# Cut and publish a release from the tagged HEAD (normally CI's job).
 [group('release')]
 [positional-arguments]
 release-publish *args:

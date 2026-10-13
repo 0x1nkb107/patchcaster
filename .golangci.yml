@@ -3,6 +3,11 @@
 # own Go toolchain.
 version: "2"
 
+# The end-to-end suite sits behind its build tag (ADR-025); lint it too.
+run:
+  build-tags:
+    - e2e
+
 linters:
   default: standard
   enable:

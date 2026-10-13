@@ -34,6 +34,11 @@ fmt-check:
 test-integration:
 	PATCHCASTER_TEST_DATABASE_URL="{{test_database_url}}" go test -count=1 ./internal/store/
 
+# The suite recreates the database's public schema (disposable database!).
+# End-to-end tests: the real binary against PostgreSQL and a fake Mattermost (ADR-025).
+test-e2e +args="":
+	PATCHCASTER_TEST_DATABASE_URL="{{test_database_url}}" go test -tags e2e -count=1 {{args}} ./e2e/
+
 # CI quality gate: formatting, the CGO-free build contract, generated query
 # code that matches sqlc's output, and vet with the pinned golangci-lint.
 quality: fmt-check build sqlc-check lint

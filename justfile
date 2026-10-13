@@ -44,6 +44,34 @@ test-integration:
 test-e2e +args="":
 	go test -count=1 {{args}} ./...
 
+# The Mattermost release whose API description the e2e fake validates every
+# request against (ADR-027), pinned by commit because tags can move.
+mattermost_api_release := "v11.11.1"
+mattermost_api_commit := "3acb3a7f684d11ccfcec4e5bd11c79f64e3eabf9"
+
+# The posts endpoints are assembled from the upstream sources the way
+# Mattermost's own build concatenates them. The same commit always gives the
+# same bytes, so a rerun without a new pin changes nothing.
+# Refresh the pinned Mattermost API description in e2e/testdata (ADR-027).
+mattermost-api-spec:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	base="https://raw.githubusercontent.com/mattermost/mattermost/{{mattermost_api_commit}}/api/v4/source"
+	out="e2e/testdata/mattermost-openapi-v4-posts.yaml"
+	mkdir -p "$(dirname "${out}")"
+	{
+		printf '# Mattermost REST API v4, posts endpoints only (ADR-027).\n'
+		printf '# Assembled by `just mattermost-api-spec` from mattermost/mattermost %s\n' "{{mattermost_api_release}}"
+		printf '# (commit %s): introduction.yaml, posts.yaml and\n' "{{mattermost_api_commit}}"
+		printf "# definitions.yaml, concatenated in that order as Mattermost's own build does.\n"
+		printf '# Do not edit by hand.\n'
+		for part in introduction posts definitions; do
+			curl -fsSL "${base}/${part}.yaml"
+		done
+	} > "${out}.partial"
+	mv "${out}.partial" "${out}"
+	echo "wrote ${out} from Mattermost {{mattermost_api_release}}"
+
 # CI quality gate: formatting, the CGO-free build contract, generated query
 # code that matches sqlc's output, and vet with the pinned golangci-lint.
 quality: fmt-check build sqlc-check lint

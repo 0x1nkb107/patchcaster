@@ -39,6 +39,8 @@ policy, and chart signing on 2026-10-10.
 - **Procedure**: run the four acceptance commands against the published artifact; `cosign verify`
   with the release-workflow identity policy (README). Per-change rendering conformance is gated
   in CI by `just chart-check` (`helm lint --strict` + template render of the example values).
+  `just chart-smoke` installs the chart for real, in CI as a pinned application release and in the
+  chart release as its own tag before the push (ADR-028).
 
 ## Notes
 

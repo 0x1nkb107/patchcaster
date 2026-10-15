@@ -62,7 +62,7 @@ owner renamed it the same day, before any chart was signed, so the repository na
   --dry-run=server` — the pinned application image may be private, so nothing is scheduled or
   pulled). The cluster gets the Gateway API CRDs of a pinned release first, so the example
   values' `HTTPRoute` validates as well. Live-install smoke tests become viable with the first
-  application release.
+  application release. (Amended by ADR-028: CI now also installs the chart for real as a pinned application release, and the chart release does so for its own tag before it pushes.)
 
 ## Consequences
 
@@ -73,7 +73,7 @@ owner renamed it the same day, before any chart was signed, so the repository na
 - Bad: two cosign identity strings exist; verification examples in the application's install guide and the charts README must
   carry both.
 - Bad: a chart version may name an `appVersion` whose image was never published; release
-  acceptance (pull + `helm show chart`) catches it, the pipeline cannot.
+  acceptance (pull + `helm show chart`) catches it, the pipeline cannot. (Amended by ADR-028: the chart release's smoke install now stops such a release before it pushes anything.)
 
 ## Alternatives Considered
 

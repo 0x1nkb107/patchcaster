@@ -9,4 +9,6 @@ Requirements follow the SARA model declared in `../../sara.toml`: solution → u
 system requirement → system architecture, with architecture decision records justifying
 architecture choices. An absent `status` on an item means `active`.
 
+Each item lives in the directory of its type, in a file named after its id and a short lowercase slug, for example `adrs/ADR-001-sqlite-state.md`. A directory listing then sorts by number.
+
 Any item may carry `status: proposed`. A proposed item describes planned behaviour that is not built yet, and it is not normative until the owner accepts it. Until then, the active items it would change stay in force, and the proposed item names them. Accepting a proposal removes its `status` line, or sets an ADR's status to `accepted`, and amends or retires the items it replaces.

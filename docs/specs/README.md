@@ -8,3 +8,5 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 Requirements follow the SARA model declared in `../../sara.toml`: solution → use case → scenario →
 system requirement → system architecture, with architecture decision records justifying
 architecture choices. An absent `status` on an item means `active`.
+
+Any item may carry `status: proposed`. A proposed item describes planned behaviour that is not built yet, and it is not normative until the owner accepts it. Until then, the active items it would change stay in force, and the proposed item names them. Accepting a proposal removes its `status` line, or sets an ADR's status to `accepted`, and amends or retires the items it replaces.

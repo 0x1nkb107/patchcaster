@@ -29,5 +29,5 @@ v0.1 has one parser for GitLab's payloads (`internal/event`) and one client for 
 
 - Good: a new platform touches one adapter and its tests, not the core.
 - Good: existing behaviour stays guarded by the e2e suite while the code moves (ADR-025).
-- Bad: v0.1's thread mappings use GitLab's global merge request id, and they need a migration to the new identity (SYSREQ-043).
+- Bad: v0.1's threads cannot carry over, because they hold GitLab's global merge request id instead of the new identity. v0.2 therefore starts from an empty database (SYSREQ-043).
 - On acceptance, ADR-014's plan is decided per sink, and SYSARCH-001 and SYSARCH-003 generalize into SYSARCH-007.

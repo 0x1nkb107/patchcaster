@@ -28,11 +28,11 @@ v0.1 is configured by flags, environment variables and a routing file (UC-002, S
 - Flags and environment keep the startup and operating settings: the database URL, the listen addresses, the public URL, the encryption key, and the operating limits such as the drain timeout, the poll interval and the log level.
 - A committed change applies to the next accepted event, without a restart.
 - Declarative configuration returns as API clients, for example a later `patchcaster apply` command or a Terraform provider generated from the OpenAPI description (ADR-031).
-- v0.1 deployments move over with a one-time import (SYSREQ-043).
+- v0.2 is an incompatible upgrade (owner decision 2026-10-16). v0.1 deployments start with an empty database, and their threads are abandoned (SYSREQ-043).
 
 ## Consequences
 
 - Good: operators change routing themselves, and changes need no redeploy.
 - Bad: the configuration is no longer visible in a Git diff by default. The audit log (SYSREQ-041) and API clients take over that role.
 - Bad: backups of the database now also back up the configuration, so they must be treated like it.
-- On acceptance, ADR-012 validates only the startup settings, ADR-013 applies only to the import of v0.1 files, and UC-005 replaces UC-002.
+- On acceptance, ADR-012 validates only the startup settings, ADR-013 retires with the routing file, and UC-005 replaces UC-002.

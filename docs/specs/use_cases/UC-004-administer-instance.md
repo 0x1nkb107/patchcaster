@@ -32,7 +32,7 @@ An administrator logs in through the organization's identity provider and connec
 - Sources and sinks, assigned to the teams that may use them (SYSREQ-044, SYSREQ-045).
 - Teams and their operators (SYSREQ-039).
 - An audit log of every configuration change (SYSREQ-041).
-- A one-time import of the file configuration of a v0.1 release (SYSREQ-043).
+- An upgrade from v0.1 starts from an empty database, and the service refuses a database that still holds v0.1 state (SYSREQ-043).
 
 Out of scope:
 

@@ -6,8 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-	pgxstdlib "github.com/jackc/pgx/v5/stdlib"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -21,17 +19,10 @@ import (
 // public schema before every test (ADR-026).
 func openTestStore(t *testing.T) (*store.Postgres, *sql.DB) {
 	t.Helper()
-	cfg, err := pgx.ParseConfig(databaseURL)
-	require.NoError(t, err)
-	db := pgxstdlib.OpenDB(*cfg)
-	t.Cleanup(func() { _ = db.Close() })
-
-	ctx := context.Background()
-	_, err = db.ExecContext(ctx, "DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
-	require.NoError(t, err)
+	db := openEmptyDatabase(t)
 
 	// Migrate through the production path (provider + session locker).
-	applied, err := store.Migrate(ctx, db)
+	applied, err := store.Migrate(context.Background(), db)
 	require.NoError(t, err)
 	require.Positive(t, applied, "fresh schema must apply at least one migration")
 

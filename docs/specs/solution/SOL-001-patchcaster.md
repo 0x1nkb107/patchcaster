@@ -56,7 +56,7 @@ On 2026-10-15 the owner decided to grow PatchCaster beyond one forge and one cha
 
 ### Increments
 
-The owner decided on 2026-10-16 to build the evolution in five increments, each shipped as its own release, starting with v0.2. Each increment accepts its proposed items in the pull request that implements them. Scenarios that use Forgejo or Matrix as their example hold for GitLab and Mattermost from the first increment, and in full once those adapters exist.
+The owner decided on 2026-10-16 to build the evolution in five increments, each shipped as its own release, starting with v0.2. Each increment accepts its proposed items in the pull request that implements them. When an increment spans several pull requests, its items are accepted together in the last one, so that no accepted item rests on a proposed one. Scenarios that use Forgejo or Matrix as their example hold for GitLab and Mattermost from the first increment, and in full once those adapters exist.
 
 1. **Foundation (v0.2):** the neutral core and the configuration database behind the management API, for GitLab and Mattermost only, with built-in templates. Login, roles, teams, API tokens, the audit log, encrypted secrets and health metrics come with it, and so does the web interface's foundation with its setup, login and token pages. It accepts UC-004, SCEN-013 to SCEN-020, SCEN-022, SCEN-029, SYSREQ-034 to SYSREQ-048, SYSREQ-062, SYSREQ-064, SYSARCH-006, ADR-029 to ADR-036, ADR-042 and ADR-043, and the GitLab and Mattermost parts of SYSARCH-007 and SYSARCH-008.
 2. **Web interface and templates:** the full management interface, and operator templates with their preview, rendered through Markdown. It accepts UC-005, SCEN-021, SYSREQ-049 to SYSREQ-051, ADR-037 and ADR-038.

@@ -28,4 +28,4 @@ The owner decided on 2026-10-16 that v0.2 is an incompatible upgrade, and that v
 ## Verification Plan
 
 - **Method**: Test.
-- **Procedure**: A store test migrates a database to v0.1's schema, starts the service against it, and asserts the exit, the message and an unchanged database.
+- **Procedure**: A store test builds a v0.1 database from frozen copies of v0.1's migrations and asserts that migration refuses it without writing anything. An end-to-end test starts the binary against a v0.1 database and asserts the non-zero exit, the message and the untouched v0.1 thread.

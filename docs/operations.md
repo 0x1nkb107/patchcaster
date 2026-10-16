@@ -3,6 +3,10 @@
 Running PatchCaster once it is [installed](install.md): what to watch, how it
 shuts down and upgrades, and what its delivery guarantees mean in practice.
 
+## Management API
+
+The management listener (`--management-addr`, `:8081` by default) serves the management API under `/api/v1/`, and its OpenAPI description at `GET /api/v1/openapi.yaml`. It answers nothing else, and the webhook and internal listeners never answer API paths, so each listener can be exposed differently: the webhook listener to the forges, the management listener only to the organization's people and automation. Errors are RFC 9457 problem details (`application/problem+json`).
+
 ## Probes and metrics
 
 The internal listener (`--internal-addr`, `:9090` by default) serves:

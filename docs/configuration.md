@@ -12,6 +12,7 @@ non-zero before anything listens, naming every offending option at once.
 | --- | --- | --- |
 | `--addr` | `PATCHCASTER_ADDR` | `:8080` |
 | `--internal-addr` | `PATCHCASTER_INTERNAL_ADDR` | `:9090` |
+| `--management-addr` | `PATCHCASTER_MANAGEMENT_ADDR` | `:8081` |
 | `--database-url` | `PATCHCASTER_DATABASE_URL` | *required* |
 | `--mattermost-url` | `PATCHCASTER_MATTERMOST_URL` | *required* |
 | `--mattermost-token` | `PATCHCASTER_MATTERMOST_TOKEN` | *required* (bot account token) |

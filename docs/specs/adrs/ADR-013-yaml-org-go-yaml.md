@@ -1,7 +1,7 @@
 ---
 id: "ADR-013"
 type: architecture_decision_record
-name: "Architecture Decision: YAML-org go-yaml (go.yaml.in) for YAML"
+name: "YAML-org go-yaml (go.yaml.in) for YAML"
 status: accepted
 deciders:
   - "Project owner"

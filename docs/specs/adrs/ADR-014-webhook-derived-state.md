@@ -1,7 +1,7 @@
 ---
 id: "ADR-014"
 type: architecture_decision_record
-name: "Architecture Decision: Webhook-derived merge request state"
+name: "Webhook-derived merge request state"
 status: accepted
 deciders:
   - "Project owner"

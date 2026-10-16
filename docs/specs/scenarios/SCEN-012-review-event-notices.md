@@ -1,7 +1,7 @@
 ---
 id: "SCEN-012"
 type: scenario
-name: "Scenario: Notable activity notifies the thread"
+name: "Notable activity notifies the thread"
 refines:
   - "UC-001"
 ---

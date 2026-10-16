@@ -1,7 +1,7 @@
 ---
 id: "SYSREQ-029"
 type: system_requirement
-name: "System Requirement: Review-event thread notices"
+name: "Review-event thread notices"
 description: "Comments, pipeline outcomes, review verdicts, pushes, and merges post exactly one thread notice each."
 specification: "The service SHALL post exactly one thread notice for each accepted delivery of: new human comment, pipeline success, pipeline failure, submitted review, requested changes, individual approval, attributed source-branch push, and merge; every other accepted delivery SHALL post no notice and refresh only the root status line."
 derives_from:

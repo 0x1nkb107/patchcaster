@@ -1,7 +1,7 @@
 ---
 id: "SYSREQ-030"
 type: system_requirement
-name: "System Requirement: Pipeline and push attribution"
+name: "Pipeline and push attribution"
 description: "Pipelines attach by linkage, pushes by project and branch; counts appear only when attribution succeeded."
 specification: "Pipeline deliveries SHALL update merge request state only when they name that merge request, and push deliveries SHALL be attributed by project and source branch, with push notices stating a commit count only when a matching push delivery was applied at acceptance time."
 derives_from:

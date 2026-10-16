@@ -1,7 +1,7 @@
 ---
 id: "ADR-012"
 type: architecture_decision_record
-name: "Architecture Decision: zog for configuration validation"
+name: "zog for configuration validation"
 status: accepted
 deciders:
   - "Project owner"

@@ -25,7 +25,11 @@ func parse(t *testing.T, args ...string) (*CLI, error) {
 var minimalFlags = []string{
 	"--database-url=postgres://x", "--mattermost-url=https://mm",
 	"--mattermost-token=tok", "--signing-secret=s", "--routing-file=/dev/null",
+	"--encryption-key=" + testKey,
 }
+
+// testKey is a well-formed instance key: 32 bytes of 'k', base64-encoded.
+const testKey = "a2tra2tra2tra2tra2tra2tra2tra2tra2tra2tra2s="
 
 func mustParse(t *testing.T, args ...string) *CLI {
 	t.Helper()
@@ -55,7 +59,7 @@ func TestEnvFillsUnsetFlags(t *testing.T) {
 
 	// act
 	cli := mustParse(t, "--database-url=postgres://x", "--mattermost-url=https://mm",
-		"--mattermost-token=tok", "--routing-file=/dev/null")
+		"--mattermost-token=tok", "--routing-file=/dev/null", "--encryption-key="+testKey)
 
 	// assert
 	assert.Equal(t, ":7777", cli.Serve.Addr)
@@ -118,7 +122,8 @@ func TestValidateReportsAllViolationsAtOnce(t *testing.T) {
 	_, err := parse(t, "serve",
 		"--database-url=postgres://x", "--mattermost-url=https://mm",
 		"--mattermost-token=tok", "--routing-file=/dev/null",
-		"--signing-secret=s",
+		"--signing-secret=s", "--encryption-key="+testKey,
+		"--previous-encryption-key=not-a-key",
 		"--log-level=trace", "--drain-timeout=0s",
 		"--event-max-age=48h", "--seen-retention=24h")
 
@@ -130,12 +135,24 @@ func TestValidateReportsAllViolationsAtOnce(t *testing.T) {
 	assert.Contains(t, msg, "--drain-timeout")
 	assert.Contains(t, msg, "--seen-retention")
 	assert.Contains(t, msg, "48h", "cross-field message carries the concrete cap")
+	assert.Contains(t, msg, "--previous-encryption-key 1")
+	assert.NotContains(t, msg, "not-a-key", "a key never appears in an error")
+}
+
+func TestTheEncryptionKeyIsRequired(t *testing.T) {
+	// act
+	_, err := parse(t, "--database-url=postgres://x", "--mattermost-url=https://mm",
+		"--mattermost-token=tok", "--signing-secret=s", "--routing-file=/dev/null")
+
+	// assert
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "missing flags: --encryption-key")
 }
 
 func TestValidateAcceptsRotationSecrets(t *testing.T) {
 	// act
 	cli, err := parse(t, "--database-url=postgres://x", "--mattermost-url=https://mm",
-		"--mattermost-token=tok", "--routing-file=/dev/null",
+		"--mattermost-token=tok", "--routing-file=/dev/null", "--encryption-key="+testKey,
 		"--signing-secret=a", "--signing-secret=b")
 
 	// assert

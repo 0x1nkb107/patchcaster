@@ -24,6 +24,8 @@ type serviceConfig struct {
 	pollInterval  time.Duration
 	claimLease    time.Duration
 	drainTimeout  time.Duration
+	encryptionKey string   // the suite key when empty
+	previousKeys  []string // earlier keys during a rotation
 }
 
 // Suite defaults: a short poll so that retries come due quickly, a short
@@ -44,6 +46,9 @@ func (c serviceConfig) withDefaults() serviceConfig {
 	}
 	if c.drainTimeout == 0 {
 		c.drainTimeout = defaultDrainTimeout
+	}
+	if c.encryptionKey == "" {
+		c.encryptionKey = suiteKey
 	}
 	return c
 }
@@ -90,7 +95,11 @@ func launch(t *testing.T, cfg serviceConfig) *service {
 		"--poll-interval", cfg.pollInterval.String(),
 		"--claim-lease", cfg.claimLease.String(),
 		"--drain-timeout", cfg.drainTimeout.String(),
+		"--encryption-key", cfg.encryptionKey,
 	)
+	for _, key := range cfg.previousKeys {
+		cmd.Args = append(cmd.Args, "--previous-encryption-key", key)
+	}
 	cmd.Stdout = logs
 	cmd.Stderr = logs
 	require.NoError(t, cmd.Start(), "start patchcaster")

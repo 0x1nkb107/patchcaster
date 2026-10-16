@@ -23,7 +23,8 @@ Teams that keep configuration in Git, and later integrations such as a command-l
 
 - Each operation of the web interface has an API operation with the same effect and the same authorization (SYSREQ-039).
 - The description the service publishes is the one its server code was generated from.
-- A request that breaks the description answers `400` with the violated property named, and has no side effect.
+- A request that breaks the description answers `400` with problem details that name each violated field by its path, and has no side effect.
+- Operations live under `/api/v1/`, and a change that would break clients opens a new version path (ADR-043).
 
 ## Verification Plan
 

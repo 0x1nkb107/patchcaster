@@ -29,7 +29,7 @@ ogen generates the management API's server and client code.
 - The description lives in the repository, uses OpenAPI 3.0, and is embedded in the binary and served by it (SYSREQ-035).
 - ogen is pinned as a tools module (ADR-007). The generated code is checked in, and a `just api-check` gate fails CI when it differs from what the description generates, as `just sqlc-check` does for queries (ADR-010).
 - Handlers implement the generated handler interface by calling the configuration service, never the store (SYSARCH-006).
-- The generated validation rejects non-conforming requests. Its error handler answers them with `400` and names the violated property (SYSREQ-035).
+- The generated validation rejects non-conforming requests. Its error handler answers them with `400` problem details that name each violated field by its path (SYSREQ-035, ADR-043).
 - The e2e suite uses the generated client, so every end-to-end test also exercises the contract.
 - The web interface's TypeScript types and client are generated from the same description, and the same gate checks them (ADR-032).
 

@@ -36,6 +36,7 @@ The binary must serve a web interface (UC-004, UC-005, UC-006). Its heaviest scr
   - Paths that name no file and do not start with `/api` get the fallback page.
   - Hashed files under `_app/immutable/` are served with `Cache-Control: public, max-age=31536000, immutable`, and the fallback page with `no-cache`.
   - Without a bundle, the binary serves a short page saying that the interface was not built.
+- Forms show the API's validation errors next to their fields, through the field paths of ADR-043.
 - The interface talks only to the management API. Its types and client are generated from the OpenAPI description (ADR-031). A changed contract then breaks the interface's type check, not its users.
 - Login stays on the server (ADR-033). The session lives in an `HttpOnly` cookie on the interface's own origin, so the interface never handles a token.
 - `web/.npmrc` sets `min-release-age=7` (owner decision 2026-10-15). When dependencies are added or updated, npm then resolves only versions published more than seven days ago. A hijacked release thus has a week to be noticed and pulled before it can enter the lockfile, and `npm ci` installs the lockfile as reviewed.

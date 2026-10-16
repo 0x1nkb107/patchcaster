@@ -28,7 +28,7 @@ Normative once accepted: the web interface and the management API are two presen
 
 ## Technical Strategy
 
-The configuration service is the only code that changes configuration. The API handlers are generated from the OpenAPI description (ADR-031) and call the service, never the store directly. The web interface is a single-page application that uses only that API (ADR-032), so authorization (ADR-034) and auditing apply to both alike. Login is generic OpenID Connect with a bootstrap link and a recovery command (ADR-033). Secrets pass through a secret box that encrypts them with the instance key (ADR-035). Each instance serves one organization (ADR-029), and configuration lives in its database (ADR-030). The management surface has its own listener (SYSREQ-036).
+The configuration service is the only code that changes configuration. The API handlers are generated from the OpenAPI description (ADR-031), follow the conventions of ADR-043, and call the service, never the store directly. The web interface is a single-page application that uses only that API (ADR-032), so authorization (ADR-034) and auditing apply to both alike. Login is generic OpenID Connect with a bootstrap link and a recovery command (ADR-033). Secrets pass through a secret box that encrypts them with the instance key (ADR-035). Each instance serves one organization (ADR-029), and configuration lives in its database (ADR-030). The management surface has its own listener (SYSREQ-036).
 
 ## Static View (Structure)
 

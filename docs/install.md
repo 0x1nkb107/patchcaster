@@ -43,6 +43,7 @@ podman run -d --name patchcaster \
   -e PATCHCASTER_MATTERMOST_URL=https://mattermost.example.com \
   -e PATCHCASTER_MATTERMOST_TOKEN=… \
   -e PATCHCASTER_SIGNING_SECRETS=… \
+  -e PATCHCASTER_ENCRYPTION_KEY=… \
   ghcr.io/patchcaster-app/patchcaster:vX.Y.Z
 ```
 

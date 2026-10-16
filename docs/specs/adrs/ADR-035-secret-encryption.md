@@ -20,6 +20,7 @@ With configuration in the database (ADR-030), forge tokens, chat credentials, we
 
 - The instance key is 32 random bytes, given base64-encoded through the environment. It is one of the startup settings.
 - Each secret is sealed with AES-256-GCM from the standard library, with a random nonce. The additional data names the table, the column and the row, so a sealed value copied into another row fails to open.
+- At the first start PatchCaster stores a known value, sealed with the instance key. Every later start must open it, so a wrong key stops the service before it misreads any secret (SYSREQ-042).
 - Each sealed value records the id of the key that sealed it. Rotation starts the service with a new key and the old one marked decrypt-only, runs a re-encryption command, and then drops the old key.
 - The Matrix pickle key is random and itself sealed like any other secret (ADR-040). Rotating the instance key then re-seals one value instead of every encryption session.
 - No surface returns a stored secret. A new webhook secret is shown once for manual registration and never again.

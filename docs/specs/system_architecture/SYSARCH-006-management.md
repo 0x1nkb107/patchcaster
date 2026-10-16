@@ -20,6 +20,7 @@ satisfies:
   - "SYSREQ-053"
   - "SYSREQ-055"
   - "SYSREQ-062"
+  - "SYSREQ-064"
 ---
 
 # System Architecture: Management surface

@@ -63,6 +63,18 @@ type service struct {
 // are printed when the test fails.
 func startService(t *testing.T, cfg serviceConfig) *service {
 	t.Helper()
+	s := launch(t, cfg)
+	eventually(t, 15*time.Second, "the service to report ready", func() bool {
+		return s.readiness() == http.StatusOK
+	})
+	return s
+}
+
+// launch starts patchcaster against the suite database without waiting for
+// it, for tests that expect the start to fail. The process is killed when the
+// test ends, and its logs are printed when the test fails.
+func launch(t *testing.T, cfg serviceConfig) *service {
+	t.Helper()
 	cfg = cfg.withDefaults()
 	publicAddr, internalAddr := freeAddress(t), freeAddress(t)
 
@@ -96,10 +108,6 @@ func startService(t *testing.T, cfg serviceConfig) *service {
 		close(s.exited)
 	}()
 	t.Cleanup(func() { s.cleanUp(t) })
-
-	eventually(t, 15*time.Second, "the service to report ready", func() bool {
-		return s.readiness() == http.StatusOK
-	})
 	return s
 }
 

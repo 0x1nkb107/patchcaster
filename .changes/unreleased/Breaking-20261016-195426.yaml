@@ -1,0 +1,3 @@
+kind: Breaking
+body: 'Give every instance an encryption key in PATCHCASTER_ENCRYPTION_KEY: 32 random bytes, base64-encoded. PatchCaster seals the secrets it stores with it, and refuses to start with a key that does not open them.'
+time: 2026-10-16T19:54:26.99470685+02:00

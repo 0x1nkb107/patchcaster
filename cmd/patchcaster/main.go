@@ -30,6 +30,7 @@ var version = "dev"
 type CLI struct {
 	Serve   ServeCmd   `cmd:"" default:"withargs" help:"Run the webhook relay."`
 	Migrate MigrateCmd `cmd:"" help:"Apply database migrations and exit."`
+	Secrets SecretsCmd `cmd:"" help:"Manage the secrets PatchCaster stores."`
 
 	Version kong.VersionFlag `help:"Show the build version and exit."`
 }
@@ -99,5 +100,46 @@ func migrate(ctx context.Context, db *sql.DB, log *slog.Logger) error {
 		return err
 	}
 	log.Info("migrations applied", "count", applied)
+	return nil
+}
+
+// SecretsCmd groups the maintenance of stored secrets (ADR-035).
+type SecretsCmd struct {
+	Reseal ResealCmd `cmd:"" help:"Seal every stored secret again with the active encryption key, after a key rotation."`
+}
+
+// ResealCmd moves every stored secret to the active encryption key, so that
+// a previous key can be dropped afterwards.
+type ResealCmd struct {
+	DatabaseURL string   `flag:"" required:"" env:"PATCHCASTER_DATABASE_URL" help:"PostgreSQL connection URL."`
+	Keys        KeyFlags `embed:""`
+}
+
+// Validate rejects malformed keys before anything connects.
+func (c *ResealCmd) Validate() error {
+	return c.Keys.validate()
+}
+
+// Run reseals over a connection it opens and closes. It migrates first, like
+// serve, so that it always meets the schema it was built for.
+func (c *ResealCmd) Run(ctx context.Context) error {
+	log := newLogger("info")
+	box, err := c.Keys.box()
+	if err != nil {
+		return err
+	}
+	db, err := openDB(c.DatabaseURL)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = db.Close() }()
+	if err := migrate(ctx, db, log); err != nil {
+		return err
+	}
+	resealed, err := resealSecrets(ctx, store.New(db), box, time.Now())
+	if err != nil {
+		return err
+	}
+	log.Info("secrets resealed", "count", resealed)
 	return nil
 }

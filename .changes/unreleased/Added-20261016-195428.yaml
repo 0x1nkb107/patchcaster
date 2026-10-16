@@ -1,0 +1,3 @@
+kind: Added
+body: 'Rotate the encryption key without downtime: start with the new key and the old one in PATCHCASTER_PREVIOUS_ENCRYPTION_KEYS, then run patchcaster secrets reseal.'
+time: 2026-10-16T19:54:28.115953295+02:00

@@ -37,6 +37,8 @@ type ServeCmd struct {
 	ClaimLease      time.Duration `flag:"" default:"60s" env:"PATCHCASTER_CLAIM_LEASE" help:"Job claim lease before reaping."`
 	PollInterval    time.Duration `flag:"" default:"10s" env:"PATCHCASTER_POLL_INTERVAL" help:"Fallback claim interval for retries, expired leases and missed wake-ups."`
 	LogLevel        string        `flag:"" default:"info" env:"PATCHCASTER_LOG_LEVEL" help:"Log level: debug|info|warn|error."`
+
+	Keys KeyFlags `embed:""`
 }
 
 // serveSchema asserts the semantic constraints on kong-parsed values
@@ -93,12 +95,12 @@ var flagNames = map[string]string{
 // (ADR-012), so a misconfigured first deploy names all offending options.
 func (c *ServeCmd) Validate() error {
 	issues := append(serveSchema.Validate(c), replayLoopSchema.Validate(c)...)
-	if len(issues) == 0 {
-		return nil
-	}
-	errs := make([]error, 0, len(issues))
+	errs := make([]error, 0, len(issues)+1)
 	for _, issue := range issues {
 		errs = append(errs, fmt.Errorf("%s: %s", flagName(issue.Path), issue.Message))
+	}
+	if err := c.Keys.validate(); err != nil {
+		errs = append(errs, err)
 	}
 	return errors.Join(errs...)
 }
@@ -138,6 +140,17 @@ func (c *ServeCmd) Run(ctx context.Context) error {
 	}
 
 	st := store.New(db)
+	box, err := c.Keys.box()
+	if err != nil {
+		return err
+	}
+	stale, err := verifyInstanceKey(ctx, st, box, time.Now())
+	if err != nil {
+		return err
+	}
+	if stale {
+		log.Warn("stored secrets are sealed with a previous encryption key: run patchcaster secrets reseal")
+	}
 	m := metrics.New()
 	probe := ops.NewServer(st, m)
 

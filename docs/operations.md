@@ -52,6 +52,17 @@ what is pending.
 
 Upgrading from v0.1 to v0.2 needs a new, empty database. v0.2 does not take over a v0.1 database: it refuses to start on one and says so, and threads that v0.1 started receive no further replies. Give v0.2 a new database, or drop the old one, and configure the instance again.
 
+## Rotating the encryption key
+
+The [encryption key](configuration.md#encryption-key) rotates without downtime:
+
+1. Generate a new key with `openssl rand -base64 32`.
+2. Restart PatchCaster with the new key in `PATCHCASTER_ENCRYPTION_KEY` and the old one in `PATCHCASTER_PREVIOUS_ENCRYPTION_KEYS`. It starts, and warns that stored secrets are still sealed with a previous key.
+3. Run `patchcaster secrets reseal` with the same two settings and the database URL.
+4. Restart with the new key alone, and discard the old one.
+
+Before the reseal, a start with only the new key fails. After it, a start with only the old key fails.
+
 ## Compatibility
 
 An upgrade needs no action unless it changes this contract:

@@ -16,6 +16,8 @@ non-zero before anything listens, naming every offending option at once.
 | `--mattermost-url` | `PATCHCASTER_MATTERMOST_URL` | *required* |
 | `--mattermost-token` | `PATCHCASTER_MATTERMOST_TOKEN` | *required* (bot account token) |
 | `--signing-secret` (repeatable) | `PATCHCASTER_SIGNING_SECRETS` (comma-separated) | *required* |
+| `--encryption-key` | `PATCHCASTER_ENCRYPTION_KEY` | *required* (see [encryption key](#encryption-key)) |
+| `--previous-encryption-key` (repeatable) | `PATCHCASTER_PREVIOUS_ENCRYPTION_KEYS` (comma-separated) | none |
 | `--routing-file` | `PATCHCASTER_ROUTING_FILE` | *required* |
 | `--drain-timeout` | `PATCHCASTER_DRAIN_TIMEOUT` | `30s` |
 | `--event-max-age` | `PATCHCASTER_EVENT_MAX_AGE` | `4h` |
@@ -40,11 +42,21 @@ Any one of the signing secrets may sign a delivery, which is how the GitLab
 signing token rotates without downtime: add the new secret, switch the hook
 over to it, then drop the old one.
 
+## Encryption key
+
+PatchCaster seals the secrets it stores in the database with the instance encryption key: 32 random bytes, base64-encoded. Generate one with `openssl rand -base64 32` and guard it like the database credentials. Prefer the environment variable over the flag, because flags show up in process listings.
+
+At its first start PatchCaster stores a sealed check value, and every later start must open it. A start with another key therefore fails before it touches any secret, with a message that names the problem and never the key. Losing the key loses the stored secrets. To change the key, see [rotating the encryption key](operations.md#rotating-the-encryption-key).
+
 ## `patchcaster migrate`
 
 Applies the embedded database migrations and exits. It takes only
 `--database-url` (`PATCHCASTER_DATABASE_URL`); see
 [upgrades](operations.md#upgrades-and-migrations) for when to use it.
+
+## `patchcaster secrets reseal`
+
+Seals every stored secret again with `--encryption-key` and exits. It takes `--database-url`, `--encryption-key` and `--previous-encryption-key`, with the same environment variables as `serve`. See [rotating the encryption key](operations.md#rotating-the-encryption-key) for when to use it.
 
 ## Routing table
 

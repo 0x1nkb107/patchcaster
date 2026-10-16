@@ -439,3 +439,33 @@ func (p *Postgres) CloseThread(ctx context.Context, mrRef string, now time.Time)
 	}
 	return nil
 }
+
+// KeyCheck returns the sealed key check, or nil before the first start has
+// stored one (SYSREQ-042).
+func (p *Postgres) KeyCheck(ctx context.Context) ([]byte, error) {
+	sealed, err := p.base.KeyCheckGet(ctx)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read key check: %w", err)
+	}
+	return sealed, nil
+}
+
+// InitKeyCheck stores the first sealed key check. When another instance
+// stored one first, that one stays.
+func (p *Postgres) InitKeyCheck(ctx context.Context, sealed []byte, now time.Time) error {
+	if err := p.base.KeyCheckInit(ctx, sqlcgen.KeyCheckInitParams{Sealed: sealed, SealedAt: now}); err != nil {
+		return fmt.Errorf("store key check: %w", err)
+	}
+	return nil
+}
+
+// ReplaceKeyCheck stores the key check sealed again with the active key.
+func (p *Postgres) ReplaceKeyCheck(ctx context.Context, sealed []byte, now time.Time) error {
+	if err := p.base.KeyCheckReplace(ctx, sqlcgen.KeyCheckReplaceParams{Sealed: sealed, SealedAt: now}); err != nil {
+		return fmt.Errorf("replace key check: %w", err)
+	}
+	return nil
+}

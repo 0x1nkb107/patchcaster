@@ -36,7 +36,8 @@ func TestServeIsTheDefaultCommand(t *testing.T) {
 
 	// act: no command name given
 	err := run(t, "--database-url=postgres://x", "--mattermost-url=https://mm",
-		"--mattermost-token=tok", "--signing-secret=s", "--routing-file="+missing)
+		"--mattermost-token=tok", "--signing-secret=s", "--routing-file="+missing,
+		"--encryption-key="+testKey)
 
 	// assert
 	require.Error(t, err)

@@ -10,6 +10,12 @@ import (
 	"time"
 )
 
+type InstanceKeyCheck struct {
+	ID       int16
+	Sealed   []byte
+	SealedAt time.Time
+}
+
 type MrState struct {
 	MrRef             string
 	Title             string

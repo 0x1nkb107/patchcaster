@@ -9,6 +9,9 @@
 
 engine := env_var_or_default("ENGINE", "podman")
 database_url := "postgres://patchcaster:dev@127.0.0.1:5433/patchcaster?sslmode=disable"
+# A fixed instance key for the throwaway dev database only, so that restarts
+# open the secrets earlier runs sealed. Never use it for a real deployment.
+dev_encryption_key := "cGF0Y2hjYXN0ZXItZGV2LWRhdGFiYXNlLWtleS0zMmI="
 
 # Format, vet and run the unit and store contract tests (the default).
 [group('dev')]
@@ -96,7 +99,8 @@ migrate:
 run:
 	go run ./cmd/patchcaster serve \
 	  --database-url "{{database_url}}" \
-	  --routing-file ./contrib/routing.example.yaml
+	  --routing-file ./contrib/routing.example.yaml \
+	  --encryption-key "{{dev_encryption_key}}"
 
 # Disposable PostgreSQL 18 for local work (podman or docker via $ENGINE).
 [group('dev')]

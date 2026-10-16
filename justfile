@@ -61,9 +61,9 @@ test-integration:
 test-e2e +args="":
 	go test -count=1 {{args}} ./...
 
-# CI quality gate: formatting, the CGO-free build, sqlc output, vet and lint.
+# CI quality gate: formatting, the CGO-free build, generated code, vet and lint.
 [group('check')]
-quality: fmt-check build sqlc-check lint
+quality: fmt-check build sqlc-check api-check lint
 
 # -modfile resolves the tool from the pinned tools/golangci module while the
 # working directory stays at the service module root.
@@ -88,6 +88,31 @@ sqlc:
 [group('check')]
 sqlc-check:
 	go tool -modfile tools/sqlc/go.mod sqlc diff
+
+# The description is the source: the server in the binary and the e2e suite's
+# client both come from it (ADR-031).
+# Regenerate the management API code after editing internal/api/openapi-v1.yaml.
+[group('dev')]
+api: (ogen "internal/api/v1gen" "e2e/apiv1")
+
+# ogen offers no diff mode, so this generates into a scratch directory and
+# compares. Generated API code is never edited by hand or left stale.
+# Fail when the committed API code differs from what ogen generates.
+[group('check')]
+api-check:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	scratch="$(mktemp -d)"
+	trap 'rm -rf "${scratch}"' EXIT
+	just ogen "${scratch}/v1gen" "${scratch}/apiv1" >/dev/null
+	diff -r "${scratch}/v1gen" internal/api/v1gen
+	diff -r "${scratch}/apiv1" e2e/apiv1
+
+# Generate the v1 server and the e2e client into the given directories.
+[private]
+ogen server client:
+	go tool -modfile tools/ogen/go.mod ogen -loglevel error -clean -config internal/api/ogen-server.yaml -package v1gen -target {{server}} internal/api/openapi-v1.yaml
+	go tool -modfile tools/ogen/go.mod ogen -loglevel error -clean -config e2e/ogen-client.yaml -package apiv1 -target {{client}} internal/api/openapi-v1.yaml
 
 # Apply migrations from the embedded set against the target database.
 [group('dev')]

@@ -12,6 +12,7 @@ import (
 	z "github.com/Oudwins/zog"
 	"github.com/lmittmann/tint"
 
+	"github.com/patchcaster-app/patchcaster/internal/api"
 	"github.com/patchcaster-app/patchcaster/internal/deliver"
 	"github.com/patchcaster-app/patchcaster/internal/graceful"
 	"github.com/patchcaster-app/patchcaster/internal/ingest"
@@ -26,6 +27,7 @@ import (
 type ServeCmd struct {
 	Addr            string        `flag:"" default:":8080" env:"PATCHCASTER_ADDR" help:"Public listener address (webhook endpoint)."`
 	InternalAddr    string        `flag:"" default:":9090" env:"PATCHCASTER_INTERNAL_ADDR" help:"Internal listener address (probes, metrics)."`
+	ManagementAddr  string        `flag:"" default:":8081" env:"PATCHCASTER_MANAGEMENT_ADDR" help:"Management listener address (API and web interface)."`
 	DatabaseURL     string        `flag:"" required:"" env:"PATCHCASTER_DATABASE_URL" help:"PostgreSQL connection URL."`
 	MattermostURL   string        `flag:"" required:"" env:"PATCHCASTER_MATTERMOST_URL" help:"Mattermost site URL."`
 	MattermostToken string        `flag:"" required:"" env:"PATCHCASTER_MATTERMOST_TOKEN" help:"Bot account auth token."`
@@ -184,6 +186,11 @@ func (c *ServeCmd) Run(ctx context.Context) error {
 		nil,
 	)
 
+	management, err := api.Mux(api.NewService(version, log))
+	if err != nil {
+		return fmt.Errorf("build management API: %w", err)
+	}
+
 	// Bind before announcing readiness: a port conflict must fail the start,
 	// not arrive as a late listener error.
 	pubLn, err := net.Listen("tcp", c.Addr)
@@ -195,6 +202,12 @@ func (c *ServeCmd) Run(ctx context.Context) error {
 		_ = pubLn.Close()
 		return fmt.Errorf("bind internal listener %s: %w", c.InternalAddr, err)
 	}
+	mgmtLn, err := net.Listen("tcp", c.ManagementAddr)
+	if err != nil {
+		_ = pubLn.Close()
+		_ = intLn.Close()
+		return fmt.Errorf("bind management listener %s: %w", c.ManagementAddr, err)
+	}
 
 	lc := &lifecycle{
 		internal: func(ctx context.Context) error {
@@ -202,6 +215,9 @@ func (c *ServeCmd) Run(ctx context.Context) error {
 		},
 		public: func(ctx context.Context) error {
 			return graceful.Serve(ctx, pubLn, handler.Mux(), c.DrainTimeout)
+		},
+		management: func(ctx context.Context) error {
+			return graceful.Serve(ctx, mgmtLn, management, c.DrainTimeout)
 		},
 		worker: worker,
 		background: []func(context.Context) error{
@@ -212,7 +228,7 @@ func (c *ServeCmd) Run(ctx context.Context) error {
 		drainBudget: c.DrainTimeout,
 		log:         log,
 	}
-	log.Info("serving", "public", c.Addr, "internal", c.InternalAddr)
+	log.Info("serving", "public", c.Addr, "internal", c.InternalAddr, "management", c.ManagementAddr)
 	return lc.run(ctx)
 }
 

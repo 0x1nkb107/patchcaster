@@ -43,6 +43,7 @@ type drainingWorker interface {
 type lifecycle struct {
 	internal    func(context.Context) error   // probes and metrics listener
 	public      func(context.Context) error   // webhook listener
+	management  func(context.Context) error   // management API listener
 	worker      drainingWorker                // delivery worker
 	background  []func(context.Context) error // tasks that end with the worker
 	markReady   func(bool)
@@ -52,9 +53,9 @@ type lifecycle struct {
 
 // run starts every part, marks the instance ready, and blocks until ctx ends
 // or a part fails. A failed part tears everything down at once. When ctx
-// ends, readiness flips false, the public listener stops accepting, and the
-// worker gets the drain budget to finish what is in flight before the
-// internal listener stops last.
+// ends, readiness flips false, the public and management listeners stop
+// accepting, and the worker gets the drain budget to finish what is in
+// flight before the internal listener stops last.
 func (l *lifecycle) run(ctx context.Context) error {
 	// ctx only signals the shutdown; it must not end the parts itself.
 	// Parts derived from it would all stop the moment SIGTERM arrives,
@@ -62,21 +63,24 @@ func (l *lifecycle) run(ctx context.Context) error {
 	// sequence below ends them, each at its turn.
 	detached := context.WithoutCancel(ctx)
 	pubCtx, cancelPub := context.WithCancel(detached)
+	mgmtCtx, cancelMgmt := context.WithCancel(detached)
 	wrkCtx, cancelWrk := context.WithCancel(detached)
 	intCtx, cancelInt := context.WithCancel(detached)
 	// Belt for early-return paths; the shutdown choreography below cancels
 	// these deliberately, and repeated cancel is a no-op.
 	defer cancelPub()
+	defer cancelMgmt()
 	defer cancelWrk()
 	defer cancelInt()
 
 	// One buffered slot per part so late returns never block on a channel
 	// nobody drains during shutdown.
-	parts := 3 + len(l.background)
+	parts := 4 + len(l.background)
 	errc := make(chan error, parts)
 	workerDone := make(chan struct{})
 	go func() { errc <- l.internal(intCtx) }()
 	go func() { errc <- l.public(pubCtx) }()
+	go func() { errc <- l.management(mgmtCtx) }()
 	go func() {
 		err := l.worker.Run(wrkCtx)
 		close(workerDone)
@@ -94,6 +98,7 @@ func (l *lifecycle) run(ctx context.Context) error {
 		// A part failed, at startup or later: tear everything down at once.
 		record(err, &errs)
 		cancelPub()
+		cancelMgmt()
 		cancelWrk()
 		cancelInt()
 		recordAll(collect(errc, parts-1), &errs)
@@ -101,7 +106,8 @@ func (l *lifecycle) run(ctx context.Context) error {
 	case <-ctx.Done():
 		l.markReady(false)
 		l.log.Info("shutdown signaled", "drain_budget", l.drainBudget)
-		cancelPub() // webhooks stop being accepted immediately
+		cancelPub()  // webhooks stop being accepted immediately
+		cancelMgmt() // so do API requests; those in flight still finish
 		l.worker.StopAfterCurrentJob()
 
 		select {

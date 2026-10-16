@@ -1,0 +1,7 @@
+# ogen settings for the server code in the binary: no client and no
+# OpenTelemetry instrumentation (ADR-031).
+generator:
+  features:
+    disable_all: true
+    enable:
+      - paths/server

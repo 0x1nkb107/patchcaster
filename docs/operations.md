@@ -50,6 +50,8 @@ Migrations are embedded in the binary. Run `patchcaster migrate` before
 rollout, or let startup apply them (single-replica v1). Both paths apply only
 what is pending.
 
+Upgrading from v0.1 to v0.2 needs a new, empty database. v0.2 does not take over a v0.1 database: it refuses to start on one and says so, and threads that v0.1 started receive no further replies. Give v0.2 a new database, or drop the old one, and configure the instance again.
+
 ## Compatibility
 
 An upgrade needs no action unless it changes this contract:

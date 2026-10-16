@@ -1,0 +1,3 @@
+kind: Breaking
+body: Start v0.2 with a new, empty database. It refuses to start on a v0.1 database, and threads that v0.1 started receive no further replies.
+time: 2026-10-16T19:45:40.787834139+02:00

@@ -25,7 +25,7 @@ The person who deployed the instance runs the bootstrap command.
 ## Step-by-Step Flow
 
 1. The command prints a setup link that works once and expires after a short time.
-2. The person opens the link and enters the OpenID Connect issuer, client id and client secret.
+2. The person opens the link and enters the OpenID Connect issuer, client id and client secret. Optionally, they name the groups allowed to log in.
 3. PatchCaster sends them through the identity provider's login. The identity that comes back becomes the first administrator.
 4. The setup link stops working.
 

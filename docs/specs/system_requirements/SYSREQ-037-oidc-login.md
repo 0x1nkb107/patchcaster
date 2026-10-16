@@ -22,7 +22,8 @@ The owner chose generic OpenID Connect for login (2026-10-15). An IT department 
 ## Acceptance Criteria
 
 - A person is identified by the issuer and subject of their ID token. Their first login creates their record with the role User.
-- Sessions live on the server. Their cookie is `Secure`, `HttpOnly` and `SameSite=Lax`, and sessions expire and can be ended by logout.
+- Sessions live on the server. Their cookie is `Secure`, `HttpOnly` and `SameSite=Lax`. Sessions end after one hour without activity, twelve hours after login at the latest, or at logout.
+- Administrators may limit login to members of groups named in an ID token claim they choose. Without that limit, anyone the provider authenticates may log in. A refused login tells the person why and is recorded in the audit log.
 - Every state-changing request of the web interface is protected against cross-site request forgery.
 - An ID token whose issuer, audience, signature or expiry does not check out is refused.
 

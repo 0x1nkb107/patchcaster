@@ -16,7 +16,7 @@ A new instance must be reachable by its first administrator without any default 
 
 ## Initial State
 
-- The instance runs with its database URL, encryption key and public URL. The configuration in the database is empty.
+- The instance runs with its database URL, encryption key, public base URL and interface URL. The configuration in the database is empty.
 
 ## Trigger
 

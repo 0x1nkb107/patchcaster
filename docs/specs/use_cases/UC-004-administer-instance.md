@@ -17,7 +17,7 @@ refines:
 
 ## Pre-conditions
 
-- The instance runs with its database, its encryption key and its public URL.
+- The instance runs with its database, its encryption key, its public base URL and its interface URL.
 - The organization has an OpenID Connect identity provider.
 - The administrators hold credentials for the forges and chat platforms the instance will use.
 

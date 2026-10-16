@@ -25,7 +25,7 @@ v0.1 is configured by flags, environment variables and a routing file (UC-002, S
 ## Decision
 
 - The database holds connections, teams, sources, sinks, routes, filters, templates, identity links and tokens.
-- Flags and environment keep the startup and operating settings: the database URL, the listen addresses, the public URL, the encryption key, and the operating limits such as the drain timeout, the poll interval and the log level.
+- Flags and environment keep the startup and operating settings: the database URL, the listen addresses, the public base URL, the interface URL, the encryption key, and the operating limits such as the drain timeout, the poll interval and the log level.
 - A committed change applies to the next accepted event, without a restart.
 - Declarative configuration returns as API clients, for example a later `patchcaster apply` command or a Terraform provider generated from the OpenAPI description (ADR-031).
 - v0.2 is an incompatible upgrade (owner decision 2026-10-16). v0.1 deployments start with an empty database, and their threads are abandoned (SYSREQ-043).

@@ -1,7 +1,7 @@
 ---
 id: "SYSREQ-027"
 type: system_requirement
-name: "System Requirement: Merge request derived state"
+name: "Merge request derived state"
 description: "Pipeline, comment, edit, and reviewer state derived from webhook deliveries, applied exactly once per accepted delivery."
 specification: "The service SHALL maintain per-merge-request derived state - pipeline status, human comment count, edit count, and reviewer tally - applying it exactly once per accepted delivery, atomically with duplicate suppression and queue insertion."
 derives_from:

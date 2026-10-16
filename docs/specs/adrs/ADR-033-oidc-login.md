@@ -26,16 +26,18 @@ The owner chose generic OpenID Connect for login (2026-10-15). An IT department 
 - Login uses the authorization code flow with PKCE through the relying party of `github.com/zitadel/oidc/v3`, built on `golang.org/x/oauth2`. PatchCaster keeps no passwords.
 - The relying party keeps the flow's state and PKCE verifier in short-lived encrypted cookies. Their hash and encryption keys are derived from the instance key with HKDF from the standard library, so a login started before a restart or rollout still completes after it.
 - A person is identified by issuer and subject. The first login creates the person with the role User.
+- Administrators may limit login to members of named groups (owner decision 2026-10-16). Providers carry group membership in different ID token claims, so administrators name the claim as well as the allowed groups. Without a limit, anyone the provider authenticates may log in. Membership is checked at every login.
+- API tokens live at most 90 days. An administrator can revoke all tokens and end all sessions of a person at once.
 - Roles are assigned in PatchCaster, not taken from identity provider claims. Mapping groups to roles can come later.
-- Sessions are managed by `github.com/alexedwards/scs/v2`, with their data in PostgreSQL (owner decision 2026-10-15). Version v2.9.0 is MIT licensed. The session cookie is `Secure`, `HttpOnly` and `SameSite=Lax`. Sessions have an idle and an absolute timeout, the token is renewed at login against session fixation, and logout destroys the session.
-- scs's store interface has three methods. PatchCaster implements it in its store package, over sqlc queries and a goose migration, instead of importing scs's `postgresstore` or `pgxstore`. Those have no tagged releases, and their table would sit outside the migrations and the sqlc gate (ADR-010). Using `postgresstore`, which works with `database/sql`, remains an option at review.
+- Sessions are managed by `github.com/alexedwards/scs/v2`, with their data in PostgreSQL (owner decision 2026-10-15). Version v2.9.0 is MIT licensed. The session cookie is `Secure`, `HttpOnly` and `SameSite=Lax`. Sessions end after one hour without activity and twelve hours after login at the latest. The session token is renewed at login against session fixation, and logout destroys the session.
+- PatchCaster implements scs's three-method store interface itself, in its store package, over sqlc queries and a goose migration (owner decision 2026-10-16). scs's own `postgresstore` and `pgxstore` have no tagged releases, and their table would sit outside the migrations and the sqlc gate (ADR-010).
 - State-changing requests pass `net/http.CrossOriginProtection` from the standard library.
 - `patchcaster bootstrap` issues a single-use setup link valid for one hour while no administrator exists. Through it, the first administrator configures the provider and becomes administrator by logging in once.
 - `patchcaster admin grant` gives the administrator role to an issuer and subject. It needs the database credentials, which already give full control, so it opens no new door.
 
 ## Consequences
 
-- Good: the organization's identity provider keeps deciding who someone is, and offboarding there ends access here.
+- Good: the organization's identity provider keeps deciding who someone is. Offboarding there stops new logins at once. Open sessions end within twelve hours and tokens within 90 days, unless an administrator revokes them sooner.
 - Good: no default password ever exists.
 - Good: scs is small, handles token renewal and timeouts, and keeps sessions in the instance's own database.
 - Bad: an instance cannot be used without an identity provider, even for a quick trial. A trial needs a test provider.

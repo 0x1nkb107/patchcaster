@@ -20,7 +20,7 @@ PatchCaster will connect several forges and chat platforms per instance (UC-007)
 
 - An instance and its database serve exactly one organization. The data model carries no tenant identifier.
 - Another organization runs another instance with a database of its own. That database may live on a PostgreSQL server the organization already runs.
-- Every instance has its own encryption key (ADR-035) and its own public URL.
+- Every instance has its own encryption key (ADR-035), its own public base URL and its own interface URL.
 
 ## Consequences
 

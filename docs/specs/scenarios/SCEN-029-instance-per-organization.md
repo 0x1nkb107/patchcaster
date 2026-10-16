@@ -24,7 +24,7 @@ Another organization, such as a subsidiary with an IT department of its own, wan
 
 ## Step-by-Step Flow
 
-1. A second instance is deployed with its own database, encryption key and public URL.
+1. A second instance is deployed with its own database, encryption key, public base URL and interface URL.
 2. The bootstrap command gives the new organization's IT department a setup link of its own (SCEN-013).
 
 ## Expected Outcome

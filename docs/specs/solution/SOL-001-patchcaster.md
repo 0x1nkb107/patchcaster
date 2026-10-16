@@ -53,3 +53,13 @@ verification of every delivery using the signing tokens introduced in GitLab 19.
 ## Planned Evolution (proposed)
 
 On 2026-10-15 the owner decided to grow PatchCaster beyond one forge and one chat platform. The proposed use cases UC-004 to UC-007 describe the direction. One instance serves one organization and connects one or more forges, starting with Forgejo, to one or more chat platforms, starting with Matrix including encrypted rooms. Sources, sinks and the routes between them live in the database and are managed through a web interface and an API with a published OpenAPI description. Administrators, operators and users share the work. Until these items are accepted and built, the overview above describes what PatchCaster does.
+
+### Increments
+
+The owner decided on 2026-10-16 to build the evolution in five increments, each shipped as its own release, starting with v0.2. Each increment accepts its proposed items in the pull request that implements them. Scenarios that use Forgejo or Matrix as their example hold for GitLab and Mattermost from the first increment, and in full once those adapters exist.
+
+1. **Foundation (v0.2):** the neutral core and the configuration database behind the management API, for GitLab and Mattermost only, with built-in templates. Login, roles, teams, API tokens, the audit log, encrypted secrets and health metrics come with it, and so does the web interface's foundation with its setup, login and token pages. It accepts UC-004, SCEN-013 to SCEN-020, SCEN-022, SCEN-029, SYSREQ-034 to SYSREQ-048, SYSREQ-062, SYSREQ-064, SYSARCH-006, ADR-029 to ADR-036, ADR-042 and ADR-043, and the GitLab and Mattermost parts of SYSARCH-007 and SYSARCH-008.
+2. **Web interface and templates:** the full management interface, and operator templates with their preview, rendered through Markdown. It accepts UC-005, SCEN-021, SYSREQ-049 to SYSREQ-051, ADR-037 and ADR-038.
+3. **Forgejo:** the Forgejo adapter. It accepts SCEN-027, SYSREQ-056 to SYSREQ-058 and ADR-041, and SYSARCH-007's Forgejo part.
+4. **Encrypted Matrix:** the Matrix adapter with encrypted rooms and its HTML renderer. It accepts UC-007, SCEN-028, SYSREQ-059 to SYSREQ-061 and ADR-040, and SYSARCH-007's Matrix part.
+5. **Identity linking and mentions:** chat and forge identity links, the chat commands, and mentions in threads. It accepts UC-006, SCEN-023 to SCEN-026, SYSREQ-052 to SYSREQ-055, SYSREQ-063 and ADR-039.

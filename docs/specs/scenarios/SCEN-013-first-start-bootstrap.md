@@ -16,7 +16,7 @@ A new instance must be reachable by its first administrator without any default 
 
 ## Initial State
 
-- The instance runs with its database URL, encryption key and public URL. The configuration in the database is empty.
+- The instance runs with its database URL, encryption key, public base URL and interface URL. The configuration in the database is empty.
 
 ## Trigger
 
@@ -25,7 +25,7 @@ The person who deployed the instance runs the bootstrap command.
 ## Step-by-Step Flow
 
 1. The command prints a setup link that works once and expires after a short time.
-2. The person opens the link and enters the OpenID Connect issuer, client id and client secret.
+2. The person opens the link and enters the OpenID Connect issuer, client id and client secret. Optionally, they name the groups allowed to log in.
 3. PatchCaster sends them through the identity provider's login. The identity that comes back becomes the first administrator.
 4. The setup link stops working.
 

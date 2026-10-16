@@ -22,9 +22,9 @@ The owner decided on 2026-10-15 that configuration lives in the database and is 
 
 ## Acceptance Criteria
 
-- Startup and operating settings are the database URL, the listen addresses, the public URL, the encryption key, and operating limits such as the drain timeout, the poll interval or the log level.
+- Startup and operating settings are the database URL, the listen addresses, the public base URL, the interface URL, the encryption key, and operating limits such as the drain timeout, the poll interval or the log level.
 - A configuration change through the web interface or the API applies to events accepted after it commits, without a restart.
-- No connection, route or template can be set through a flag, an environment variable or a file, except through the one-time import of SYSREQ-043.
+- No connection, route or template can be set through a flag, an environment variable or a file.
 
 ## Verification Plan
 

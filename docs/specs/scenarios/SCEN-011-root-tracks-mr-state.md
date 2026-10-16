@@ -1,7 +1,7 @@
 ---
 id: "SCEN-011"
 type: scenario
-name: "Scenario: Root message tracks merge request state"
+name: "Root message tracks merge request state"
 refines:
   - "UC-001"
 ---

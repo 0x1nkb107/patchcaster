@@ -1,7 +1,7 @@
 ---
 id: "SYSREQ-028"
 type: system_requirement
-name: "System Requirement: Root status line and refresh"
+name: "Root status line and refresh"
 description: "The root message carries a conditional status line and is updated whenever derived state changes."
 specification: "The root message SHALL carry a status line rendered from the merge request's derived state, with pipeline, reviewer, comment, and edit segments present only when their signal exists, and the posted root message SHALL be updated within the delivery of every accepted event that changes that state."
 derives_from:

@@ -15,6 +15,7 @@ satisfies:
   - "SYSREQ-060"
   - "SYSREQ-061"
   - "SYSREQ-063"
+  - "SYSREQ-064"
 ---
 
 # System Architecture: Forge and chat adapters

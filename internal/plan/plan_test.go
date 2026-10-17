@@ -73,3 +73,25 @@ func TestForDecisionTable(t *testing.T) {
 		})
 	}
 }
+
+func TestEveryNoticeHasAReplyKind(t *testing.T) {
+	for _, notice := range []string{Comment, PipelinePass, PipelineFail, Reviewed, Changes, Approval, Push, Merged, Closed} {
+		assert.NotEmpty(t, ReplyKind(notice), "notice %q", notice)
+	}
+	assert.Empty(t, ReplyKind(""))
+}
+
+func TestAMutedReplyLeavesTheRestOfThePlan(t *testing.T) {
+	// arrange
+	merged := &event.Plan{Notice: Merged, CloseAfter: true}
+
+	// act
+	muted := ForSink(merged, []string{ReplyMerge})
+	other := ForSink(merged, []string{ReplyComment})
+
+	// assert
+	assert.Equal(t, &event.Plan{CloseAfter: true}, muted, "the thread still closes")
+	assert.Equal(t, merged, other)
+	assert.NotSame(t, merged, other, "each sink gets its own plan")
+	assert.Equal(t, Merged, merged.Notice, "the event's plan stays as it was")
+}

@@ -14,9 +14,7 @@ signing token enabled. PatchCaster verifies only the `webhook-signature` HMAC
 
 * **URL**: `https://<patchcaster-host>/webhook` — the endpoint is
   `POST /webhook` on the public listener (`--addr`, `:8080` by default).
-* **Signing token**: one of PatchCaster's `--signing-secret` values; several
-  may be active while the token
-  [rotates](../configuration.md#patchcaster-serve).
+* **Signing token**: select **Generate signing token** in the hook form, and give the token to PatchCaster as a `--signing-secret` value exactly as GitLab shows it, `whsec_` prefix included. GitLab shows it only once. Several may be active while the token [rotates](../configuration.md#patchcaster-serve).
 
 ## Triggers
 

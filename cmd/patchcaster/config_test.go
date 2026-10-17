@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/base64"
 	"testing"
 	"time"
 
@@ -24,8 +26,20 @@ func parse(t *testing.T, args ...string) (*CLI, error) {
 // specific rule.
 var minimalFlags = []string{
 	"--database-url=postgres://x", "--mattermost-url=https://mm",
-	"--mattermost-token=tok", "--signing-secret=s", "--routing-file=/dev/null",
+	"--mattermost-token=tok", "--signing-secret=" + testSigningToken, "--routing-file=/dev/null",
 	"--encryption-key=" + testKey, "--interface-url=" + testInterfaceURL,
+}
+
+// Well-formed signing tokens, as GitLab shows them. They are built at run
+// time, so that secret scanners do not mistake them for live secrets.
+var (
+	testSigningToken  = signingTokenOf('g')
+	otherSigningToken = signingTokenOf('h')
+)
+
+// signingTokenOf returns a signing token whose key is 32 bytes of letter.
+func signingTokenOf(letter byte) string {
+	return "whsec_" + base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{letter}, 32))
 }
 
 // testInterfaceURL is a well-formed interface address.
@@ -58,7 +72,7 @@ func TestDefaults(t *testing.T) {
 func TestEnvFillsUnsetFlags(t *testing.T) {
 	// arrange
 	t.Setenv("PATCHCASTER_ADDR", ":7777")
-	t.Setenv("PATCHCASTER_SIGNING_SECRETS", "s1,s2")
+	t.Setenv("PATCHCASTER_SIGNING_SECRETS", testSigningToken+","+otherSigningToken)
 
 	// act
 	cli := mustParse(t, "--database-url=postgres://x", "--mattermost-url=https://mm",
@@ -67,7 +81,7 @@ func TestEnvFillsUnsetFlags(t *testing.T) {
 
 	// assert
 	assert.Equal(t, ":7777", cli.Serve.Addr)
-	assert.Equal(t, []string{"s1", "s2"}, cli.Serve.SigningSecrets, "env slices split on commas")
+	assert.Equal(t, []string{testSigningToken, otherSigningToken}, cli.Serve.SigningSecrets, "env slices split on commas")
 }
 
 func TestFlagBeatsEnv(t *testing.T) {
@@ -126,7 +140,7 @@ func TestValidateReportsAllViolationsAtOnce(t *testing.T) {
 	_, err := parse(t, "serve",
 		"--database-url=postgres://x", "--mattermost-url=https://mm",
 		"--mattermost-token=tok", "--routing-file=/dev/null",
-		"--signing-secret=s", "--encryption-key="+testKey,
+		"--signing-secret=not-a-token", "--encryption-key="+testKey,
 		"--previous-encryption-key=not-a-key",
 		"--log-level=trace", "--drain-timeout=0s",
 		"--event-max-age=48h", "--seen-retention=24h")
@@ -141,12 +155,14 @@ func TestValidateReportsAllViolationsAtOnce(t *testing.T) {
 	assert.Contains(t, msg, "48h", "cross-field message carries the concrete cap")
 	assert.Contains(t, msg, "--previous-encryption-key 1")
 	assert.NotContains(t, msg, "not-a-key", "a key never appears in an error")
+	assert.Contains(t, msg, "--signing-secret 1")
+	assert.NotContains(t, msg, "not-a-token", "a signing token never appears in an error")
 }
 
 func TestTheEncryptionKeyIsRequired(t *testing.T) {
 	// act
 	_, err := parse(t, "--database-url=postgres://x", "--mattermost-url=https://mm",
-		"--mattermost-token=tok", "--signing-secret=s", "--routing-file=/dev/null")
+		"--mattermost-token=tok", "--signing-secret="+testSigningToken, "--routing-file=/dev/null")
 
 	// assert
 	require.Error(t, err)
@@ -157,11 +173,11 @@ func TestValidateAcceptsRotationSecrets(t *testing.T) {
 	// act
 	cli, err := parse(t, "--database-url=postgres://x", "--mattermost-url=https://mm",
 		"--mattermost-token=tok", "--routing-file=/dev/null", "--encryption-key="+testKey,
-		"--interface-url="+testInterfaceURL, "--signing-secret=a", "--signing-secret=b")
+		"--interface-url="+testInterfaceURL, "--signing-secret="+testSigningToken, "--signing-secret="+otherSigningToken)
 
 	// assert
 	require.NoError(t, err)
-	assert.Equal(t, []string{"a", "b"}, cli.Serve.SigningSecrets)
+	assert.Equal(t, []string{testSigningToken, otherSigningToken}, cli.Serve.SigningSecrets)
 }
 
 func TestTheInterfaceURLIsAnOrigin(t *testing.T) {

@@ -13,7 +13,7 @@ GitLab webhooks. All defaults are mutual — copy the commands, they work.
    ```sh
    PATCHCASTER_MATTERMOST_URL=http://127.0.0.1:9999 \
    PATCHCASTER_MATTERMOST_TOKEN=stub \
-   PATCHCASTER_SIGNING_SECRETS=demo-sec \
+   PATCHCASTER_SIGNING_SECRETS="$(./demo/evmock/evmock.sh token)" \
    just run
    ```
 

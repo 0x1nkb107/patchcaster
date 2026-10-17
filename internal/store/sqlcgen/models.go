@@ -10,10 +10,33 @@ import (
 	"time"
 )
 
+type AuditLog struct {
+	ID            int64
+	At            time.Time
+	ActorPersonID sql.NullInt64
+	ActorLabel    string
+	Action        string
+	TargetKind    string
+	TargetID      string
+	Before        json.RawMessage
+	After         json.RawMessage
+}
+
 type InstanceKeyCheck struct {
 	ID       int16
 	Sealed   []byte
 	SealedAt time.Time
+}
+
+type LoginSetting struct {
+	ID            int16
+	Issuer        string
+	ClientID      string
+	ClientSecret  []byte
+	GroupsClaim   string
+	AllowedGroups json.RawMessage
+	UpdatedAt     time.Time
+	Version       int64
 }
 
 type MrState struct {
@@ -65,8 +88,33 @@ type Outbox struct {
 	RootRefreshed bool
 }
 
+type Person struct {
+	ID              int64
+	Issuer          string
+	Subject         string
+	DisplayName     string
+	Email           string
+	IsAdministrator bool
+	CreatedAt       time.Time
+	LastLoginAt     sql.NullTime
+	Version         int64
+}
+
 type SeenWebhook struct {
 	WebhookID string
 	Outcome   string
 	FirstSeen time.Time
+}
+
+type Session struct {
+	Token  string
+	Data   []byte
+	Expiry time.Time
+}
+
+type SetupLink struct {
+	TokenHash []byte
+	CreatedAt time.Time
+	ExpiresAt time.Time
+	UsedAt    sql.NullTime
 }

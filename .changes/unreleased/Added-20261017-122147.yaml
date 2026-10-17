@@ -1,0 +1,3 @@
+kind: Added
+body: Manage teams, sources, sinks and routes through the management API. Administrators give teams their operators, sources and sinks, and PatchCaster checks that its bot can post into a sink's channel. Operators route their own teams' sources into their sinks and may mute reply kinds.
+time: 2026-10-17T12:21:47.885766306+02:00

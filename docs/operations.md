@@ -27,7 +27,19 @@ A connection holds what PatchCaster acts with on one platform: GitLab as a forge
 - A **Mattermost** connection needs the bot account's token.
 - A **GitLab** connection needs an access token only for what PatchCaster does through the GitLab API. Without one, register the hooks by hand at the connection's `webhook_url`. Then generate a signing token in each hook's form and add it to the connection under `/api/v1/connections/{id}/signing-tokens`, exactly as GitLab shows it. A connection holds several signing tokens at once, so a token rotates without downtime: add the new one, switch the hook over, then remove the old one.
 
-Connections are stored and checked, but webhooks and deliveries still follow the [startup settings](configuration.md#patchcaster-serve) and the routing table for now.
+Connections are stored and checked, but webhooks and deliveries still follow the [startup settings](configuration.md#patchcaster-serve) and the routing table for now. A connection that sources or sinks use cannot be removed.
+
+## Teams and routes
+
+Teams decide who may route what. Administrators create teams at `/api/v1/teams`, name each team's operators, and give it sources and sinks. A source or sink may belong to several teams, such as a shared release channel.
+
+- A **source** selects the repositories of a forge connection, at `/api/v1/sources`: the whole instance, a group with everything below it, or one repository.
+- A **sink** names a channel of a chat connection, at `/api/v1/sinks`. PatchCaster checks that the connection's bot can post there before it stores the sink, and names the reason when it cannot, such as a bot that is not a member of the channel.
+- A **route**, at `/api/v1/routes`, forwards a team's source into one of the team's sinks. A team's operators manage its routes themselves, and an administrator may manage any. A route may mute reply kinds: `comment`, `review`, `pipeline`, `push`, `merge` and `close`. Muted replies are not posted, but the thread's root post still shows every change.
+
+Operators see only their teams and what those own. Naming another team's source or sink answers `403`. What a route uses stays until the route is removed: a source, a sink or a team with routes cannot be removed, and a team cannot give up a source or sink its routes use. A connection that sources or sinks use cannot be removed either.
+
+Like connections, teams and routes are stored but not used yet: deliveries still follow the routing table.
 
 ## API tokens
 

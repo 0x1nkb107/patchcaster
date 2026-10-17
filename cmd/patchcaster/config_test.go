@@ -1,8 +1,6 @@
 package main
 
 import (
-	"bytes"
-	"encoding/base64"
 	"testing"
 	"time"
 
@@ -25,22 +23,8 @@ func parse(t *testing.T, args ...string) (*CLI, error) {
 // minimalFlags avoids kong's required-option noise when a test targets one
 // specific rule.
 var minimalFlags = []string{
-	"--database-url=postgres://x", "--mattermost-url=https://mm",
-	"--mattermost-token=tok", "--signing-secret=" + testSigningToken, "--routing-file=/dev/null",
-	"--encryption-key=" + testKey, "--interface-url=" + testInterfaceURL,
-	"--public-url=" + testPublicURL,
-}
-
-// Well-formed signing tokens, as GitLab shows them. They are built at run
-// time, so that secret scanners do not mistake them for live secrets.
-var (
-	testSigningToken  = signingTokenOf('g')
-	otherSigningToken = signingTokenOf('h')
-)
-
-// signingTokenOf returns a signing token whose key is 32 bytes of letter.
-func signingTokenOf(letter byte) string {
-	return "whsec_" + base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{letter}, 32))
+	"--database-url=postgres://x", "--encryption-key=" + testKey,
+	"--interface-url=" + testInterfaceURL, "--public-url=" + testPublicURL,
 }
 
 // Well-formed addresses of the interface and the webhook listener.
@@ -76,16 +60,17 @@ func TestDefaults(t *testing.T) {
 func TestEnvFillsUnsetFlags(t *testing.T) {
 	// arrange
 	t.Setenv("PATCHCASTER_ADDR", ":7777")
-	t.Setenv("PATCHCASTER_SIGNING_SECRETS", testSigningToken+","+otherSigningToken)
+	t.Setenv("PATCHCASTER_PUBLIC_URL", testPublicURL)
+	t.Setenv("PATCHCASTER_PREVIOUS_ENCRYPTION_KEYS", testKey+","+testKey)
 
 	// act
-	cli := mustParse(t, "--database-url=postgres://x", "--mattermost-url=https://mm",
-		"--mattermost-token=tok", "--routing-file=/dev/null", "--encryption-key="+testKey,
-		"--interface-url="+testInterfaceURL, "--public-url="+testPublicURL)
+	cli := mustParse(t, "--database-url=postgres://x", "--encryption-key="+testKey,
+		"--interface-url="+testInterfaceURL)
 
 	// assert
 	assert.Equal(t, ":7777", cli.Serve.Addr)
-	assert.Equal(t, []string{testSigningToken, otherSigningToken}, cli.Serve.SigningSecrets, "env slices split on commas")
+	assert.Equal(t, testPublicURL, cli.Serve.PublicURL)
+	assert.Equal(t, []string{testKey, testKey}, cli.Serve.Keys.PreviousEncryptionKeys, "env slices split on commas")
 }
 
 func TestFlagBeatsEnv(t *testing.T) {
@@ -142,9 +127,8 @@ func TestValidateReportsAllViolationsAtOnce(t *testing.T) {
 
 	// act
 	_, err := parse(t, "serve",
-		"--database-url=postgres://x", "--mattermost-url=https://mm",
-		"--mattermost-token=tok", "--routing-file=/dev/null",
-		"--signing-secret=not-a-token", "--encryption-key="+testKey,
+		"--database-url=postgres://x", "--encryption-key="+testKey,
+		"--interface-url="+testInterfaceURL, "--public-url="+testPublicURL,
 		"--previous-encryption-key=not-a-key",
 		"--log-level=trace", "--drain-timeout=0s",
 		"--event-max-age=48h", "--seen-retention=24h")
@@ -159,30 +143,36 @@ func TestValidateReportsAllViolationsAtOnce(t *testing.T) {
 	assert.Contains(t, msg, "48h", "cross-field message carries the concrete cap")
 	assert.Contains(t, msg, "--previous-encryption-key 1")
 	assert.NotContains(t, msg, "not-a-key", "a key never appears in an error")
-	assert.Contains(t, msg, "--signing-secret 1")
-	assert.NotContains(t, msg, "not-a-token", "a signing token never appears in an error")
 }
 
 func TestTheEncryptionKeyIsRequired(t *testing.T) {
 	// act
-	_, err := parse(t, "--database-url=postgres://x", "--mattermost-url=https://mm",
-		"--mattermost-token=tok", "--signing-secret="+testSigningToken, "--routing-file=/dev/null")
+	_, err := parse(t, "--database-url=postgres://x",
+		"--interface-url="+testInterfaceURL, "--public-url="+testPublicURL)
 
 	// assert
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "missing flags: --encryption-key")
 }
 
-func TestValidateAcceptsRotationSecrets(t *testing.T) {
-	// act
-	cli, err := parse(t, "--database-url=postgres://x", "--mattermost-url=https://mm",
-		"--mattermost-token=tok", "--routing-file=/dev/null", "--encryption-key="+testKey,
-		"--interface-url="+testInterfaceURL, "--public-url="+testPublicURL,
-		"--signing-secret="+testSigningToken, "--signing-secret="+otherSigningToken)
+// The settings that the stored configuration replaced are refused, so that
+// a deployment still passing them learns of the change at once.
+func TestTheRetiredSettingsAreRefused(t *testing.T) {
+	for _, flag := range []string{
+		"--mattermost-url=https://mm",
+		"--mattermost-token=tok",
+		"--signing-secret=s",
+		"--routing-file=/dev/null",
+	} {
+		t.Run(flag, func(t *testing.T) {
+			// act
+			_, err := parse(t, append(append([]string{}, minimalFlags...), flag)...)
 
-	// assert
-	require.NoError(t, err)
-	assert.Equal(t, []string{testSigningToken, otherSigningToken}, cli.Serve.SigningSecrets)
+			// assert
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "unknown flag")
+		})
+	}
 }
 
 func TestTheInterfaceURLIsAnOrigin(t *testing.T) {

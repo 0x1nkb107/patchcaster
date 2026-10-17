@@ -20,7 +20,7 @@ func TestOpeningAMergeRequestStartsAThread(t *testing.T) {
 	// before the delivery commits.
 	db := freshDatabase(t)
 	mattermost := newFakeMattermost(t)
-	svc := startService(t, serviceConfig{mattermostURL: mattermost.url(), pollInterval: time.Hour})
+	svc, r, _ := startRouted(t, serviceConfig{pollInterval: time.Hour}, mattermost)
 	eventually(t, 10*time.Second, "the wake-up listener", svc.listening)
 
 	// act
@@ -31,12 +31,12 @@ func TestOpeningAMergeRequestStartsAThread(t *testing.T) {
 		return len(mattermost.acceptedPosts()) == 1
 	})
 	root := mattermost.acceptedPosts()[0]
-	assert.Equal(t, channelID, root.ChannelID, "the routing table picks the channel")
+	assert.Equal(t, channelID, root.ChannelID, "the route picks the channel")
 	assert.Empty(t, root.RootID, "a root post starts a thread")
 	eventually(t, 5*time.Second, "the delivery to settle", func() bool {
 		return assert.ObjectsAreEqual([]string{"sent"}, outboxStates(t, db))
 	})
-	assert.Equal(t, root.ID, threadRoot(t, db, firstMR.ref()), "the thread is mapped to the root post")
+	assert.Equal(t, root.ID, threadRoot(t, db, firstMR.refOn(r.forge.ID)), "the thread is mapped to the root post")
 }
 
 // SCEN-002: later activity replies in the thread and refreshes its root.
@@ -44,7 +44,7 @@ func TestACommentRepliesInTheThread(t *testing.T) {
 	// arrange: an announced merge request.
 	freshDatabase(t)
 	mattermost := newFakeMattermost(t)
-	svc := startService(t, serviceConfig{mattermostURL: mattermost.url()})
+	svc, _, _ := startRouted(t, serviceConfig{}, mattermost)
 	require.Equal(t, http.StatusOK, svc.gitlab.deliver(t, mergeRequestOpened(t, firstMR)))
 	eventually(t, 10*time.Second, "the root post", func() bool {
 		return len(mattermost.acceptedPosts()) == 1
@@ -72,17 +72,20 @@ func TestForgedAndReplayedDeliveriesQueueNothing(t *testing.T) {
 	// arrange
 	db := freshDatabase(t)
 	mattermost := newFakeMattermost(t)
-	svc := startService(t, serviceConfig{mattermostURL: mattermost.url()})
+	svc, _, _ := startRouted(t, serviceConfig{}, mattermost)
 	body := mergeRequestOpened(t, firstMR)
 	id := newDeliveryID(t)
+	elsewhere := gitlab{webhookURL: webhookURL(svc.publicAddr, 9999)}
 
 	// act
 	forged := svc.gitlab.deliverSigned(t, newDeliveryID(t), body, "not-the-secret")
+	nowhere := elsewhere.deliver(t, body)
 	first := svc.gitlab.deliverAs(t, id, body)
 	replayed := svc.gitlab.deliverAs(t, id, body)
 
 	// assert
 	assert.Equal(t, http.StatusUnauthorized, forged, "a forged delivery is refused")
+	assert.Equal(t, http.StatusNotFound, nowhere, "no forge connection owns that endpoint")
 	assert.Equal(t, http.StatusOK, first)
 	assert.Equal(t, http.StatusOK, replayed, "a replay is acknowledged, so GitLab stops retrying")
 	assert.Equal(t, 1, seenWebhooks(t, db), "only the genuine delivery is recorded")
@@ -99,7 +102,7 @@ func TestAnOutageDelaysTheThreadButKeepsItInOrder(t *testing.T) {
 	db := freshDatabase(t)
 	mattermost := newFakeMattermost(t)
 	mattermost.setFailing(true)
-	svc := startService(t, serviceConfig{mattermostURL: mattermost.url()})
+	svc, _, _ := startRouted(t, serviceConfig{}, mattermost)
 	require.Equal(t, http.StatusOK, svc.gitlab.deliver(t, mergeRequestOpened(t, firstMR)))
 	require.Equal(t, http.StatusOK, svc.gitlab.deliver(t, commentCreated(t, firstMR, 501)))
 	eventually(t, 10*time.Second, "the root post to be retried", func() bool {
@@ -135,8 +138,7 @@ func TestAnAcceptedDeliverySurvivesAKill(t *testing.T) {
 	db := freshDatabase(t)
 	mattermost := newFakeMattermost(t)
 	mattermost.holdPosts()
-	cfg := serviceConfig{mattermostURL: mattermost.url()}
-	first := startService(t, cfg)
+	first, _, cfg := startRouted(t, serviceConfig{}, mattermost)
 	require.Equal(t, http.StatusOK, first.gitlab.deliver(t, mergeRequestOpened(t, firstMR)))
 	mattermost.awaitHeld(t)
 
@@ -169,7 +171,7 @@ func TestSIGTERMLetsTheDeliveryInHandFinish(t *testing.T) {
 	db := freshDatabase(t)
 	mattermost := newFakeMattermost(t)
 	mattermost.holdPosts()
-	svc := startService(t, serviceConfig{mattermostURL: mattermost.url()})
+	svc, r, _ := startRouted(t, serviceConfig{}, mattermost)
 	require.Equal(t, http.StatusOK, svc.gitlab.deliver(t, mergeRequestOpened(t, firstMR)))
 	mattermost.awaitHeld(t)
 
@@ -190,5 +192,5 @@ func TestSIGTERMLetsTheDeliveryInHandFinish(t *testing.T) {
 	assert.Len(t, mattermost.acceptedPosts(), 1, "the delivery in hand was posted")
 	assert.Zero(t, mattermost.abandonedCount(), "the drain did not cut the post off")
 	assert.Equal(t, []string{"sent"}, outboxStates(t, db))
-	assert.NotEmpty(t, threadRoot(t, db, firstMR.ref()), "the thread was mapped before exit")
+	assert.NotEmpty(t, threadRoot(t, db, firstMR.refOn(r.forge.ID)), "the thread was mapped before exit")
 }

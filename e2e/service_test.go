@@ -5,9 +5,8 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"os"
 	"os/exec"
-	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -20,12 +19,14 @@ import (
 // serviceConfig tunes one patchcaster process. Zero values take the suite
 // defaults below.
 type serviceConfig struct {
-	mattermostURL string
-	pollInterval  time.Duration
-	claimLease    time.Duration
-	drainTimeout  time.Duration
-	encryptionKey string   // the suite key when empty
-	previousKeys  []string // earlier keys during a rotation
+	// forgeConnection is the stored GitLab connection whose endpoint the
+	// service's fake GitLab posts to, once startRouted has created it.
+	forgeConnection int64
+	pollInterval    time.Duration
+	claimLease      time.Duration
+	drainTimeout    time.Duration
+	encryptionKey   string   // the suite key when empty
+	previousKeys    []string // earlier keys during a rotation
 }
 
 // Suite defaults: a short poll so that retries come due quickly, a short
@@ -92,10 +93,6 @@ func launch(t *testing.T, cfg serviceConfig) *service {
 		"--interface-url", "http://"+managementAddr,
 		"--public-url", "http://"+publicAddr,
 		"--database-url", databaseURL,
-		"--mattermost-url", cfg.mattermostURL,
-		"--mattermost-token", botToken,
-		"--signing-secret", signingSecret,
-		"--routing-file", writeRoutingFile(t),
 		"--poll-interval", cfg.pollInterval.String(),
 		"--claim-lease", cfg.claimLease.String(),
 		"--drain-timeout", cfg.drainTimeout.String(),
@@ -113,7 +110,7 @@ func launch(t *testing.T, cfg serviceConfig) *service {
 		publicAddr:    publicAddr,
 		internalURL:   "http://" + internalAddr,
 		managementURL: "http://" + managementAddr,
-		gitlab:        gitlab{webhookURL: "http://" + publicAddr + "/webhook"},
+		gitlab:        gitlab{webhookURL: webhookURL(publicAddr, cfg.forgeConnection)},
 		logs:          logs,
 		exited:        make(chan struct{}),
 	}
@@ -197,13 +194,10 @@ func (s *service) acceptsConnections() bool {
 	return true
 }
 
-// writeRoutingFile routes the suite's project to the suite's channel.
-func writeRoutingFile(t *testing.T) string {
-	t.Helper()
-	path := filepath.Join(t.TempDir(), "routing.yaml")
-	routes := "routes:\n  - project: " + projectPath + "\n    channel: " + channelID + "\n"
-	require.NoError(t, os.WriteFile(path, []byte(routes), 0o600))
-	return path
+// webhookURL is the endpoint of the forge connection with id on the webhook
+// listener at publicAddr.
+func webhookURL(publicAddr string, id int64) string {
+	return "http://" + publicAddr + "/webhooks/" + strconv.FormatInt(id, 10)
 }
 
 // freeAddress finds a loopback address that nothing listens on right now.

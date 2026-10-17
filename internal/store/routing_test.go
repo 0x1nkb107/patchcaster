@@ -337,3 +337,57 @@ func TestARouteMutesRepliesAtItsVersion(t *testing.T) {
 	assert.Equal(t, []any{}, before["muted_replies"])
 	assert.Equal(t, []any{"comment", "push"}, after["muted_replies"])
 }
+
+// An event reaches the routes of every source whose scope holds its
+// repository (SYSREQ-044, SYSREQ-046).
+func TestDestinationsFollowTheScopes(t *testing.T) {
+	// arrange
+	st, _ := openTestStore(t)
+	ctx := context.Background()
+	l := newLayout(t, st)
+	forge := l.paymentsRepo.ConnectionID
+	everything := createSource(t, st, &store.Connection{ID: forge}, "everything", "instance", "")
+	shared := *l.payments
+	shared.Sources = append(shared.Sources, everything.ID)
+	_, err := st.UpdateTeam(ctx, routingActor, shared, time.Now())
+	require.NoError(t, err)
+	_, err = createRoute(t, st, l.payments, l.paymentsRepo, l.paymentsRoom)
+	require.NoError(t, err)
+	_, err = createRoute(t, st, l.billing, l.billingRepo, l.billingRoom)
+	require.NoError(t, err)
+	_, err = st.CreateRoute(ctx, routingActor, store.Route{
+		TeamID:       l.payments.ID,
+		SourceID:     everything.ID,
+		SinkID:       l.paymentsRoom.ID,
+		MutedReplies: []string{"push"},
+	}, time.Now())
+	require.NoError(t, err)
+
+	tests := []struct {
+		repository string
+		wantSinks  []int64
+	}{
+		{"payments/api", []int64{l.paymentsRoom.ID, l.paymentsRoom.ID}},
+		{"billing/api", []int64{l.billingRoom.ID, l.paymentsRoom.ID}},
+		{"billing/web", []int64{l.paymentsRoom.ID}},
+		{"paymentsx/api", []int64{l.paymentsRoom.ID}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.repository, func(t *testing.T) {
+			// act
+			destinations, err := st.Destinations(ctx, forge, tc.repository)
+
+			// assert
+			require.NoError(t, err)
+			sinks := make([]int64, 0, len(destinations))
+			for _, d := range destinations {
+				sinks = append(sinks, d.SinkID)
+				assert.Equal(t, "c-"+map[int64]string{l.paymentsRoom.ID: "payments", l.billingRoom.ID: "billing"}[d.SinkID], d.ChannelID)
+			}
+			assert.ElementsMatch(t, tc.wantSinks, sinks, "a group holds what lies below it, and only that")
+		})
+	}
+	other, err := st.Destinations(ctx, forge+1000, "payments/api")
+	require.NoError(t, err)
+	assert.Empty(t, other, "another connection's events reach none of these routes")
+}

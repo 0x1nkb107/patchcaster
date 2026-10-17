@@ -94,3 +94,8 @@ SELECT id, token FROM signing_tokens ORDER BY id;
 UPDATE signing_tokens
 SET token = sqlc.arg(resealed)
 WHERE id = sqlc.arg(id) AND token = sqlc.arg(sealed);
+
+-- name: SigningTokensOf :many
+-- SigningTokensOf lists the sealed signing tokens of one connection, for
+-- verifying its webhooks.
+SELECT id, token FROM signing_tokens WHERE connection_id = $1 ORDER BY id;

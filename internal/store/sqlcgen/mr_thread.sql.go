@@ -12,27 +12,33 @@ import (
 
 const threadClose = `-- name: ThreadClose :exec
 UPDATE mr_thread
-SET state = 'closed', updated_at = $2
-WHERE mr_ref = $1
+SET state = 'closed', updated_at = $3
+WHERE mr_ref = $1 AND sink_id = $2
 `
 
 type ThreadCloseParams struct {
 	MrRef     string
+	SinkID    int64
 	UpdatedAt time.Time
 }
 
-// ThreadClose closes a mapping, so later deliveries stop replying to it
-// (SYSREQ-026).
+// ThreadClose closes a mapping in one sink, so later deliveries stop
+// replying to it (SYSREQ-026).
 func (q *Queries) ThreadClose(ctx context.Context, arg ThreadCloseParams) error {
-	_, err := q.db.ExecContext(ctx, threadClose, arg.MrRef, arg.UpdatedAt)
+	_, err := q.db.ExecContext(ctx, threadClose, arg.MrRef, arg.SinkID, arg.UpdatedAt)
 	return err
 }
 
 const threadGet = `-- name: ThreadGet :one
 SELECT mr_ref, channel_id, root_post_id, state
 FROM mr_thread
-WHERE mr_ref = $1
+WHERE mr_ref = $1 AND sink_id = $2
 `
+
+type ThreadGetParams struct {
+	MrRef  string
+	SinkID int64
+}
 
 type ThreadGetRow struct {
 	MrRef      string
@@ -41,9 +47,10 @@ type ThreadGetRow struct {
 	State      string
 }
 
-// ThreadGet reads the thread mapping of a merge request (SYSREQ-006).
-func (q *Queries) ThreadGet(ctx context.Context, mrRef string) (ThreadGetRow, error) {
-	row := q.db.QueryRowContext(ctx, threadGet, mrRef)
+// ThreadGet reads the thread mapping of a merge request in one sink
+// (SYSREQ-006, SYSREQ-048).
+func (q *Queries) ThreadGet(ctx context.Context, arg ThreadGetParams) (ThreadGetRow, error) {
+	row := q.db.QueryRowContext(ctx, threadGet, arg.MrRef, arg.SinkID)
 	var i ThreadGetRow
 	err := row.Scan(
 		&i.MrRef,
@@ -55,23 +62,25 @@ func (q *Queries) ThreadGet(ctx context.Context, mrRef string) (ThreadGetRow, er
 }
 
 const threadOpen = `-- name: ThreadOpen :exec
-INSERT INTO mr_thread (mr_ref, channel_id, root_post_id, state, created_at, updated_at)
-VALUES ($1, $2, $3, 'open', $4, $4)
-ON CONFLICT (mr_ref) DO NOTHING
+INSERT INTO mr_thread (mr_ref, sink_id, channel_id, root_post_id, state, created_at, updated_at)
+VALUES ($1, $2, $3, $4, 'open', $5, $5)
+ON CONFLICT (mr_ref, sink_id) DO NOTHING
 `
 
 type ThreadOpenParams struct {
 	MrRef      string
+	SinkID     int64
 	ChannelID  string
 	RootPostID string
 	CreatedAt  time.Time
 }
 
-// ThreadOpen maps a merge request to its root post. An existing mapping
-// stays as it is, so the first root wins.
+// ThreadOpen maps a merge request to its root post in one sink. An existing
+// mapping stays as it is, so the first root wins.
 func (q *Queries) ThreadOpen(ctx context.Context, arg ThreadOpenParams) error {
 	_, err := q.db.ExecContext(ctx, threadOpen,
 		arg.MrRef,
+		arg.SinkID,
 		arg.ChannelID,
 		arg.RootPostID,
 		arg.CreatedAt,

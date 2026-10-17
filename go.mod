@@ -18,7 +18,6 @@ require (
 	github.com/testcontainers/testcontainers-go v0.44.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.44.0
 	github.com/zitadel/oidc/v3 v3.51.15
-	go.yaml.in/yaml/v4 v4.0.0-rc.6
 )
 
 require (

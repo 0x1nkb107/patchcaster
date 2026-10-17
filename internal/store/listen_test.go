@@ -96,18 +96,18 @@ func TestPostgres_AcceptNotifiesForEnqueuedRowsOnly(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Millisecond)
 	observer := listenRaw(t)
 
-	res, err := st.Accept(ctx, mrEvent("n-open", "open", nil), "chan-1", now)
+	res, err := acceptAtTestSink(ctx, st, mrEvent("n-open", "open", nil), now)
 	require.NoError(t, err)
-	require.True(t, res.Enqueued)
+	require.Equal(t, 1, res.Enqueued)
 
-	res, err = st.Accept(ctx, mrEvent("n-open", "open", nil), "chan-1", now)
+	res, err = acceptAtTestSink(ctx, st, mrEvent("n-open", "open", nil), now)
 	require.NoError(t, err)
 	require.False(t, res.Accepted, "a duplicate commits nothing")
 
-	res, err = st.Accept(ctx, mrEvent("n-label", "update", nil), "chan-1", now)
+	res, err = acceptAtTestSink(ctx, st, mrEvent("n-label", "update", nil), now)
 	require.NoError(t, err)
 	require.True(t, res.Accepted)
-	require.False(t, res.Enqueued, "a label-only update enqueues no row")
+	require.Zero(t, res.Enqueued, "a label-only update enqueues no row")
 
 	assert.Equal(t, 1, countNotificationsBeforeSentinel(t, observer),
 		"only the delivery that enqueued a row may notify")
@@ -121,7 +121,7 @@ func TestOutboxListener_WakesOnceListeningAndPerRow(t *testing.T) {
 	wakes, done := startListener(t, ctx)
 	awaitWake(t, wakes, "a confirmed session wakes the worker to catch up")
 
-	_, err := st.Accept(context.Background(), newEvent("w-1"), "chan-1", time.Now().UTC())
+	_, err := acceptAtTestSink(context.Background(), st, newEvent("w-1"), time.Now().UTC())
 	require.NoError(t, err)
 	awaitWake(t, wakes, "a committed row wakes the worker")
 

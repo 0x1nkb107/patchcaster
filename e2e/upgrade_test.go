@@ -45,10 +45,9 @@ func TestAV01DatabaseIsRefused(t *testing.T) {
 	db := freshDatabase(t)
 	_, err := db.Exec(v01State)
 	require.NoError(t, err)
-	mattermost := newFakeMattermost(t)
 
 	// act
-	svc := launch(t, serviceConfig{mattermostURL: mattermost.url()})
+	svc := launch(t, serviceConfig{})
 	code := svc.awaitExit(t, 15*time.Second)
 
 	// assert

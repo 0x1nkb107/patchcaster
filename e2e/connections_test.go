@@ -30,7 +30,6 @@ func startWithPlatforms(t *testing.T, cfg serviceConfig) platforms {
 	t.Helper()
 	freshDatabase(t)
 	mattermost := newFakeMattermost(t)
-	cfg.mattermostURL = mattermost.url()
 	svc := startService(t, cfg)
 	provider := newFakeProvider(t)
 	return platforms{
@@ -169,7 +168,7 @@ func TestConnectionSecretsSurviveAKeyRotation(t *testing.T) {
 		"--database-url", databaseURL,
 		"--encryption-key", rotatedKey,
 		"--previous-encryption-key", suiteKey)
-	after := startService(t, serviceConfig{mattermostURL: p.mattermost.url(), encryptionKey: rotatedKey})
+	after := startService(t, serviceConfig{encryptionKey: rotatedKey})
 	admin := logInAs(t, after, p.provider, ada)
 	moved := newFakeGitLabAPI(t)
 	_, moveErr := admin.api(t).UpdateConnection(ctx,

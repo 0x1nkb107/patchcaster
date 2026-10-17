@@ -1,5 +1,5 @@
-// Command patchcaster forwards GitLab merge request webhook events to
-// Mattermost channels as one thread per merge request.
+// Command patchcaster forwards the merge request events of forges into chat
+// channels, as one thread per merge request and channel.
 package main
 
 import (
@@ -57,7 +57,7 @@ func main() {
 func kongOptions(ctx context.Context) []kong.Option {
 	return []kong.Option{
 		kong.Name("patchcaster"),
-		kong.Description("Forward GitLab merge request webhooks to Mattermost threads."),
+		kong.Description("Forward merge request events of forges into chat threads."),
 		kong.UsageOnError(),
 		kong.Vars{"version": version},
 		kong.BindTo(ctx, (*context.Context)(nil)),

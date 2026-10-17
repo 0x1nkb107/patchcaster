@@ -20,7 +20,6 @@ import (
 
 	"github.com/patchcaster-app/patchcaster/internal/event"
 	"github.com/patchcaster-app/patchcaster/internal/metrics"
-	"github.com/patchcaster-app/patchcaster/internal/routing"
 	"github.com/patchcaster-app/patchcaster/internal/store"
 )
 
@@ -32,8 +31,8 @@ var (
 // --- fake store -------------------------------------------------------------
 
 type acceptRec struct {
-	ev   *event.Event
-	dest string
+	ev         *event.Event
+	deliveries []store.Delivery
 }
 
 type outcomeRec struct {
@@ -42,16 +41,40 @@ type outcomeRec struct {
 }
 
 type fakeStore struct {
-	seen      map[string]bool
-	accepted  []acceptRec
-	outcomes  []outcomeRec
-	errSeen   error
-	errAccept error
-	errMark   error
-	acceptDup bool // simulate losing the seen-insert race
+	seen         map[string]bool
+	destinations []store.Destination // what every event of testConnection reaches
+	accepted     []acceptRec
+	outcomes     []outcomeRec
+	errSeen      error
+	errAccept    error
+	errMark      error
+	acceptDup    bool // simulate losing the seen-insert race
 }
 
-func newFakeStore() *fakeStore { return &fakeStore{seen: map[string]bool{}} }
+// testConnection is the forge connection whose endpoint the tests post to.
+const testConnection = 7
+
+// testEndpoint is that connection's webhook endpoint.
+const testEndpoint = "/webhooks/7"
+
+func newFakeStore() *fakeStore {
+	return &fakeStore{
+		seen: map[string]bool{},
+		destinations: []store.Destination{{
+			SinkID:       1,
+			ConnectionID: 2,
+			ChannelID:    "chan-1",
+			MutedReplies: []string{},
+		}},
+	}
+}
+
+func (f *fakeStore) Destinations(_ context.Context, connectionID int64, repository string) ([]store.Destination, error) {
+	if connectionID != testConnection || repository != "grp/app" {
+		return nil, nil
+	}
+	return f.destinations, nil
+}
 
 func (f *fakeStore) Seen(_ context.Context, id string) (bool, error) {
 	if f.errSeen != nil {
@@ -68,33 +91,35 @@ func (f *fakeStore) MarkOutcome(_ context.Context, id, outcome string, _ time.Ti
 	return nil
 }
 
-func (f *fakeStore) Accept(_ context.Context, ev *event.Event, dest string, _ time.Time) (store.AcceptResult, error) {
+func (f *fakeStore) Accept(_ context.Context, ev *event.Event, deliveries []store.Delivery, _ time.Time) (store.AcceptResult, error) {
 	if f.errAccept != nil {
 		return store.AcceptResult{}, f.errAccept
 	}
 	if f.acceptDup {
 		return store.AcceptResult{}, nil
 	}
-	f.accepted = append(f.accepted, acceptRec{ev: ev, dest: dest})
-	return store.AcceptResult{Accepted: true, Enqueued: true, Attributed: 1}, nil
+	f.accepted = append(f.accepted, acceptRec{ev: ev, deliveries: deliveries})
+	return store.AcceptResult{Accepted: true, Enqueued: len(deliveries), Attributed: 1}, nil
+}
+
+// fakeKeys holds the signing key of testConnection only.
+type fakeKeys struct{}
+
+func (fakeKeys) SigningKeys(_ context.Context, connectionID int64) ([][]byte, error) {
+	if connectionID != testConnection {
+		return nil, ErrUnknownEndpoint
+	}
+	return [][]byte{testKey}, nil
 }
 
 // --- helpers ----------------------------------------------------------------
-
-func testRoutes(t *testing.T) *routing.Table {
-	t.Helper()
-	table, err := routing.Parse([]byte("routes:\n  - project: grp/app\n    channel: chan-1\n"))
-	require.NoError(t, err)
-	return table
-}
 
 func newHandler(t *testing.T, fs Store) (*Handler, *metrics.Metrics) {
 	t.Helper()
 	m := metrics.New()
 	return &Handler{
-		Secrets: [][]byte{testKey},
+		Keys:    fakeKeys{},
 		Store:   fs,
-		Routes:  testRoutes(t),
 		MaxAge:  4 * time.Hour,
 		Now:     func() time.Time { return fixedNow },
 		Log:     slog.New(slog.DiscardHandler),
@@ -111,7 +136,7 @@ func deliver(t *testing.T, h http.Handler, id string, body []byte) *httptest.Res
 	_, err := mac.Write([]byte(id + "." + ts + "." + string(body)))
 	require.NoError(t, err)
 
-	req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, testEndpoint, bytes.NewReader(body))
 	req.Header.Set("Webhook-Id", id)
 	req.Header.Set("Webhook-Timestamp", ts)
 	req.Header.Set("Webhook-Signature", "v1,"+base64.StdEncoding.EncodeToString(mac.Sum(nil)))
@@ -154,9 +179,12 @@ func TestHandler_AcceptsFreshOpenEvent(t *testing.T) {
 	require.Len(t, fs.accepted, 1)
 	ev := fs.accepted[0].ev
 	assert.Equal(t, "msg-1", ev.WebhookID)
-	assert.Equal(t, "987654321", ev.MRRef)
+	assert.Equal(t, "7:987654321", ev.MRRef, "the key names the connection")
+	assert.Equal(t, int64(testConnection), ev.ConnectionID)
 	assert.Equal(t, "open", ev.Action)
-	assert.Equal(t, "chan-1", fs.accepted[0].dest)
+	require.Len(t, fs.accepted[0].deliveries, 1)
+	assert.Equal(t, "chan-1", fs.accepted[0].deliveries[0].ChannelID)
+	assert.True(t, fs.accepted[0].deliveries[0].Plan.CreateRoot)
 	assert.True(t, ev.When.Equal(time.Date(2026, 10, 10, 9, 0, 0, 123_000_000, time.UTC)),
 		"event timestamp must survive ms-precision parsing, got %s", ev.When)
 	assert.Equal(t, 1.0, testutil.ToFloat64(m.Received))
@@ -187,7 +215,7 @@ func TestHandler_RejectsBadSignature(t *testing.T) {
 	mac := hmac.New(sha256.New, []byte("attacker"))
 	_, err := mac.Write([]byte("msg-1.1760090000." + string(body)))
 	require.NoError(t, err)
-	req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, testEndpoint, bytes.NewReader(body))
 	req.Header.Set("Webhook-Id", "msg-1")
 	req.Header.Set("Webhook-Timestamp", "1760090000")
 	req.Header.Set("Webhook-Signature", "v1,"+base64.StdEncoding.EncodeToString(mac.Sum(nil)))
@@ -302,15 +330,17 @@ func unroutedBody(t *testing.T) []byte {
 func TestHandler_StoreFailuresNeverAck(t *testing.T) {
 	tests := []struct {
 		name string
-		fs   *fakeStore
+		fail func(*fakeStore)
 	}{
-		{"dedupe lookup down", &fakeStore{seen: map[string]bool{}, errSeen: errors.New("down")}},
-		{"accept down", &fakeStore{seen: map[string]bool{}, errAccept: errors.New("down")}},
+		{"dedupe lookup down", func(fs *fakeStore) { fs.errSeen = errors.New("down") }},
+		{"accept down", func(fs *fakeStore) { fs.errAccept = errors.New("down") }},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// arrange
-			h, _ := newHandler(t, tc.fs)
+			fs := newFakeStore()
+			tc.fail(fs)
+			h, _ := newHandler(t, fs)
 
 			// act
 			rec := deliver(t, h.Mux(), "msg-1", mrBody(t, "open", freshTS))
@@ -323,7 +353,8 @@ func TestHandler_StoreFailuresNeverAck(t *testing.T) {
 
 func TestHandler_MarkFailureNeverAck(t *testing.T) {
 	// arrange: expired event, store rejects the seen mark.
-	fs := &fakeStore{seen: map[string]bool{}, errMark: errors.New("down")}
+	fs := newFakeStore()
+	fs.errMark = errors.New("down")
 	h, _ := newHandler(t, fs)
 
 	// act
@@ -335,7 +366,8 @@ func TestHandler_MarkFailureNeverAck(t *testing.T) {
 
 func TestHandler_AcceptRaceSuppresses(t *testing.T) {
 	// arrange: the concurrent sibling inserted the seen row first.
-	fs := &fakeStore{seen: map[string]bool{}, acceptDup: true}
+	fs := newFakeStore()
+	fs.acceptDup = true
 	h, m := newHandler(t, fs)
 
 	// act
@@ -354,9 +386,113 @@ func TestHandler_MethodNotAllowed(t *testing.T) {
 
 	// act
 	rec := httptest.NewRecorder()
-	h.Mux().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/webhook", nil))
+	h.Mux().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, testEndpoint, nil))
 
 	// assert
 	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
 	assert.Equal(t, 0.0, testutil.ToFloat64(m.Received), "non-POST traffic is not a delivery")
+}
+
+func TestHandler_RefusesAnEndpointNoForgeOwns(t *testing.T) {
+	tests := []struct {
+		name string
+		path string
+	}{
+		{"an unknown connection", "/webhooks/8"},
+		{"no connection id", "/webhooks/gitlab"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// arrange
+			fs := newFakeStore()
+			h, m := newHandler(t, fs)
+			req := httptest.NewRequest(http.MethodPost, tc.path, bytes.NewReader(mrBody(t, "open", freshTS)))
+
+			// act
+			rec := httptest.NewRecorder()
+			h.Mux().ServeHTTP(rec, req)
+
+			// assert
+			assert.Equal(t, http.StatusNotFound, rec.Code)
+			assert.Empty(t, fs.accepted)
+			assert.Equal(t, 1.0, testutil.ToFloat64(m.Rejected.WithLabelValues(metrics.CauseEndpoint)))
+		})
+	}
+}
+
+func commentBody(t *testing.T) []byte {
+	t.Helper()
+	body, err := json.Marshal(map[string]any{
+		"object_kind": "note",
+		"user":        map[string]any{"username": "bob"},
+		"project":     map[string]any{"id": 42, "full_path": "grp/app", "path_with_namespace": "grp/app"},
+		"object_attributes": map[string]any{
+			"action": "create", "noteable_type": "MergeRequest", "note": "looks good",
+			"created_at": freshTS,
+		},
+		"merge_request": map[string]any{"id": 987654321, "iid": 12},
+	})
+	require.NoError(t, err)
+	return body
+}
+
+// A sink gets one delivery however many routes reach it, and its reply
+// unless every one of those routes mutes it (SYSREQ-046, SYSREQ-047).
+func TestHandler_MergesTheRoutesOfASink(t *testing.T) {
+	tests := []struct {
+		name       string
+		muted      [][]string // per route to the one sink
+		wantNotice string
+	}{
+		{"one route mutes, the other lets it through", [][]string{{"comment"}, {}}, "comment"},
+		{"every route mutes", [][]string{{"comment", "push"}, {"comment"}}, ""},
+		{"no route mutes", [][]string{{}}, "comment"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// arrange
+			fs := newFakeStore()
+			fs.destinations = nil
+			for _, muted := range tc.muted {
+				fs.destinations = append(fs.destinations, store.Destination{
+					SinkID:       1,
+					ConnectionID: 2,
+					ChannelID:    "chan-1",
+					MutedReplies: muted,
+				})
+			}
+			h, _ := newHandler(t, fs)
+
+			// act
+			rec := deliver(t, h.Mux(), "msg-c", commentBody(t))
+
+			// assert
+			require.Equal(t, http.StatusOK, rec.Code)
+			require.Len(t, fs.accepted, 1)
+			require.Len(t, fs.accepted[0].deliveries, 1, "one sink, one delivery")
+			assert.Equal(t, tc.wantNotice, fs.accepted[0].deliveries[0].Plan.Notice)
+		})
+	}
+}
+
+func TestHandler_FansOutToEverySink(t *testing.T) {
+	// arrange
+	fs := newFakeStore()
+	fs.destinations = []store.Destination{
+		{SinkID: 1, ConnectionID: 2, ChannelID: "chan-1", MutedReplies: []string{"comment"}},
+		{SinkID: 3, ConnectionID: 4, ChannelID: "room-3", MutedReplies: []string{}},
+	}
+	h, _ := newHandler(t, fs)
+
+	// act
+	rec := deliver(t, h.Mux(), "msg-c", commentBody(t))
+
+	// assert
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Len(t, fs.accepted, 1)
+	deliveries := fs.accepted[0].deliveries
+	require.Len(t, deliveries, 2)
+	assert.Empty(t, deliveries[0].Plan.Notice, "the first sink mutes comments")
+	assert.Equal(t, "comment", deliveries[1].Plan.Notice)
+	assert.Equal(t, "comment", fs.accepted[0].ev.Plan.Notice, "the event keeps its own plan")
 }

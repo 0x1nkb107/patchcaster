@@ -2,15 +2,17 @@ package ingest
 
 import (
 	"context"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
+	"slices"
+	"strconv"
 	"time"
 
 	"github.com/patchcaster-app/patchcaster/internal/event"
 	"github.com/patchcaster-app/patchcaster/internal/metrics"
 	"github.com/patchcaster-app/patchcaster/internal/plan"
-	"github.com/patchcaster-app/patchcaster/internal/routing"
 	"github.com/patchcaster-app/patchcaster/internal/store"
 )
 
@@ -38,30 +40,37 @@ var acceptedActions = map[string]bool{
 type Store interface {
 	Seen(ctx context.Context, webhookID string) (bool, error)
 	MarkOutcome(ctx context.Context, webhookID, outcome string, now time.Time) error
-	Accept(ctx context.Context, ev *event.Event, destChannel string, now time.Time) (store.AcceptResult, error)
+	Destinations(ctx context.Context, connectionID int64, repository string) ([]store.Destination, error)
+	Accept(ctx context.Context, ev *event.Event, deliveries []store.Delivery, now time.Time) (store.AcceptResult, error)
 }
 
-// Handler serves the webhook endpoint.
+// Keys opens the signing keys of a forge connection. Keyring is the real one.
+type Keys interface {
+	SigningKeys(ctx context.Context, connectionID int64) ([][]byte, error)
+}
+
+// Handler serves the webhook endpoints of the forge connections.
 type Handler struct {
-	Secrets [][]byte
+	Keys    Keys
 	Store   Store
-	Routes  *routing.Table
 	MaxAge  time.Duration    // freshness cap (SYSREQ-013)
 	Now     func() time.Time // injectable clock
 	Log     *slog.Logger
 	Metrics *metrics.Metrics
 }
 
-// Mux exposes the endpoint surface for the public listener.
+// Mux exposes the endpoint surface for the public listener: one endpoint
+// per forge connection, by its id (SYSREQ-044).
 func (h *Handler) Mux() http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("POST /webhook", h.handle)
+	mux.HandleFunc("POST /webhooks/{connection}", h.handle)
 	return mux
 }
 
 // handle applies the decision order. Every response is one of:
-// 401 unauthenticated, 400 unparseable, 503 store unavailable, or 200 with
-// the delivery durably settled (accepted, suppressed, or discarded).
+// 404 no such endpoint, 401 unauthenticated, 400 unparseable, 503 store
+// unavailable, or 200 with the delivery durably settled (accepted,
+// suppressed, or discarded).
 func (h *Handler) handle(w http.ResponseWriter, r *http.Request) {
 	h.Metrics.Received.Inc()
 
@@ -69,6 +78,18 @@ func (h *Handler) handle(w http.ResponseWriter, r *http.Request) {
 	ts := r.Header.Get("Webhook-Timestamp")
 	sig := r.Header.Get("Webhook-Signature")
 	log := h.Log.With("webhook_id", id)
+
+	connectionID, keys, err := h.endpointKeys(r)
+	if errors.Is(err, ErrUnknownEndpoint) {
+		h.reject(w, log, metrics.CauseEndpoint, http.StatusNotFound, "no forge connection at this endpoint")
+		return
+	}
+	if err != nil {
+		log.Error("signing key lookup failed", "err", err)
+		http.Error(w, "store unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	log = log.With("connection", connectionID)
 
 	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxBodyBytes))
 	if err != nil {
@@ -78,7 +99,7 @@ func (h *Handler) handle(w http.ResponseWriter, r *http.Request) {
 
 	// The identifier is part of the signed content, so a missing header fails
 	// verification by construction (SYSREQ-012).
-	if !Verify(h.Secrets, id, ts, body, sig) {
+	if !Verify(keys, id, ts, body, sig) {
 		h.reject(w, log, metrics.CauseSignature, http.StatusUnauthorized, "signature verification")
 		return
 	}
@@ -102,6 +123,7 @@ func (h *Handler) handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ev.WebhookID = id
+	onConnection(ev, connectionID)
 	log = log.With("project", ev.ProjectPath, "mr", ev.MRRef, "action", ev.Action)
 
 	if !ev.Processed() {
@@ -137,15 +159,20 @@ func (h *Handler) handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dest, ok := h.Routes.Channel(ev.ProjectPath)
-	if !ok {
+	ev.Plan = plan.For(ev)
+	deliveries, err := h.deliveries(r.Context(), ev)
+	if err != nil {
+		log.Error("route lookup failed", "err", err)
+		http.Error(w, "store unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	if len(deliveries) == 0 {
 		h.discard(w, r, log, id, metrics.CauseUnrouted, "no route for project")
 		return
 	}
 
-	ev.Plan = plan.For(ev)
 	now := h.Now()
-	res, err := h.Store.Accept(r.Context(), ev, dest, now)
+	res, err := h.Store.Accept(r.Context(), ev, deliveries, now)
 	if err != nil {
 		log.Error("durable accept failed", "err", err)
 		http.Error(w, "store unavailable", http.StatusServiceUnavailable)
@@ -162,8 +189,70 @@ func (h *Handler) handle(w http.ResponseWriter, r *http.Request) {
 	if ev.Kind == event.KindPush && res.Attributed == 0 {
 		h.Metrics.PushAttrMiss.Inc()
 	}
-	log.Info("delivery accepted", "kind", ev.Kind, "enqueued", res.Enqueued)
+	log.Info("delivery accepted", "kind", ev.Kind, "sinks", len(deliveries), "enqueued", res.Enqueued)
 	w.WriteHeader(http.StatusOK)
+}
+
+// endpointKeys reads which forge connection's endpoint the request reached,
+// and that connection's signing keys.
+func (h *Handler) endpointKeys(r *http.Request) (int64, [][]byte, error) {
+	connectionID, err := strconv.ParseInt(r.PathValue("connection"), 10, 64)
+	if err != nil {
+		return 0, nil, ErrUnknownEndpoint
+	}
+	keys, err := h.Keys.SigningKeys(r.Context(), connectionID)
+	return connectionID, keys, err
+}
+
+// onConnection ties an event to the forge connection it came through. The
+// forge's own merge request id is unique only on that forge, so the key the
+// store and the queue use names the connection too (ADR-036).
+func onConnection(ev *event.Event, connectionID int64) {
+	ev.ConnectionID = connectionID
+	if ev.MRRef != "" {
+		ev.MRRef = strconv.FormatInt(connectionID, 10) + ":" + ev.MRRef
+	}
+}
+
+// deliveries resolves the sinks the event reaches through the routes of the
+// sources whose scope holds its repository (SYSREQ-046). A sink that
+// several routes reach gets the event once, and its reply unless every one
+// of those routes mutes it (SYSREQ-047).
+func (h *Handler) deliveries(ctx context.Context, ev *event.Event) ([]store.Delivery, error) {
+	destinations, err := h.Store.Destinations(ctx, ev.ConnectionID, ev.ProjectPath)
+	if err != nil {
+		return nil, err
+	}
+	var deliveries []store.Delivery
+	mutedBySink := map[int64][]string{}
+	for _, d := range destinations {
+		muted, seen := mutedBySink[d.SinkID]
+		if !seen {
+			deliveries = append(deliveries, store.Delivery{
+				SinkID:       d.SinkID,
+				ConnectionID: d.ConnectionID,
+				ChannelID:    d.ChannelID,
+			})
+			mutedBySink[d.SinkID] = d.MutedReplies
+			continue
+		}
+		mutedBySink[d.SinkID] = mutedByAll(muted, d.MutedReplies)
+	}
+	for i := range deliveries {
+		deliveries[i].Plan = plan.ForSink(ev.Plan, mutedBySink[deliveries[i].SinkID])
+	}
+	return deliveries, nil
+}
+
+// mutedByAll keeps the reply kinds that both routes mute.
+func mutedByAll(a, b []string) []string {
+	both := []string{}
+	for _, kind := range a {
+		if slices.Contains(b, kind) {
+			both = append(both, kind)
+		}
+	}
+	return both
 }
 
 // discard settles a verified delivery as seen-without-posting. The seen mark

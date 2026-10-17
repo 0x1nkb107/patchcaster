@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// The service routes this project to this channel.
+// The suite's project, and the channel startRouted routes it to.
 const (
 	projectPath = "group/application"
 	channelID   = "chan-e2e"
@@ -34,8 +34,11 @@ type mergeRequest struct {
 	iid int // the number within the project
 }
 
-// ref is the key the store uses for the merge request.
-func (mr mergeRequest) ref() string { return strconv.Itoa(mr.id) }
+// refOn is the key the store uses for the merge request, as it arrives
+// through the forge connection with connectionID.
+func (mr mergeRequest) refOn(connectionID int64) string {
+	return strconv.FormatInt(connectionID, 10) + ":" + strconv.Itoa(mr.id)
+}
 
 // gitlab sends webhook deliveries the way GitLab does: JSON bodies signed
 // under the Standard Webhooks scheme.

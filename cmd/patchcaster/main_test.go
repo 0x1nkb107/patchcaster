@@ -1,7 +1,6 @@
 package main
 
 import (
-	"path/filepath"
 	"testing"
 
 	"github.com/alecthomas/kong"
@@ -30,18 +29,14 @@ func TestMigrateRunsMigrateCmd(t *testing.T) {
 }
 
 func TestServeIsTheDefaultCommand(t *testing.T) {
-	// arrange: a missing routing file fails inside ServeCmd.Run, before any
-	// connection
-	missing := filepath.Join(t.TempDir(), "routing.yaml")
-
-	// act: no command name given
-	err := run(t, "--database-url=postgres://x", "--mattermost-url=https://mm",
-		"--mattermost-token=tok", "--signing-secret="+testSigningToken, "--routing-file="+missing,
-		"--encryption-key="+testKey, "--interface-url="+testInterfaceURL, "--public-url="+testPublicURL)
+	// act: no command name given; an unparsable URL fails inside
+	// ServeCmd.Run, before any connection
+	err := run(t, "--database-url=postgres://u:%zz@h/db", "--encryption-key="+testKey,
+		"--interface-url="+testInterfaceURL, "--public-url="+testPublicURL)
 
 	// assert
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "open routing file")
+	assert.Contains(t, err.Error(), "parse database url")
 }
 
 func TestBootstrapRefusesAMalformedInterfaceURL(t *testing.T) {

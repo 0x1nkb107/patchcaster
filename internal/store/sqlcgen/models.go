@@ -81,6 +81,7 @@ type MrState struct {
 	ReviewersRequired int32
 	LastPushCount     int32
 	UpdatedAt         time.Time
+	ConnectionID      int64
 }
 
 type MrThread struct {
@@ -90,6 +91,7 @@ type MrThread struct {
 	State      string
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
+	SinkID     int64
 }
 
 type Outbox struct {
@@ -110,6 +112,8 @@ type Outbox struct {
 	UpdatedAt     time.Time
 	NoticePosted  bool
 	RootRefreshed bool
+	SinkID        int64
+	ConnectionID  int64
 }
 
 type Person struct {

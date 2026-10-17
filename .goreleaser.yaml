@@ -8,6 +8,14 @@ version: 2
 
 project_name: patchcaster
 
+# The binary embeds the web interface (ADR-032), so the bundle is built
+# first, from the lockfile. The hooks run before goreleaser empties and
+# fills dist, and they write below web/ only.
+before:
+  hooks:
+    - just web-install
+    - just web-build
+
 builds:
   - id: patchcaster
     main: ./cmd/patchcaster
@@ -28,6 +36,17 @@ builds:
 
 checksum:
   name_template: "checksums.txt"
+
+# The SBOM of the web interface's JavaScript packages (ADR-044). The
+# bundle's build writes it, so this step only copies it into dist under its
+# release name. The step runs inside dist, hence the relative path. The
+# checksums list it, so their signature covers it.
+sboms:
+  - id: web
+    artifacts: any
+    cmd: cp
+    args: ["../web/sbom/web.cdx.json", "$document"]
+    documents: ["{{ .ProjectName }}_{{ .Version }}_web.cdx.json"]
 
 # Archives carry the binary and the licence only (ADR-020, ADR-024): the
 # AGPL text and the proxy grant, because the AGPL requires a copy of the

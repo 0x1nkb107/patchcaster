@@ -1,0 +1,3 @@
+kind: Added
+body: Attach an SBOM of the JavaScript packages in the web interface to every release, as patchcaster_<version>_web.cdx.json. The signed checksums cover it.
+time: 2026-10-17T23:31:26.43682735+02:00

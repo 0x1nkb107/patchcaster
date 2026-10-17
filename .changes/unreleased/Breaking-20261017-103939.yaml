@@ -1,0 +1,3 @@
+kind: Breaking
+body: Name the address at which people reach the management listener in PATCHCASTER_INTERFACE_URL, such as https://patchcaster.example.org. The login and the setup link are built from it.
+time: 2026-10-17T10:39:39.163011452+02:00

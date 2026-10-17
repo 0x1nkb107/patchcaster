@@ -14,6 +14,7 @@ then point GitLab at it.
   [signed webhooks](integrations/gitlab.md).
 * **A routing table** naming the channel for each project
   ([format](configuration.md#routing-table)).
+* **An OpenID Connect identity provider**, such as Entra ID, Keycloak or Okta, at which PatchCaster is registered as a client. People log in to the management interface through it.
 
 ## Kubernetes: Helm chart
 
@@ -44,6 +45,7 @@ podman run -d --name patchcaster \
   -e PATCHCASTER_MATTERMOST_TOKEN=… \
   -e PATCHCASTER_SIGNING_SECRETS=… \
   -e PATCHCASTER_ENCRYPTION_KEY=… \
+  -e PATCHCASTER_INTERFACE_URL=https://patchcaster.example.com \
   ghcr.io/patchcaster-app/patchcaster:vX.Y.Z
 ```
 
@@ -91,7 +93,7 @@ On startup PatchCaster loads the routing table, connects to PostgreSQL,
 applies any pending migrations, then listens. Once `GET :9090/readyz`
 answers 200, [add the GitLab webhook](integrations/gitlab.md) and open a
 merge request in a routed project; its thread should appear in the mapped
-channel.
+channel. Then run the [first setup](operations.md#first-setup) to connect the identity provider and become the first administrator.
 
 From here on, [operations](operations.md) covers probes, metrics, shutdown,
 upgrades and what to do with parked messages.

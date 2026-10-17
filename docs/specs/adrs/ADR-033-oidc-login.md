@@ -33,6 +33,9 @@ The owner chose generic OpenID Connect for login (2026-10-15). An IT department 
 - PatchCaster implements scs's three-method store interface itself, in its store package, over sqlc queries and a goose migration (owner decision 2026-10-16). scs's own `postgresstore` and `pgxstore` have no tagged releases, and their table would sit outside the migrations and the sqlc gate (ADR-010).
 - State-changing requests pass `net/http.CrossOriginProtection` from the standard library.
 - `patchcaster bootstrap` issues a single-use setup link valid for one hour while no administrator exists. Through it, the first administrator configures the provider and becomes administrator by logging in once.
+  - The link carries its token in the URL fragment, which browsers never send to a server, so the token stays out of access logs. The database keeps only the token's SHA-256 hash.
+  - The browser that sends the token with the provider settings must be the one that logs in: its session remembers the link, and a login in any other browser is refused while the setup is open.
+  - Before the settings are stored, PatchCaster fetches the provider's discovery document and checks that it names the same issuer. The client credentials are first tested by the login.
 - `patchcaster admin grant` gives the administrator role to an issuer and subject. It needs the database credentials, which already give full control, so it opens no new door.
 
 ## Consequences

@@ -25,7 +25,7 @@ Forges must reach the webhook endpoints, often from outside the organization's n
 - The management listener answers the web interface, the API and its OpenAPI description.
 - The internal listener keeps probes and metrics (SYSREQ-018, SYSREQ-019).
 - Each listener has its own address setting.
-- Two startup settings name the listeners' external addresses, which may lie on different hosts. The public base URL belongs to the webhook listener. Forge webhook endpoints and the Mattermost command callback are built from it. The interface URL belongs to the management listener. The OpenID Connect redirect, the setup link and the linking links are built from it.
+- Two startup settings name the listeners' external addresses, which may lie on different hosts. The public base URL belongs to the webhook listener. Forge webhook endpoints and the Mattermost command callback are built from it. The interface URL belongs to the management listener. The OpenID Connect redirect, the setup link and the linking links are built from it. It names only a scheme, a host and a port, because the interface answers at the root of its listener.
 
 ## Verification Plan
 

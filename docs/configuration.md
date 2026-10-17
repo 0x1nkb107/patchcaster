@@ -13,6 +13,7 @@ non-zero before anything listens, naming every offending option at once.
 | `--addr` | `PATCHCASTER_ADDR` | `:8080` |
 | `--internal-addr` | `PATCHCASTER_INTERNAL_ADDR` | `:9090` |
 | `--management-addr` | `PATCHCASTER_MANAGEMENT_ADDR` | `:8081` |
+| `--interface-url` | `PATCHCASTER_INTERFACE_URL` | *required* (see [interface URL](#interface-url)) |
 | `--database-url` | `PATCHCASTER_DATABASE_URL` | *required* |
 | `--mattermost-url` | `PATCHCASTER_MATTERMOST_URL` | *required* |
 | `--mattermost-token` | `PATCHCASTER_MATTERMOST_TOKEN` | *required* (bot account token) |
@@ -43,6 +44,10 @@ Any one of the signing secrets may sign a delivery, which is how the GitLab
 signing token rotates without downtime: add the new secret, switch the hook
 over to it, then drop the old one.
 
+## Interface URL
+
+`--interface-url` is the address at which people reach the management listener, such as `https://patchcaster.example.org`. PatchCaster builds the identity provider's redirect address and the setup link from it, so it must be the address browsers use, also behind a reverse proxy. It names only a scheme, a host and an optional port: the interface answers at the root of its listener. With `https`, the session cookie is marked `Secure`. Use plain `http` only for a local instance.
+
 ## Encryption key
 
 PatchCaster seals the secrets it stores in the database with the instance encryption key: 32 random bytes, base64-encoded. Generate one with `openssl rand -base64 32` and guard it like the database credentials. Prefer the environment variable over the flag, because flags show up in process listings.
@@ -54,6 +59,14 @@ At its first start PatchCaster stores a sealed check value, and every later star
 Applies the embedded database migrations and exits. It takes only
 `--database-url` (`PATCHCASTER_DATABASE_URL`); see
 [upgrades](operations.md#upgrades-and-migrations) for when to use it.
+
+## `patchcaster bootstrap`
+
+Prints the one-time setup link of a new instance and exits. It takes `--database-url` and `--interface-url`, with the same environment variables as `serve`. The link works once, for one hour, and only while no administrator exists. See [first setup](operations.md#first-setup).
+
+## `patchcaster admin grant`
+
+Makes a person an administrator and exits, whether or not they ever logged in. It takes `--database-url` (`PATCHCASTER_DATABASE_URL`), and `--issuer` and `--subject`, which name the person exactly as their ID tokens do. See [restoring administrator access](operations.md#restoring-administrator-access).
 
 ## `patchcaster secrets reseal`
 

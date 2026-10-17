@@ -34,6 +34,18 @@ type AuditLog struct {
 	ActorTokenName string
 }
 
+type Connection struct {
+	ID         int64
+	Kind       string
+	Name       string
+	BaseUrl    string
+	Credential []byte
+	Account    string
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	Version    int64
+}
+
 type InstanceKeyCheck struct {
 	ID       int16
 	Sealed   []byte
@@ -130,4 +142,12 @@ type SetupLink struct {
 	CreatedAt time.Time
 	ExpiresAt time.Time
 	UsedAt    sql.NullTime
+}
+
+type SigningToken struct {
+	ID           int64
+	ConnectionID int64
+	Label        string
+	Token        []byte
+	CreatedAt    time.Time
 }

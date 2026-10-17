@@ -32,7 +32,7 @@ ogen generates the management API's server and client code.
 - Handlers implement the generated handler interface by calling the configuration service, never the store (SYSARCH-006).
 - The generated validation rejects non-conforming requests. Its error handler answers them with `400` problem details that name each violated field by its path (SYSREQ-035, ADR-043).
 - The e2e suite uses the generated client, so every end-to-end test also exercises the contract.
-- The web interface's TypeScript types and client are generated from the same description, and the same gate checks them (ADR-032).
+- The web interface's TypeScript client and schemas are generated from the same description by orval, and `just web-api-check` checks them the same way (ADR-032).
 
 ## Consequences
 

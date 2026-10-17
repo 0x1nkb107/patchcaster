@@ -29,7 +29,7 @@ command.
 Release images for linux/amd64 and linux/arm64 live at
 `ghcr.io/patchcaster-app/patchcaster`, tagged with the release version and
 `latest`. The image is distroless, runs as a non-root user, and serves on
-`8080` (webhooks), `8081` (management API) and `9090` (probes and metrics). All configuration comes
+`8080` (webhooks), `8081` (web interface and management API) and `9090` (probes and metrics). All configuration comes
 from the environment; the [configuration reference](configuration.md) lists
 every variable:
 

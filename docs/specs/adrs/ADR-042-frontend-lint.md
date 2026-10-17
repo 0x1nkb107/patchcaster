@@ -24,8 +24,9 @@ Go code passes gofmt and the pinned golangci-lint in `just quality` (ADR-011). T
   - eslint-config-prettier comes last and turns off every rule that would contradict Prettier.
 - Prettier formats the interface, with prettier-plugin-svelte for `.svelte` files and prettier-plugin-tailwindcss to sort Tailwind classes. Its configuration and ignore file keep it inside `web/`, so it never touches Go code, specs, Markdown docs or YAML.
 - svelte-check type-checks the components and treats warnings as errors.
-- TypeScript is pinned to 6.0, which is 6.0.3 on 2026-10-15. typescript-eslint 8.71.2 supports TypeScript below 6.1, svelte-check 4.7.6 supports 5 and 6, and SvelteKit 3.1.0 expects 6. TypeScript 7 waits until all three support it.
-- All tools are development dependencies pinned by the lockfile, the frontend's counterpart of the Go tools modules (ADR-007). On 2026-10-15 the current releases are ESLint 10.12.0, typescript-eslint 8.71.2, eslint-plugin-svelte 3.23.1, eslint-config-prettier 10.1.8, Prettier 3.9.10, prettier-plugin-svelte 4.1.1, prettier-plugin-tailwindcss 0.8.1 and svelte-check 4.7.6. All are MIT licensed.
+- TypeScript is pinned to 6.0, which is 6.0.3 on 2026-10-15. typescript-eslint 8.71 supports TypeScript below 6.1, svelte-check 4.7 supports 5 and 6, and SvelteKit 3 expects 6. TypeScript 7 waits until all three support it.
+- All tools are development dependencies pinned by the lockfile, the frontend's counterpart of the Go tools modules (ADR-007). The lockfile pins ESLint 10.12.0, typescript-eslint 8.71.1, eslint-plugin-svelte 3.23.1, eslint-config-prettier 10.1.8, Prettier 3.9.10, prettier-plugin-svelte 4.1.1, prettier-plugin-tailwindcss 0.8.1 and svelte-check 4.7.6, the newest releases older than seven days on 2026-10-17 (ADR-032). All are MIT licensed.
+- Code that tools write stays as they wrote it, so that a new version of the tool can replace it as a whole. ESLint skips the API client that orval generates and the components that shadcn-svelte copies into `src/lib/components/ui`. Prettier skips the generated client.
 - `just web-lint` runs `eslint`, `prettier --check` and `svelte-check`, and `just quality` includes it. `just web-fmt` applies Prettier's formatting.
 
 ## Consequences

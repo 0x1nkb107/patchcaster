@@ -22,7 +22,8 @@ ADR-031 makes the OpenAPI description the source of the management API. Its grou
 - **Errors:** every error answers with `application/problem+json` as defined by RFC 9457, with `type`, `title`, `status` and `detail`.
   - Validation errors carry an `errors` member: a list of entries, each with a `path` and its `messages`.
   - A path names the request field the way JavaScript form libraries do, for example `routes[0].sink_id`. An empty path means the request as a whole.
-  - This is the shape that sveltekit-superforms reports as all of a form's errors, and on which formsnap builds. The interface can therefore attach each message to its field with superforms' `setError`, without mapping code per form.
+  - This is the shape that sveltekit-superforms reports as all of a form's errors. The interface can therefore attach each message to its field with superforms' `setError`, without mapping code per form.
+  - The interface uses sveltekit-superforms 3 without formsnap (owner decision 2026-10-17). formsnap 2.0.1 needs superforms 2, which supports SvelteKit 2 at most, and the interface builds on SvelteKit 3 (ADR-032). A small field component of the interface's own shows each field's label and messages instead.
 - **Names:** JSON members use snake_case, as PatchCaster's stored events already do.
 - **Lists:** lists page with a `limit` and an opaque `cursor`. Each page carries the cursor of the next one, and the order is stable.
 - **Concurrent changes:** every resource carries an `ETag`. A change must send `If-Match` with it, and it fails with `412 Precondition Failed` when the resource changed meanwhile. A change without `If-Match` answers `428 Precondition Required`. The interface and automation therefore cannot overwrite each other unnoticed. Revocations are the exception: repeating one changes nothing and no concurrent change can be lost, so they need no `If-Match`, and API tokens carry no `ETag` (owner decision 2026-10-17).

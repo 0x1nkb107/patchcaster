@@ -28,6 +28,7 @@ ogen generates the management API's server and client code.
 
 - The description lives in the repository, uses OpenAPI 3.0, and is embedded in the binary and served by it (SYSREQ-035).
 - ogen is pinned as a tools module (ADR-007). The generated code is checked in, and a `just api-check` gate fails CI when it differs from what the description generates, as `just sqlc-check` does for queries (ADR-010).
+- Generation turns off ogen's OpenTelemetry feature. API metrics, when they come, use PatchCaster's Prometheus metrics (SYSREQ-019).
 - Handlers implement the generated handler interface by calling the configuration service, never the store (SYSARCH-006).
 - The generated validation rejects non-conforming requests. Its error handler answers them with `400` problem details that name each violated field by its path (SYSREQ-035, ADR-043).
 - The e2e suite uses the generated client, so every end-to-end test also exercises the contract.
@@ -38,6 +39,5 @@ ogen generates the management API's server and client code.
 - Good: the published description and the server can never disagree.
 - Good: validation and JSON handling come from the description, without reflection and without a hand-written layer that could drift.
 - Good: the typed client serves the e2e suite and a later command-line client alike.
-- Bad: the generated code imports ogen's runtime, `go-faster/jx`, `go-faster/errors` and OpenTelemetry. The login library brings OpenTelemetry already (ADR-033), so that part is shared.
-- Bad: PatchCaster exports Prometheus metrics (SYSREQ-019), while ogen records its own through OpenTelemetry. Until a meter provider is configured, OpenTelemetry's global no-op provider keeps those instruments silent. Bridging them is a later choice.
+- Bad: the generated code imports ogen's runtime, and that runtime brings more than it needs at run time. Its error package reaches ogen's OpenAPI and JSON Schema packages, and with them zap, two YAML libraries, regexp2 and fatih/color. Its validation package brings shopspring/decimal. All are permissively licensed and compatible with AGPL-3.0. Together they grew the binary by about 1 MiB, 6 %, when the first API landed.
 - Bad: API changes start in YAML, which is verbose.

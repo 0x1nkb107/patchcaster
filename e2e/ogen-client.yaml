@@ -1,0 +1,7 @@
+# ogen settings for the e2e suite's client of the management API: no server
+# and no OpenTelemetry instrumentation (ADR-031).
+generator:
+  features:
+    disable_all: true
+    enable:
+      - paths/client

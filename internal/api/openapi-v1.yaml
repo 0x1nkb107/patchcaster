@@ -1,0 +1,78 @@
+# The management API, version 1 (SYSREQ-035, ADR-031, ADR-043). This
+# description is the source: `just api` generates the server and the e2e
+# client from it, and the binary serves it at /api/v1/openapi.yaml.
+openapi: 3.0.3
+info:
+  title: PatchCaster management API
+  version: "1"
+  description: >-
+    Every configuration operation of the web interface, for automation. Errors
+    are RFC 9457 problem details; validation errors list each field by its
+    path.
+servers:
+  - url: /
+paths:
+  /api/v1/instance:
+    get:
+      operationId: getInstance
+      summary: Describe this instance.
+      responses:
+        "200":
+          description: The instance.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Instance"
+        default:
+          $ref: "#/components/responses/Problem"
+components:
+  responses:
+    Problem:
+      description: An RFC 9457 problem.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+  schemas:
+    Instance:
+      type: object
+      required: [version]
+      properties:
+        version:
+          type: string
+          description: The build version, "dev" for source builds.
+    Problem:
+      type: object
+      description: An RFC 9457 problem.
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          description: A URI that identifies the kind of problem.
+        title:
+          type: string
+          description: A short summary of the kind of problem.
+        status:
+          type: integer
+          description: The HTTP status code.
+        detail:
+          type: string
+          description: What went wrong in this case.
+        errors:
+          type: array
+          description: >-
+            The fields that failed validation, each named by its path the way
+            form libraries do, such as "routes[0].sink_id". An empty path means
+            the request as a whole.
+          items:
+            $ref: "#/components/schemas/FieldError"
+    FieldError:
+      type: object
+      required: [path, messages]
+      properties:
+        path:
+          type: string
+        messages:
+          type: array
+          items:
+            type: string

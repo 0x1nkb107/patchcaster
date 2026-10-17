@@ -55,12 +55,13 @@ func (c serviceConfig) withDefaults() serviceConfig {
 
 // service is one running patchcaster process.
 type service struct {
-	cmd         *exec.Cmd
-	publicAddr  string
-	internalURL string
-	gitlab      gitlab
-	logs        *lockedBuffer
-	exited      chan struct{}
+	cmd           *exec.Cmd
+	publicAddr    string
+	internalURL   string
+	managementURL string
+	gitlab        gitlab
+	logs          *lockedBuffer
+	exited        chan struct{}
 }
 
 // startService starts patchcaster against the suite database and waits until
@@ -81,12 +82,13 @@ func startService(t *testing.T, cfg serviceConfig) *service {
 func launch(t *testing.T, cfg serviceConfig) *service {
 	t.Helper()
 	cfg = cfg.withDefaults()
-	publicAddr, internalAddr := freeAddress(t), freeAddress(t)
+	publicAddr, internalAddr, managementAddr := freeAddress(t), freeAddress(t), freeAddress(t)
 
 	logs := &lockedBuffer{}
 	cmd := exec.Command(binaryPath, "serve",
 		"--addr", publicAddr,
 		"--internal-addr", internalAddr,
+		"--management-addr", managementAddr,
 		"--database-url", databaseURL,
 		"--mattermost-url", cfg.mattermostURL,
 		"--mattermost-token", botToken,
@@ -105,12 +107,13 @@ func launch(t *testing.T, cfg serviceConfig) *service {
 	require.NoError(t, cmd.Start(), "start patchcaster")
 
 	s := &service{
-		cmd:         cmd,
-		publicAddr:  publicAddr,
-		internalURL: "http://" + internalAddr,
-		gitlab:      gitlab{webhookURL: "http://" + publicAddr + "/webhook"},
-		logs:        logs,
-		exited:      make(chan struct{}),
+		cmd:           cmd,
+		publicAddr:    publicAddr,
+		internalURL:   "http://" + internalAddr,
+		managementURL: "http://" + managementAddr,
+		gitlab:        gitlab{webhookURL: "http://" + publicAddr + "/webhook"},
+		logs:          logs,
+		exited:        make(chan struct{}),
 	}
 	go func() {
 		_ = cmd.Wait()

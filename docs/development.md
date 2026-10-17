@@ -62,6 +62,8 @@ just test-integration # store contract tests only, in their own PostgreSQL conta
 just test-e2e         # end-to-end tests: the real binary against its own PostgreSQL container
 just sqlc             # regenerate query code after touching internal/store/{queries,migrations}
 just sqlc-check       # fail if the committed query code differs from sqlc's output
+just api              # regenerate the management API code after editing internal/api/openapi-v1.yaml
+just api-check        # fail if the committed API code differs from ogen's output
 just container        # OCI image patchcaster:dev (`just container arm64` for arm64)
 just change           # record a changelog fragment (prompts for kind and body)
 just release-changelog # batch the fragments into CHANGELOG.md as the next version
@@ -134,6 +136,7 @@ Then, depending on what the change touches:
   change. Write it for operators, not developers. Refactors, tests, CI and
   development tool pins need none.
 * **SQL queries or migrations** (`internal/store/queries`, `internal/store/migrations`): run `just sqlc` and commit the regenerated `internal/store/sqlcgen`. Never edit the generated code by hand: CI runs `just sqlc-check` and fails when the committed code differs from what sqlc generates. Each query file holds the queries of one table, and a comment directly after a query's `-- name:` line becomes the doc comment of the generated method. v0.2's migrations keep their history in a table of their own, `patchcaster_migrations`. Until v0.2 is released they may still be rewritten, because no v0.2 database exists yet. Afterwards they only grow.
+* **Management API** (`internal/api/openapi-v1.yaml`): the description is the source. Run `just api` and commit the regenerated server in `internal/api/v1gen` and the e2e client in `e2e/apiv1`. Never edit them by hand: CI runs `just api-check`. Within `/api/v1/`, changes stay additive; a change that would break clients needs a new version.
 * **Mattermost client** (`internal/mattermost`): run `just test-e2e`. Its fake Mattermost rejects any request that breaks the published API of the Mattermost release pinned in `e2e/testdata/refresh-mattermost-api.sh` (ADR-027). To move to a newer release, change the two pins at the top of that script, run it and commit the regenerated description.
 * **Release pipeline** (`.goreleaser.yaml`, `Dockerfile`, build flags): run `just release-check` and `just release-snapshot`. Without a Docker daemon, `just release-snapshot --skip=docker` still builds the binaries. Pull requests run `just release-check` in CI. Every push to `main` goes further in the Release workflow's rehearsal job: it batches the changelog, tags and runs `just release-publish` inside the runner, pushes the images to a throwaway registry and checks the result, without publishing anything (ADR-023).
 * **Behaviour**: the specs are normative, so a change in what PatchCaster does

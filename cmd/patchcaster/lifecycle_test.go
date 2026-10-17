@@ -96,6 +96,7 @@ func (w *fakeWorker) cancelled() bool {
 type lifecycleHarness struct {
 	internal   *fakePart
 	public     *fakePart
+	management *fakePart
 	background *fakePart
 	worker     *fakeWorker
 	readiness  []bool // written by run's goroutine only
@@ -106,12 +107,14 @@ func newLifecycleHarness(drainBudget time.Duration) *lifecycleHarness {
 	h := &lifecycleHarness{
 		internal:   newFakePart(),
 		public:     newFakePart(),
+		management: newFakePart(),
 		background: newFakePart(),
 		worker:     newFakeWorker(),
 	}
 	h.lc = &lifecycle{
 		internal:    h.internal.run,
 		public:      h.public.run,
+		management:  h.management.run,
 		worker:      h.worker,
 		background:  []func(context.Context) error{h.background.run},
 		markReady:   func(ready bool) { h.readiness = append(h.readiness, ready) },
@@ -127,7 +130,7 @@ func (h *lifecycleHarness) start(t *testing.T, ctx context.Context) <-chan error
 	done := make(chan error, 1)
 	go func() { done <- h.lc.run(ctx) }()
 	for _, started := range []chan struct{}{
-		h.internal.started, h.public.started, h.background.started, h.worker.started,
+		h.internal.started, h.public.started, h.management.started, h.background.started, h.worker.started,
 	} {
 		select {
 		case <-started:
@@ -162,6 +165,7 @@ func TestLifecycle_FailedPartTearsDownTheRest(t *testing.T) {
 	// assert: the failure is reported and every other part was stopped.
 	require.EqualError(t, err, "serve internal listener: boom")
 	assert.True(t, h.public.ended())
+	assert.True(t, h.management.ended())
 	assert.True(t, h.background.ended())
 	assert.True(t, h.worker.cancelled())
 	assert.Equal(t, []bool{true, false}, h.readiness)
@@ -171,10 +175,11 @@ func TestLifecycle_SignalLetsTheDeliveryInHandFinish(t *testing.T) {
 	// arrange: record what the parts see at the two turning points of the
 	// drain, the stop request and the end of the delivery in hand.
 	h := newLifecycleHarness(time.Minute)
-	var readyAtStop, publicEndedAtStop, workerCancelledAtStop bool
+	var readyAtStop, publicEndedAtStop, managementEndedAtStop, workerCancelledAtStop bool
 	h.worker.onStop = func() {
 		readyAtStop = h.readiness[len(h.readiness)-1]
 		publicEndedAtStop = h.public.ended()
+		managementEndedAtStop = h.management.ended()
 		workerCancelledAtStop = h.worker.cancelled()
 	}
 	var internalEndedAtFinish, backgroundEndedAtFinish bool
@@ -200,6 +205,7 @@ func TestLifecycle_SignalLetsTheDeliveryInHandFinish(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, readyAtStop, "readiness flips before the drain starts")
 	assert.True(t, publicEndedAtStop, "webhooks stop before the drain starts")
+	assert.True(t, managementEndedAtStop, "API requests stop before the drain starts")
 	assert.False(t, workerCancelledAtStop, "SIGTERM must not cancel the delivery in hand")
 	assert.False(t, internalEndedAtFinish, "probes and metrics stay up during the drain")
 	assert.False(t, backgroundEndedAtFinish, "background tasks end after the worker")

@@ -28,6 +28,10 @@ The owner chose generic OpenID Connect for login (2026-10-15). An IT department 
 - A person is identified by issuer and subject. The first login creates the person with the role User.
 - Administrators may limit login to members of named groups (owner decision 2026-10-16). Providers carry group membership in different ID token claims, so administrators name the claim as well as the allowed groups. Without a limit, anyone the provider authenticates may log in. Membership is checked at every login.
 - API tokens live at most 90 days. An administrator can revoke all tokens and end all sessions of a person at once.
+  - A token starts with `patchcaster_`, so that people and secret scanners recognize a leaked one, and carries 128 random bits. The database keeps only its SHA-256 hash.
+  - The owner picks the lifetime in whole days, from 1 to 90, with 90 as the default (owner decision 2026-10-17).
+  - Only a login creates, lists and revokes tokens, so that a leaked token cannot create its successor and outlive the 90 days (owner decision 2026-10-17).
+  - Every person carries a session epoch, and a session counts only while it holds the current one. Ending all sessions of a person raises the epoch, which takes effect at once without scanning the sessions.
 - Roles are assigned in PatchCaster, not taken from identity provider claims. Mapping groups to roles can come later.
 - Sessions are managed by `github.com/alexedwards/scs/v2`, with their data in PostgreSQL (owner decision 2026-10-15). Version v2.9.0 is MIT licensed. The session cookie is `Secure`, `HttpOnly` and `SameSite=Lax`. Sessions end after one hour without activity and twelve hours after login at the latest. The session token is renewed at login against session fixation, and logout destroys the session.
 - PatchCaster implements scs's three-method store interface itself, in its store package, over sqlc queries and a goose migration (owner decision 2026-10-16). scs's own `postgresstore` and `pgxstore` have no tagged releases, and their table would sit outside the migrations and the sqlc gate (ADR-010).

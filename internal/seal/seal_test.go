@@ -134,3 +134,22 @@ func TestKeyIDsDifferAndRevealNothing(t *testing.T) {
 	assert.Len(t, a.ID(), 16)
 	assert.NotContains(t, keyA, a.ID())
 }
+
+func TestDerivedKeysDependOnPurposeAndActiveKey(t *testing.T) {
+	// arrange
+	box := seal.NewBox(mustKey(t, keyA))
+	rotated := seal.NewBox(mustKey(t, keyB), mustKey(t, keyA))
+
+	// act
+	first, err := box.Derive("login cookie hash", 32)
+	require.NoError(t, err)
+	again, _ := box.Derive("login cookie hash", 32)
+	other, _ := box.Derive("login cookie encryption", 32)
+	afterRotation, _ := rotated.Derive("login cookie hash", 32)
+
+	// assert
+	assert.Len(t, first, 32)
+	assert.Equal(t, first, again, "derivation is deterministic")
+	assert.NotEqual(t, first, other, "each purpose gets its own key")
+	assert.NotEqual(t, first, afterRotation, "a rotation changes every derived key")
+}

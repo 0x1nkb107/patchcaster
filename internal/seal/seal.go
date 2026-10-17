@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/hkdf"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
@@ -43,6 +44,7 @@ var (
 // Key is one instance encryption key.
 type Key struct {
 	id   [keyIDSize]byte
+	raw  []byte
 	aead cipher.AEAD
 }
 
@@ -66,6 +68,7 @@ func ParseKey(encoded string) (Key, error) {
 	var key Key
 	digest := sha256.Sum256(raw)
 	copy(key.id[:], digest[:keyIDSize])
+	key.raw = raw
 	key.aead = aead
 	return key, nil
 }
@@ -114,6 +117,17 @@ func (b *Box) Open(sealed []byte, binding string) ([]byte, error) {
 		return nil, ErrTampered
 	}
 	return plaintext, nil
+}
+
+// Derive returns a key of length bytes for one purpose, derived from the
+// active key with HKDF-SHA256. Different purposes give unrelated keys, and a
+// rotation of the instance key changes every derived key.
+func (b *Box) Derive(purpose string, length int) ([]byte, error) {
+	key, err := hkdf.Key(sha256.New, b.active.raw, nil, purpose, length)
+	if err != nil {
+		return nil, fmt.Errorf("derive key for %q: %w", purpose, err)
+	}
+	return key, nil
 }
 
 // Stale reports whether a sealed value was sealed by a previous key, so that

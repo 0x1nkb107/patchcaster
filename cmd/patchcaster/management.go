@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -13,17 +14,24 @@ import (
 	"github.com/patchcaster-app/patchcaster/internal/api"
 	"github.com/patchcaster-app/patchcaster/internal/auth"
 	"github.com/patchcaster-app/patchcaster/internal/store"
+	"github.com/patchcaster-app/patchcaster/internal/webui"
+	"github.com/patchcaster-app/patchcaster/web"
 )
 
-// managementHandler serves the management listener: the API and the login,
-// both inside the session middleware and behind cross-origin protection
-// (SYSREQ-036, SYSREQ-037).
+// managementHandler serves the management listener: the API, the login and
+// the web interface, all inside the session middleware and behind
+// cross-origin protection (SYSREQ-036, SYSREQ-037).
 func managementHandler(svc *api.Service, login *auth.Login, sessions *scs.SessionManager, interfaceURL *url.URL) (http.Handler, error) {
 	mux := http.NewServeMux()
 	if err := api.Routes(mux, svc); err != nil {
 		return nil, err
 	}
 	login.Routes(mux)
+	bundle, err := fs.Sub(web.Dist, "dist/app")
+	if err != nil {
+		return nil, fmt.Errorf("open the web interface: %w", err)
+	}
+	mux.Handle("/", webui.Handler(bundle))
 
 	// The protection compares a browser's Origin with the Host header. A
 	// proxy in front of the interface may rewrite that header, so the

@@ -1,0 +1,3 @@
+kind: Added
+body: Serve a web interface on the management listener, at the interface URL. It covers the first setup, the login and personal API tokens so far.
+time: 2026-10-17T17:45:51.527142842+02:00

@@ -1,9 +1,6 @@
 # GitLab
 
-PatchCaster takes merge request activity from GitLab 19.0 or later through a
-signed webhook. One hook may cover a whole instance, a group or a single
-project; the [routing table](../configuration.md#routing-table) alone decides
-which projects reach a channel.
+PatchCaster takes merge request activity from GitLab 19.0 or later through signed webhooks, which arrive at the endpoint of a GitLab [connection](../operations.md#connections). One hook may cover a whole instance, a group or a single project. The [routes](../operations.md#teams-and-routes) alone decide which projects reach a channel.
 
 ## Webhook
 
@@ -12,9 +9,8 @@ signing token enabled. PatchCaster verifies only the `webhook-signature` HMAC
 (`v1,{base64}` over `{webhook-id}.{timestamp}.{body}`); the legacy
 `X-Gitlab-Token` is never trusted.
 
-* **URL**: `https://<patchcaster-host>/webhook` — the endpoint is
-  `POST /webhook` on the public listener (`--addr`, `:8080` by default).
-* **Signing token**: select **Generate signing token** in the hook form, and give the token to PatchCaster as a `--signing-secret` value exactly as GitLab shows it, `whsec_` prefix included. GitLab shows it only once. Several may be active while the token [rotates](../configuration.md#patchcaster-serve).
+* **URL**: the GitLab connection's `webhook_url`, `<public URL>/webhooks/<connection id>`, served by the public listener (`--addr`, `:8080` by default).
+* **Signing token**: select **Generate signing token** in the hook form, and add the token to the connection at `/api/v1/connections/{id}/signing-tokens`, exactly as GitLab shows it, `whsec_` prefix included. GitLab shows it only once. A connection holds several signing tokens, one per hook or during a [rotation](../operations.md#connections).
 
 ## Triggers
 

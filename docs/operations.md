@@ -27,7 +27,7 @@ A connection holds what PatchCaster acts with on one platform: GitLab as a forge
 - A **Mattermost** connection needs the bot account's token.
 - A **GitLab** connection needs an access token only for what PatchCaster does through the GitLab API. Without one, register the hooks by hand at the connection's `webhook_url`. Then generate a signing token in each hook's form and add it to the connection under `/api/v1/connections/{id}/signing-tokens`, exactly as GitLab shows it. A connection holds several signing tokens at once, so a token rotates without downtime: add the new one, switch the hook over, then remove the old one.
 
-Connections are stored and checked, but webhooks and deliveries still follow the [startup settings](configuration.md#patchcaster-serve) and the routing table for now. A connection that sources or sinks use cannot be removed.
+A connection that sources or sinks use cannot be removed. A changed credential or signing token applies to the next delivery, without a restart.
 
 ## Teams and routes
 
@@ -39,7 +39,9 @@ Teams decide who may route what. Administrators create teams at `/api/v1/teams`,
 
 Operators see only their teams and what those own. Naming another team's source or sink answers `403`. What a route uses stays until the route is removed: a source, a sink or a team with routes cannot be removed, and a team cannot give up a source or sink its routes use. A connection that sources or sinks use cannot be removed either.
 
-Like connections, teams and routes are stored but not used yet: deliveries still follow the routing table.
+Each event goes to every sink that a route connects to a source whose scope holds the event's repository. A sink that several routes reach gets the event once, and its reply unless every one of those routes mutes it. Paths match exactly, and a group holds every repository below it. An event that no route reaches is acknowledged and counted (`patchcaster_deliveries_discarded_total{cause="unrouted"}`), never posted.
+
+A change applies to the next event, without a restart. Messages already queued keep the sink they were queued for when a route changes or goes. Each sink keeps its own thread of a merge request and its own order, so a sink that cannot deliver delays no other sink.
 
 ## API tokens
 
@@ -72,14 +74,14 @@ The metrics follow a delivery from ingest to post:
 | Metric | Labels | Counts |
 | --- | --- | --- |
 | `deliveries_received_total` | | webhook deliveries received |
-| `deliveries_rejected_total` | `cause`: `signature`, `parse` | deliveries refused with 401/400 |
+| `deliveries_rejected_total` | `cause`: `endpoint`, `signature`, `parse` | deliveries refused with 404/401/400 |
 | `deliveries_suppressed_total` | | duplicates suppressed by webhook id |
 | `deliveries_discarded_total` | `cause`: `unprocessed_kind`, `not_allowlisted`, `unlinked`, `expired`, `unrouted` | authentic deliveries dropped without a post |
 | `state_applied_total` | `kind` | accepted deliveries applied to a status board |
 | `notices_total` | `notice` | thread replies posted, by notice kind |
 | `push_attribution_misses_total` | | pushes that matched no open merge request |
 | `messages_posted_total` | | messages Mattermost accepted |
-| `messages_skipped_total` | `cause`: `no_mapping`, `thread_closed`, `duplicate_open` | queued messages deliberately not posted |
+| `messages_skipped_total` | `cause`: `no_mapping`, `thread_closed`, `duplicate_open`, `sink_gone` | queued messages deliberately not posted |
 | `messages_parked_total` | `cause`: `attempt_budget`, `thread_gone`, `render_failed`, `payload_undecodable` | messages given up on (see below) |
 | `mattermost_attempts_total` | `outcome`: `sent`, `retryable`, `ratelimited`, `thread_gone`, `transport` | Mattermost API attempts |
 | `mattermost_attempt_duration_seconds` | | histogram of attempt durations |
@@ -121,10 +123,8 @@ Before the reseal, a start with only the new key fails. After it, a start with o
 
 An upgrade needs no action unless it changes this contract:
 
-* **Configuration**: flag and environment variable names, their meaning and
-  defaults, and the routing table format.
-* **Interfaces**: the `POST /webhook` endpoint and its signature scheme, the
-  probe endpoints, and metric names, label names and existing label values.
+* **Configuration**: flag and environment variable names, their meaning and defaults, and the management API under `/api/v1/`.
+* **Interfaces**: the `POST /webhooks/{connection}` endpoints and their signature scheme, the probe endpoints, and metric names, label names and existing label values.
 * **Requirements**: the minimum PostgreSQL and GitLab versions, the GitLab
   triggers to enable, and what the Mattermost bot needs
   ([what you need](install.md#what-you-need)).

@@ -16,12 +16,8 @@ non-zero before anything listens, naming every offending option at once.
 | `--interface-url` | `PATCHCASTER_INTERFACE_URL` | *required* (see [interface URL](#interface-url)) |
 | `--public-url` | `PATCHCASTER_PUBLIC_URL` | *required* (see [public URL](#public-url)) |
 | `--database-url` | `PATCHCASTER_DATABASE_URL` | *required* |
-| `--mattermost-url` | `PATCHCASTER_MATTERMOST_URL` | *required* |
-| `--mattermost-token` | `PATCHCASTER_MATTERMOST_TOKEN` | *required* (bot account token) |
-| `--signing-secret` (repeatable) | `PATCHCASTER_SIGNING_SECRETS` (comma-separated) | *required* |
 | `--encryption-key` | `PATCHCASTER_ENCRYPTION_KEY` | *required* (see [encryption key](#encryption-key)) |
 | `--previous-encryption-key` (repeatable) | `PATCHCASTER_PREVIOUS_ENCRYPTION_KEYS` (comma-separated) | none |
-| `--routing-file` | `PATCHCASTER_ROUTING_FILE` | *required* |
 | `--drain-timeout` | `PATCHCASTER_DRAIN_TIMEOUT` | `30s` |
 | `--event-max-age` | `PATCHCASTER_EVENT_MAX_AGE` | `4h` |
 | `--seen-retention` | `PATCHCASTER_SEEN_RETENTION` | `24h` |
@@ -41,7 +37,7 @@ unavailable (see [database connection](operations.md#database-connection)).
 Durations use Go syntax (`90s`, `15m`, `4h`) and must be positive.
 `--log-level` is one of `debug`, `info`, `warn` or `error`.
 
-Each signing secret is a GitLab webhook signing token, exactly as GitLab shows it: `whsec_` followed by the base64 of its key. PatchCaster refuses to start with any other value. Any one of the signing secrets may sign a delivery, which is how the GitLab signing token rotates without downtime: add the new secret, switch the hook over to it, then drop the old one.
+Flags and environment variables hold only how PatchCaster starts and operates. What it connects to and routes, its connections, teams, sources, sinks and routes, lives in its database, and administrators manage it through the management API. See [connections](operations.md#connections) and [teams and routes](operations.md#teams-and-routes). A change there applies to the next event, without a restart.
 
 ## Interface URL
 
@@ -74,26 +70,3 @@ Makes a person an administrator and exits, whether or not they ever logged in. I
 ## `patchcaster secrets reseal`
 
 Seals every stored secret again with `--encryption-key` and exits. It takes `--database-url`, `--encryption-key` and `--previous-encryption-key`, with the same environment variables as `serve`. See [rotating the encryption key](operations.md#rotating-the-encryption-key) for when to use it.
-
-## Routing table
-
-`--routing-file` names a YAML document mapping projects to channels;
-[`contrib/routing.example.yaml`](../contrib/routing.example.yaml) is a
-starting point:
-
-```yaml
-routes:
-  - project: group/application   # GitLab project.full_path
-    channel: "channel-id-here"   # Mattermost channel id, not its name
-  - project: group/library
-    channel: "channel-id-here"
-```
-
-Matching is exact and case-sensitive on `project.full_path`; there are no
-wildcards and no catch-all. Many projects may share one channel; unmapped
-projects are acknowledged and counted
-(`patchcaster_deliveries_discarded_total{cause="unrouted"}`), never posted.
-
-Every row needs both fields, and a project may appear only once; a table that
-breaks either rule stops startup with an error naming each offending row. The
-table is read at startup, so restart the service to apply changes.

@@ -20,6 +20,7 @@ v0.1 has one parser for GitLab's payloads (`internal/event`) and one client for 
 ## Decision
 
 - A merge request is identified by its forge connection, its repository's stable id and its number. Paths are for display and scopes only, so renames do not break threads.
+  - The GitLab adapter keys a merge request by its connection and GitLab's global merge request id, as `<connection>:<id>`. GitLab keeps that id across renames and moves, and it stands for exactly one repository and number on the instance. Every payload kind that names a merge request carries it, while a pipeline payload names the source project of a fork, not the merge request's repository (owner decision 2026-10-17).
 - Forge adapters verify, de-duplicate and translate deliveries into neutral events. Optionally they register hooks, read required approvals and link identities through OAuth.
 - Chat adapters declare their capabilities: threads, edits, mentions, native format and command syntax. They create roots, reply, edit roots and receive commands.
 - GitLab and Mattermost become the first adapters. The refactoring happens together with the Forgejo and Matrix adapters, because a second implementation shows where the seam really is.

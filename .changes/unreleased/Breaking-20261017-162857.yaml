@@ -1,0 +1,3 @@
+kind: Breaking
+body: Configure what PatchCaster connects to and routes through the management API. The routing file and the PATCHCASTER_ROUTING_FILE, PATCHCASTER_MATTERMOST_URL, PATCHCASTER_MATTERMOST_TOKEN and PATCHCASTER_SIGNING_SECRETS settings are gone, and a start that still passes them fails. Webhooks go to the endpoint of each GitLab connection, /webhooks/<connection id>.
+time: 2026-10-17T16:28:57.964665025+02:00

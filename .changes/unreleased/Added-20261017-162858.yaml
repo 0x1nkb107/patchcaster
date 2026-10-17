@@ -1,0 +1,3 @@
+kind: Added
+body: Route a project into several channels, mute reply kinds per route, and change routes without a restart. Each channel keeps its own thread of a merge request and its own order, so a channel that cannot be posted to delays no other.
+time: 2026-10-17T16:28:58.972605481+02:00

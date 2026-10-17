@@ -43,6 +43,27 @@ type Store interface {
 	AddSigningToken(ctx context.Context, actor store.Actor, t store.NewSigningToken, now time.Time) (*store.SigningToken, error)
 	SigningTokens(ctx context.Context, connectionID, afterID int64, limit int) ([]store.SigningToken, error)
 	RemoveSigningToken(ctx context.Context, actor store.Actor, connectionID, tokenID int64, now time.Time) error
+	CreateTeam(ctx context.Context, actor store.Actor, name string, now time.Time) (*store.Team, error)
+	Team(ctx context.Context, id int64) (*store.Team, error)
+	Teams(ctx context.Context, visibleTo, afterID int64, limit int) ([]store.Team, error)
+	UpdateTeam(ctx context.Context, actor store.Actor, t store.Team, now time.Time) (*store.Team, error)
+	DeleteTeam(ctx context.Context, actor store.Actor, id, version int64, now time.Time) error
+	OperatesTeam(ctx context.Context, personID, teamID int64) (bool, error)
+	CreateSource(ctx context.Context, actor store.Actor, s store.Source, now time.Time) (*store.Source, error)
+	Source(ctx context.Context, id int64) (*store.Source, error)
+	Sources(ctx context.Context, visibleTo, afterID int64, limit int) ([]store.Source, error)
+	UpdateSource(ctx context.Context, actor store.Actor, s store.Source, now time.Time) (*store.Source, error)
+	DeleteSource(ctx context.Context, actor store.Actor, id, version int64, now time.Time) error
+	CreateSink(ctx context.Context, actor store.Actor, s store.Sink, now time.Time) (*store.Sink, error)
+	Sink(ctx context.Context, id int64) (*store.Sink, error)
+	Sinks(ctx context.Context, visibleTo, afterID int64, limit int) ([]store.Sink, error)
+	UpdateSink(ctx context.Context, actor store.Actor, s store.Sink, now time.Time) (*store.Sink, error)
+	DeleteSink(ctx context.Context, actor store.Actor, id, version int64, now time.Time) error
+	CreateRoute(ctx context.Context, actor store.Actor, r store.Route, now time.Time) (*store.Route, error)
+	Route(ctx context.Context, id int64) (*store.Route, error)
+	Routes(ctx context.Context, visibleTo, teamID, afterID int64, limit int) ([]store.Route, error)
+	UpdateRoute(ctx context.Context, actor store.Actor, r store.Route, now time.Time) (*store.Route, error)
+	DeleteRoute(ctx context.Context, actor store.Actor, id, version int64, now time.Time) error
 }
 
 // Login is what the v1 operations need from the login flow.
@@ -51,9 +72,11 @@ type Login interface {
 	URL() string
 }
 
-// Platforms checks connection credentials against their platforms.
+// Platforms checks connection credentials and sink channels against their
+// platforms.
 type Platforms interface {
 	Check(ctx context.Context, kind platform.Kind, baseURL *url.URL, credential string) (string, error)
+	CheckChannel(ctx context.Context, kind platform.Kind, baseURL *url.URL, credential, channelID string) (string, error)
 }
 
 // Config wires the v1 operations. PublicURL is the webhook listener's

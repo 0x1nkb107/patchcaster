@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	rn11AllowedHeaders = map[string]string{
+	rn25AllowedHeaders = map[string]string{
 		"GET": "Authorization",
 	}
 	rn4AllowedHeaders = map[string]string{
@@ -27,29 +27,65 @@ var (
 		"GET":  "Authorization",
 		"POST": "Authorization,Content-Type",
 	}
-	rn14AllowedHeaders = map[string]string{
+	rn28AllowedHeaders = map[string]string{
 		"DELETE": "Authorization",
 	}
-	rn12AllowedHeaders = map[string]string{
+	rn26AllowedHeaders = map[string]string{
 		"GET": "Authorization",
 	}
-	rn16AllowedHeaders = map[string]string{
+	rn30AllowedHeaders = map[string]string{
 		"PATCH": "Authorization,Content-Type,If-Match",
 	}
-	rn17AllowedHeaders = map[string]string{
+	rn31AllowedHeaders = map[string]string{
 		"POST": "Authorization",
 	}
-	rn7AllowedHeaders = map[string]string{
+	rn6AllowedHeaders = map[string]string{
+		"GET":  "Authorization",
+		"POST": "Authorization,Content-Type",
+	}
+	rn14AllowedHeaders = map[string]string{
+		"DELETE": "Authorization,If-Match",
+		"GET":    "Authorization",
+		"PUT":    "Authorization,Content-Type,If-Match",
+	}
+	rn21AllowedHeaders = map[string]string{
 		"GET": "Authorization",
 	}
-	rn10AllowedHeaders = map[string]string{
+	rn24AllowedHeaders = map[string]string{
 		"GET": "Authorization",
 		"PUT": "Authorization,Content-Type,If-Match",
 	}
-	rn21AllowedHeaders = map[string]string{
+	rn35AllowedHeaders = map[string]string{
 		"POST": "Content-Type",
 	}
-	rn6AllowedHeaders = map[string]string{
+	rn7AllowedHeaders = map[string]string{
+		"GET":  "Authorization",
+		"POST": "Authorization,Content-Type",
+	}
+	rn16AllowedHeaders = map[string]string{
+		"DELETE": "Authorization,If-Match",
+		"GET":    "Authorization",
+		"PUT":    "Authorization,Content-Type,If-Match",
+	}
+	rn9AllowedHeaders = map[string]string{
+		"GET":  "Authorization",
+		"POST": "Authorization,Content-Type",
+	}
+	rn18AllowedHeaders = map[string]string{
+		"DELETE": "Authorization,If-Match",
+		"GET":    "Authorization",
+		"PUT":    "Authorization,Content-Type,If-Match",
+	}
+	rn10AllowedHeaders = map[string]string{
+		"GET":  "Authorization",
+		"POST": "Authorization,Content-Type",
+	}
+	rn20AllowedHeaders = map[string]string{
+		"DELETE": "Authorization,If-Match",
+		"GET":    "Authorization",
+		"PUT":    "Authorization,Content-Type,If-Match",
+	}
+	rn12AllowedHeaders = map[string]string{
 		"POST": "Content-Type",
 	}
 )
@@ -121,7 +157,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					default:
 						s.notAllowed(w, r, notAllowedParams{
 							allowedMethods: "GET",
-							allowedHeaders: rn11AllowedHeaders,
+							allowedHeaders: rn25AllowedHeaders,
 							acceptPost:     "",
 							acceptPatch:    "",
 						})
@@ -257,7 +293,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 								default:
 									s.notAllowed(w, r, notAllowedParams{
 										allowedMethods: "DELETE",
-										allowedHeaders: rn14AllowedHeaders,
+										allowedHeaders: rn28AllowedHeaders,
 										acceptPost:     "",
 										acceptPatch:    "",
 									})
@@ -312,7 +348,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					default:
 						s.notAllowed(w, r, notAllowedParams{
 							allowedMethods: "GET",
-							allowedHeaders: rn12AllowedHeaders,
+							allowedHeaders: rn26AllowedHeaders,
 							acceptPost:     "",
 							acceptPatch:    "",
 						})
@@ -347,7 +383,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 						default:
 							s.notAllowed(w, r, notAllowedParams{
 								allowedMethods: "PATCH",
-								allowedHeaders: rn16AllowedHeaders,
+								allowedHeaders: rn30AllowedHeaders,
 								acceptPost:     "",
 								acceptPatch:    "application/json",
 							})
@@ -374,7 +410,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 							default:
 								s.notAllowed(w, r, notAllowedParams{
 									allowedMethods: "POST",
-									allowedHeaders: rn17AllowedHeaders,
+									allowedHeaders: rn31AllowedHeaders,
 									acceptPost:     "",
 									acceptPatch:    "",
 								})
@@ -387,116 +423,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 				}
 
-			case 's': // Prefix: "se"
+			case 'r': // Prefix: "routes"
 
-				if l := len("se"); len(elem) >= l && elem[0:l] == "se" {
-					elem = elem[l:]
-				} else {
-					break
-				}
-
-				if len(elem) == 0 {
-					break
-				}
-				switch elem[0] {
-				case 's': // Prefix: "ssion"
-
-					if l := len("ssion"); len(elem) >= l && elem[0:l] == "ssion" {
-						elem = elem[l:]
-					} else {
-						break
-					}
-
-					if len(elem) == 0 {
-						// Leaf node.
-						switch r.Method {
-						case "DELETE":
-							s.handleEndSessionRequest([0]string{}, elemIsEscaped, w, r)
-						case "GET":
-							s.handleGetSessionRequest([0]string{}, elemIsEscaped, w, r)
-						default:
-							s.notAllowed(w, r, notAllowedParams{
-								allowedMethods: "DELETE,GET",
-								allowedHeaders: rn7AllowedHeaders,
-								acceptPost:     "",
-								acceptPatch:    "",
-							})
-						}
-
-						return
-					}
-
-				case 't': // Prefix: "t"
-
-					if l := len("t"); len(elem) >= l && elem[0:l] == "t" {
-						elem = elem[l:]
-					} else {
-						break
-					}
-
-					if len(elem) == 0 {
-						break
-					}
-					switch elem[0] {
-					case 't': // Prefix: "tings/login"
-
-						if l := len("tings/login"); len(elem) >= l && elem[0:l] == "tings/login" {
-							elem = elem[l:]
-						} else {
-							break
-						}
-
-						if len(elem) == 0 {
-							// Leaf node.
-							switch r.Method {
-							case "GET":
-								s.handleGetLoginSettingsRequest([0]string{}, elemIsEscaped, w, r)
-							case "PUT":
-								s.handlePutLoginSettingsRequest([0]string{}, elemIsEscaped, w, r)
-							default:
-								s.notAllowed(w, r, notAllowedParams{
-									allowedMethods: "GET,PUT",
-									allowedHeaders: rn10AllowedHeaders,
-									acceptPost:     "",
-									acceptPatch:    "",
-								})
-							}
-
-							return
-						}
-
-					case 'u': // Prefix: "up"
-
-						if l := len("up"); len(elem) >= l && elem[0:l] == "up" {
-							elem = elem[l:]
-						} else {
-							break
-						}
-
-						if len(elem) == 0 {
-							// Leaf node.
-							switch r.Method {
-							case "POST":
-								s.handleSetUpRequest([0]string{}, elemIsEscaped, w, r)
-							default:
-								s.notAllowed(w, r, notAllowedParams{
-									allowedMethods: "POST",
-									allowedHeaders: rn21AllowedHeaders,
-									acceptPost:     "application/json",
-									acceptPatch:    "",
-								})
-							}
-
-							return
-						}
-
-					}
-
-				}
-
-			case 't': // Prefix: "tokens"
-
-				if l := len("tokens"); len(elem) >= l && elem[0:l] == "tokens" {
+				if l := len("routes"); len(elem) >= l && elem[0:l] == "routes" {
 					elem = elem[l:]
 				} else {
 					break
@@ -505,9 +434,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				if len(elem) == 0 {
 					switch r.Method {
 					case "GET":
-						s.handleListTokensRequest([0]string{}, elemIsEscaped, w, r)
+						s.handleListRoutesRequest([0]string{}, elemIsEscaped, w, r)
 					case "POST":
-						s.handleCreateTokenRequest([0]string{}, elemIsEscaped, w, r)
+						s.handleCreateRouteRequest([0]string{}, elemIsEscaped, w, r)
 					default:
 						s.notAllowed(w, r, notAllowedParams{
 							allowedMethods: "GET,POST",
@@ -541,19 +470,442 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 						// Leaf node.
 						switch r.Method {
 						case "DELETE":
-							s.handleRevokeTokenRequest([1]string{
+							s.handleDeleteRouteRequest([1]string{
+								args[0],
+							}, elemIsEscaped, w, r)
+						case "GET":
+							s.handleGetRouteRequest([1]string{
+								args[0],
+							}, elemIsEscaped, w, r)
+						case "PUT":
+							s.handleUpdateRouteRequest([1]string{
 								args[0],
 							}, elemIsEscaped, w, r)
 						default:
 							s.notAllowed(w, r, notAllowedParams{
-								allowedMethods: "DELETE",
-								allowedHeaders: nil,
+								allowedMethods: "DELETE,GET,PUT",
+								allowedHeaders: rn14AllowedHeaders,
 								acceptPost:     "",
 								acceptPatch:    "",
 							})
 						}
 
 						return
+					}
+
+				}
+
+			case 's': // Prefix: "s"
+
+				if l := len("s"); len(elem) >= l && elem[0:l] == "s" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					break
+				}
+				switch elem[0] {
+				case 'e': // Prefix: "e"
+
+					if l := len("e"); len(elem) >= l && elem[0:l] == "e" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					if len(elem) == 0 {
+						break
+					}
+					switch elem[0] {
+					case 's': // Prefix: "ssion"
+
+						if l := len("ssion"); len(elem) >= l && elem[0:l] == "ssion" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch r.Method {
+							case "DELETE":
+								s.handleEndSessionRequest([0]string{}, elemIsEscaped, w, r)
+							case "GET":
+								s.handleGetSessionRequest([0]string{}, elemIsEscaped, w, r)
+							default:
+								s.notAllowed(w, r, notAllowedParams{
+									allowedMethods: "DELETE,GET",
+									allowedHeaders: rn21AllowedHeaders,
+									acceptPost:     "",
+									acceptPatch:    "",
+								})
+							}
+
+							return
+						}
+
+					case 't': // Prefix: "t"
+
+						if l := len("t"); len(elem) >= l && elem[0:l] == "t" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							break
+						}
+						switch elem[0] {
+						case 't': // Prefix: "tings/login"
+
+							if l := len("tings/login"); len(elem) >= l && elem[0:l] == "tings/login" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch r.Method {
+								case "GET":
+									s.handleGetLoginSettingsRequest([0]string{}, elemIsEscaped, w, r)
+								case "PUT":
+									s.handlePutLoginSettingsRequest([0]string{}, elemIsEscaped, w, r)
+								default:
+									s.notAllowed(w, r, notAllowedParams{
+										allowedMethods: "GET,PUT",
+										allowedHeaders: rn24AllowedHeaders,
+										acceptPost:     "",
+										acceptPatch:    "",
+									})
+								}
+
+								return
+							}
+
+						case 'u': // Prefix: "up"
+
+							if l := len("up"); len(elem) >= l && elem[0:l] == "up" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch r.Method {
+								case "POST":
+									s.handleSetUpRequest([0]string{}, elemIsEscaped, w, r)
+								default:
+									s.notAllowed(w, r, notAllowedParams{
+										allowedMethods: "POST",
+										allowedHeaders: rn35AllowedHeaders,
+										acceptPost:     "application/json",
+										acceptPatch:    "",
+									})
+								}
+
+								return
+							}
+
+						}
+
+					}
+
+				case 'i': // Prefix: "inks"
+
+					if l := len("inks"); len(elem) >= l && elem[0:l] == "inks" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					if len(elem) == 0 {
+						switch r.Method {
+						case "GET":
+							s.handleListSinksRequest([0]string{}, elemIsEscaped, w, r)
+						case "POST":
+							s.handleCreateSinkRequest([0]string{}, elemIsEscaped, w, r)
+						default:
+							s.notAllowed(w, r, notAllowedParams{
+								allowedMethods: "GET,POST",
+								allowedHeaders: rn7AllowedHeaders,
+								acceptPost:     "application/json",
+								acceptPatch:    "",
+							})
+						}
+
+						return
+					}
+					switch elem[0] {
+					case '/': // Prefix: "/"
+
+						if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						// Param: "id"
+						// Leaf parameter, slashes are prohibited
+						idx := strings.IndexByte(elem, '/')
+						if idx >= 0 {
+							break
+						}
+						args[0] = elem
+						elem = ""
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch r.Method {
+							case "DELETE":
+								s.handleDeleteSinkRequest([1]string{
+									args[0],
+								}, elemIsEscaped, w, r)
+							case "GET":
+								s.handleGetSinkRequest([1]string{
+									args[0],
+								}, elemIsEscaped, w, r)
+							case "PUT":
+								s.handleUpdateSinkRequest([1]string{
+									args[0],
+								}, elemIsEscaped, w, r)
+							default:
+								s.notAllowed(w, r, notAllowedParams{
+									allowedMethods: "DELETE,GET,PUT",
+									allowedHeaders: rn16AllowedHeaders,
+									acceptPost:     "",
+									acceptPatch:    "",
+								})
+							}
+
+							return
+						}
+
+					}
+
+				case 'o': // Prefix: "ources"
+
+					if l := len("ources"); len(elem) >= l && elem[0:l] == "ources" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					if len(elem) == 0 {
+						switch r.Method {
+						case "GET":
+							s.handleListSourcesRequest([0]string{}, elemIsEscaped, w, r)
+						case "POST":
+							s.handleCreateSourceRequest([0]string{}, elemIsEscaped, w, r)
+						default:
+							s.notAllowed(w, r, notAllowedParams{
+								allowedMethods: "GET,POST",
+								allowedHeaders: rn9AllowedHeaders,
+								acceptPost:     "application/json",
+								acceptPatch:    "",
+							})
+						}
+
+						return
+					}
+					switch elem[0] {
+					case '/': // Prefix: "/"
+
+						if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						// Param: "id"
+						// Leaf parameter, slashes are prohibited
+						idx := strings.IndexByte(elem, '/')
+						if idx >= 0 {
+							break
+						}
+						args[0] = elem
+						elem = ""
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch r.Method {
+							case "DELETE":
+								s.handleDeleteSourceRequest([1]string{
+									args[0],
+								}, elemIsEscaped, w, r)
+							case "GET":
+								s.handleGetSourceRequest([1]string{
+									args[0],
+								}, elemIsEscaped, w, r)
+							case "PUT":
+								s.handleUpdateSourceRequest([1]string{
+									args[0],
+								}, elemIsEscaped, w, r)
+							default:
+								s.notAllowed(w, r, notAllowedParams{
+									allowedMethods: "DELETE,GET,PUT",
+									allowedHeaders: rn18AllowedHeaders,
+									acceptPost:     "",
+									acceptPatch:    "",
+								})
+							}
+
+							return
+						}
+
+					}
+
+				}
+
+			case 't': // Prefix: "t"
+
+				if l := len("t"); len(elem) >= l && elem[0:l] == "t" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					break
+				}
+				switch elem[0] {
+				case 'e': // Prefix: "eams"
+
+					if l := len("eams"); len(elem) >= l && elem[0:l] == "eams" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					if len(elem) == 0 {
+						switch r.Method {
+						case "GET":
+							s.handleListTeamsRequest([0]string{}, elemIsEscaped, w, r)
+						case "POST":
+							s.handleCreateTeamRequest([0]string{}, elemIsEscaped, w, r)
+						default:
+							s.notAllowed(w, r, notAllowedParams{
+								allowedMethods: "GET,POST",
+								allowedHeaders: rn10AllowedHeaders,
+								acceptPost:     "application/json",
+								acceptPatch:    "",
+							})
+						}
+
+						return
+					}
+					switch elem[0] {
+					case '/': // Prefix: "/"
+
+						if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						// Param: "id"
+						// Leaf parameter, slashes are prohibited
+						idx := strings.IndexByte(elem, '/')
+						if idx >= 0 {
+							break
+						}
+						args[0] = elem
+						elem = ""
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch r.Method {
+							case "DELETE":
+								s.handleDeleteTeamRequest([1]string{
+									args[0],
+								}, elemIsEscaped, w, r)
+							case "GET":
+								s.handleGetTeamRequest([1]string{
+									args[0],
+								}, elemIsEscaped, w, r)
+							case "PUT":
+								s.handleUpdateTeamRequest([1]string{
+									args[0],
+								}, elemIsEscaped, w, r)
+							default:
+								s.notAllowed(w, r, notAllowedParams{
+									allowedMethods: "DELETE,GET,PUT",
+									allowedHeaders: rn20AllowedHeaders,
+									acceptPost:     "",
+									acceptPatch:    "",
+								})
+							}
+
+							return
+						}
+
+					}
+
+				case 'o': // Prefix: "okens"
+
+					if l := len("okens"); len(elem) >= l && elem[0:l] == "okens" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					if len(elem) == 0 {
+						switch r.Method {
+						case "GET":
+							s.handleListTokensRequest([0]string{}, elemIsEscaped, w, r)
+						case "POST":
+							s.handleCreateTokenRequest([0]string{}, elemIsEscaped, w, r)
+						default:
+							s.notAllowed(w, r, notAllowedParams{
+								allowedMethods: "GET,POST",
+								allowedHeaders: rn12AllowedHeaders,
+								acceptPost:     "application/json",
+								acceptPatch:    "",
+							})
+						}
+
+						return
+					}
+					switch elem[0] {
+					case '/': // Prefix: "/"
+
+						if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						// Param: "id"
+						// Leaf parameter, slashes are prohibited
+						idx := strings.IndexByte(elem, '/')
+						if idx >= 0 {
+							break
+						}
+						args[0] = elem
+						elem = ""
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch r.Method {
+							case "DELETE":
+								s.handleRevokeTokenRequest([1]string{
+									args[0],
+								}, elemIsEscaped, w, r)
+							default:
+								s.notAllowed(w, r, notAllowedParams{
+									allowedMethods: "DELETE",
+									allowedHeaders: nil,
+									acceptPost:     "",
+									acceptPatch:    "",
+								})
+							}
+
+							return
+						}
+
 					}
 
 				}
@@ -951,130 +1303,9 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 
 				}
 
-			case 's': // Prefix: "se"
+			case 'r': // Prefix: "routes"
 
-				if l := len("se"); len(elem) >= l && elem[0:l] == "se" {
-					elem = elem[l:]
-				} else {
-					break
-				}
-
-				if len(elem) == 0 {
-					break
-				}
-				switch elem[0] {
-				case 's': // Prefix: "ssion"
-
-					if l := len("ssion"); len(elem) >= l && elem[0:l] == "ssion" {
-						elem = elem[l:]
-					} else {
-						break
-					}
-
-					if len(elem) == 0 {
-						// Leaf node.
-						switch method {
-						case "DELETE":
-							r.name = EndSessionOperation
-							r.summary = "Log out."
-							r.operationID = "endSession"
-							r.operationGroup = ""
-							r.pathPattern = "/api/v1/session"
-							r.args = args
-							r.count = 0
-							return r, true
-						case "GET":
-							r.name = GetSessionOperation
-							r.summary = "Describe the person this session belongs to."
-							r.operationID = "getSession"
-							r.operationGroup = ""
-							r.pathPattern = "/api/v1/session"
-							r.args = args
-							r.count = 0
-							return r, true
-						default:
-							return
-						}
-					}
-
-				case 't': // Prefix: "t"
-
-					if l := len("t"); len(elem) >= l && elem[0:l] == "t" {
-						elem = elem[l:]
-					} else {
-						break
-					}
-
-					if len(elem) == 0 {
-						break
-					}
-					switch elem[0] {
-					case 't': // Prefix: "tings/login"
-
-						if l := len("tings/login"); len(elem) >= l && elem[0:l] == "tings/login" {
-							elem = elem[l:]
-						} else {
-							break
-						}
-
-						if len(elem) == 0 {
-							// Leaf node.
-							switch method {
-							case "GET":
-								r.name = GetLoginSettingsOperation
-								r.summary = "Read the identity provider settings, for administrators."
-								r.operationID = "getLoginSettings"
-								r.operationGroup = ""
-								r.pathPattern = "/api/v1/settings/login"
-								r.args = args
-								r.count = 0
-								return r, true
-							case "PUT":
-								r.name = PutLoginSettingsOperation
-								r.summary = "Change the identity provider settings, for administrators."
-								r.operationID = "putLoginSettings"
-								r.operationGroup = ""
-								r.pathPattern = "/api/v1/settings/login"
-								r.args = args
-								r.count = 0
-								return r, true
-							default:
-								return
-							}
-						}
-
-					case 'u': // Prefix: "up"
-
-						if l := len("up"); len(elem) >= l && elem[0:l] == "up" {
-							elem = elem[l:]
-						} else {
-							break
-						}
-
-						if len(elem) == 0 {
-							// Leaf node.
-							switch method {
-							case "POST":
-								r.name = SetUpOperation
-								r.summary = "Configure the identity provider during the first setup."
-								r.operationID = "setUp"
-								r.operationGroup = ""
-								r.pathPattern = "/api/v1/setup"
-								r.args = args
-								r.count = 0
-								return r, true
-							default:
-								return
-							}
-						}
-
-					}
-
-				}
-
-			case 't': // Prefix: "tokens"
-
-				if l := len("tokens"); len(elem) >= l && elem[0:l] == "tokens" {
+				if l := len("routes"); len(elem) >= l && elem[0:l] == "routes" {
 					elem = elem[l:]
 				} else {
 					break
@@ -1083,20 +1314,20 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 				if len(elem) == 0 {
 					switch method {
 					case "GET":
-						r.name = ListTokensOperation
-						r.summary = "List your own API tokens, including revoked and expired ones."
-						r.operationID = "listTokens"
+						r.name = ListRoutesOperation
+						r.summary = "List routes. Administrators see all of them, operators those of the teams they operate."
+						r.operationID = "listRoutes"
 						r.operationGroup = ""
-						r.pathPattern = "/api/v1/tokens"
+						r.pathPattern = "/api/v1/routes"
 						r.args = args
 						r.count = 0
 						return r, true
 					case "POST":
-						r.name = CreateTokenOperation
-						r.summary = "Create an API token that acts with your permissions."
-						r.operationID = "createToken"
+						r.name = CreateRouteOperation
+						r.summary = "Create a route from a team's source into one of its sinks, for the team's operators and administrators."
+						r.operationID = "createRoute"
 						r.operationGroup = ""
-						r.pathPattern = "/api/v1/tokens"
+						r.pathPattern = "/api/v1/routes"
 						r.args = args
 						r.count = 0
 						return r, true
@@ -1126,17 +1357,514 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 						// Leaf node.
 						switch method {
 						case "DELETE":
-							r.name = RevokeTokenOperation
-							r.summary = "Revoke one of your own API tokens."
-							r.operationID = "revokeToken"
+							r.name = DeleteRouteOperation
+							r.summary = "Remove a route, for the team's operators and administrators."
+							r.operationID = "deleteRoute"
 							r.operationGroup = ""
-							r.pathPattern = "/api/v1/tokens/{id}"
+							r.pathPattern = "/api/v1/routes/{id}"
+							r.args = args
+							r.count = 1
+							return r, true
+						case "GET":
+							r.name = GetRouteOperation
+							r.summary = "Read a route. Operators read only those of the teams they operate."
+							r.operationID = "getRoute"
+							r.operationGroup = ""
+							r.pathPattern = "/api/v1/routes/{id}"
+							r.args = args
+							r.count = 1
+							return r, true
+						case "PUT":
+							r.name = UpdateRouteOperation
+							r.summary = "Change which replies a route mutes, for the team's operators and administrators."
+							r.operationID = "updateRoute"
+							r.operationGroup = ""
+							r.pathPattern = "/api/v1/routes/{id}"
 							r.args = args
 							r.count = 1
 							return r, true
 						default:
 							return
 						}
+					}
+
+				}
+
+			case 's': // Prefix: "s"
+
+				if l := len("s"); len(elem) >= l && elem[0:l] == "s" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					break
+				}
+				switch elem[0] {
+				case 'e': // Prefix: "e"
+
+					if l := len("e"); len(elem) >= l && elem[0:l] == "e" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					if len(elem) == 0 {
+						break
+					}
+					switch elem[0] {
+					case 's': // Prefix: "ssion"
+
+						if l := len("ssion"); len(elem) >= l && elem[0:l] == "ssion" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch method {
+							case "DELETE":
+								r.name = EndSessionOperation
+								r.summary = "Log out."
+								r.operationID = "endSession"
+								r.operationGroup = ""
+								r.pathPattern = "/api/v1/session"
+								r.args = args
+								r.count = 0
+								return r, true
+							case "GET":
+								r.name = GetSessionOperation
+								r.summary = "Describe the person this session belongs to."
+								r.operationID = "getSession"
+								r.operationGroup = ""
+								r.pathPattern = "/api/v1/session"
+								r.args = args
+								r.count = 0
+								return r, true
+							default:
+								return
+							}
+						}
+
+					case 't': // Prefix: "t"
+
+						if l := len("t"); len(elem) >= l && elem[0:l] == "t" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							break
+						}
+						switch elem[0] {
+						case 't': // Prefix: "tings/login"
+
+							if l := len("tings/login"); len(elem) >= l && elem[0:l] == "tings/login" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch method {
+								case "GET":
+									r.name = GetLoginSettingsOperation
+									r.summary = "Read the identity provider settings, for administrators."
+									r.operationID = "getLoginSettings"
+									r.operationGroup = ""
+									r.pathPattern = "/api/v1/settings/login"
+									r.args = args
+									r.count = 0
+									return r, true
+								case "PUT":
+									r.name = PutLoginSettingsOperation
+									r.summary = "Change the identity provider settings, for administrators."
+									r.operationID = "putLoginSettings"
+									r.operationGroup = ""
+									r.pathPattern = "/api/v1/settings/login"
+									r.args = args
+									r.count = 0
+									return r, true
+								default:
+									return
+								}
+							}
+
+						case 'u': // Prefix: "up"
+
+							if l := len("up"); len(elem) >= l && elem[0:l] == "up" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch method {
+								case "POST":
+									r.name = SetUpOperation
+									r.summary = "Configure the identity provider during the first setup."
+									r.operationID = "setUp"
+									r.operationGroup = ""
+									r.pathPattern = "/api/v1/setup"
+									r.args = args
+									r.count = 0
+									return r, true
+								default:
+									return
+								}
+							}
+
+						}
+
+					}
+
+				case 'i': // Prefix: "inks"
+
+					if l := len("inks"); len(elem) >= l && elem[0:l] == "inks" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					if len(elem) == 0 {
+						switch method {
+						case "GET":
+							r.name = ListSinksOperation
+							r.summary = "List sinks. Administrators see all of them, operators those of the teams they operate."
+							r.operationID = "listSinks"
+							r.operationGroup = ""
+							r.pathPattern = "/api/v1/sinks"
+							r.args = args
+							r.count = 0
+							return r, true
+						case "POST":
+							r.name = CreateSinkOperation
+							r.summary = "Create a sink in a channel of a chat connection, for administrators."
+							r.operationID = "createSink"
+							r.operationGroup = ""
+							r.pathPattern = "/api/v1/sinks"
+							r.args = args
+							r.count = 0
+							return r, true
+						default:
+							return
+						}
+					}
+					switch elem[0] {
+					case '/': // Prefix: "/"
+
+						if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						// Param: "id"
+						// Leaf parameter, slashes are prohibited
+						idx := strings.IndexByte(elem, '/')
+						if idx >= 0 {
+							break
+						}
+						args[0] = elem
+						elem = ""
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch method {
+							case "DELETE":
+								r.name = DeleteSinkOperation
+								r.summary = "Remove a sink, for administrators."
+								r.operationID = "deleteSink"
+								r.operationGroup = ""
+								r.pathPattern = "/api/v1/sinks/{id}"
+								r.args = args
+								r.count = 1
+								return r, true
+							case "GET":
+								r.name = GetSinkOperation
+								r.summary = "Read a sink. Operators read only those of the teams they operate."
+								r.operationID = "getSink"
+								r.operationGroup = ""
+								r.pathPattern = "/api/v1/sinks/{id}"
+								r.args = args
+								r.count = 1
+								return r, true
+							case "PUT":
+								r.name = UpdateSinkOperation
+								r.summary = "Change a sink's name or channel, for administrators."
+								r.operationID = "updateSink"
+								r.operationGroup = ""
+								r.pathPattern = "/api/v1/sinks/{id}"
+								r.args = args
+								r.count = 1
+								return r, true
+							default:
+								return
+							}
+						}
+
+					}
+
+				case 'o': // Prefix: "ources"
+
+					if l := len("ources"); len(elem) >= l && elem[0:l] == "ources" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					if len(elem) == 0 {
+						switch method {
+						case "GET":
+							r.name = ListSourcesOperation
+							r.summary = "List sources. Administrators see all of them, operators those of the teams they operate."
+							r.operationID = "listSources"
+							r.operationGroup = ""
+							r.pathPattern = "/api/v1/sources"
+							r.args = args
+							r.count = 0
+							return r, true
+						case "POST":
+							r.name = CreateSourceOperation
+							r.summary = "Create a source of a forge connection, for administrators."
+							r.operationID = "createSource"
+							r.operationGroup = ""
+							r.pathPattern = "/api/v1/sources"
+							r.args = args
+							r.count = 0
+							return r, true
+						default:
+							return
+						}
+					}
+					switch elem[0] {
+					case '/': // Prefix: "/"
+
+						if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						// Param: "id"
+						// Leaf parameter, slashes are prohibited
+						idx := strings.IndexByte(elem, '/')
+						if idx >= 0 {
+							break
+						}
+						args[0] = elem
+						elem = ""
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch method {
+							case "DELETE":
+								r.name = DeleteSourceOperation
+								r.summary = "Remove a source, for administrators."
+								r.operationID = "deleteSource"
+								r.operationGroup = ""
+								r.pathPattern = "/api/v1/sources/{id}"
+								r.args = args
+								r.count = 1
+								return r, true
+							case "GET":
+								r.name = GetSourceOperation
+								r.summary = "Read a source. Operators read only those of the teams they operate."
+								r.operationID = "getSource"
+								r.operationGroup = ""
+								r.pathPattern = "/api/v1/sources/{id}"
+								r.args = args
+								r.count = 1
+								return r, true
+							case "PUT":
+								r.name = UpdateSourceOperation
+								r.summary = "Change a source's name or scope, for administrators."
+								r.operationID = "updateSource"
+								r.operationGroup = ""
+								r.pathPattern = "/api/v1/sources/{id}"
+								r.args = args
+								r.count = 1
+								return r, true
+							default:
+								return
+							}
+						}
+
+					}
+
+				}
+
+			case 't': // Prefix: "t"
+
+				if l := len("t"); len(elem) >= l && elem[0:l] == "t" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					break
+				}
+				switch elem[0] {
+				case 'e': // Prefix: "eams"
+
+					if l := len("eams"); len(elem) >= l && elem[0:l] == "eams" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					if len(elem) == 0 {
+						switch method {
+						case "GET":
+							r.name = ListTeamsOperation
+							r.summary = "List teams. Administrators see all of them, operators the ones they operate."
+							r.operationID = "listTeams"
+							r.operationGroup = ""
+							r.pathPattern = "/api/v1/teams"
+							r.args = args
+							r.count = 0
+							return r, true
+						case "POST":
+							r.name = CreateTeamOperation
+							r.summary = "Create a team, for administrators."
+							r.operationID = "createTeam"
+							r.operationGroup = ""
+							r.pathPattern = "/api/v1/teams"
+							r.args = args
+							r.count = 0
+							return r, true
+						default:
+							return
+						}
+					}
+					switch elem[0] {
+					case '/': // Prefix: "/"
+
+						if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						// Param: "id"
+						// Leaf parameter, slashes are prohibited
+						idx := strings.IndexByte(elem, '/')
+						if idx >= 0 {
+							break
+						}
+						args[0] = elem
+						elem = ""
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch method {
+							case "DELETE":
+								r.name = DeleteTeamOperation
+								r.summary = "Remove a team, for administrators."
+								r.operationID = "deleteTeam"
+								r.operationGroup = ""
+								r.pathPattern = "/api/v1/teams/{id}"
+								r.args = args
+								r.count = 1
+								return r, true
+							case "GET":
+								r.name = GetTeamOperation
+								r.summary = "Read a team. Operators read only the teams they operate."
+								r.operationID = "getTeam"
+								r.operationGroup = ""
+								r.pathPattern = "/api/v1/teams/{id}"
+								r.args = args
+								r.count = 1
+								return r, true
+							case "PUT":
+								r.name = UpdateTeamOperation
+								r.summary = "Change a team, for administrators."
+								r.operationID = "updateTeam"
+								r.operationGroup = ""
+								r.pathPattern = "/api/v1/teams/{id}"
+								r.args = args
+								r.count = 1
+								return r, true
+							default:
+								return
+							}
+						}
+
+					}
+
+				case 'o': // Prefix: "okens"
+
+					if l := len("okens"); len(elem) >= l && elem[0:l] == "okens" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					if len(elem) == 0 {
+						switch method {
+						case "GET":
+							r.name = ListTokensOperation
+							r.summary = "List your own API tokens, including revoked and expired ones."
+							r.operationID = "listTokens"
+							r.operationGroup = ""
+							r.pathPattern = "/api/v1/tokens"
+							r.args = args
+							r.count = 0
+							return r, true
+						case "POST":
+							r.name = CreateTokenOperation
+							r.summary = "Create an API token that acts with your permissions."
+							r.operationID = "createToken"
+							r.operationGroup = ""
+							r.pathPattern = "/api/v1/tokens"
+							r.args = args
+							r.count = 0
+							return r, true
+						default:
+							return
+						}
+					}
+					switch elem[0] {
+					case '/': // Prefix: "/"
+
+						if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						// Param: "id"
+						// Leaf parameter, slashes are prohibited
+						idx := strings.IndexByte(elem, '/')
+						if idx >= 0 {
+							break
+						}
+						args[0] = elem
+						elem = ""
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch method {
+							case "DELETE":
+								r.name = RevokeTokenOperation
+								r.summary = "Revoke one of your own API tokens."
+								r.operationID = "revokeToken"
+								r.operationGroup = ""
+								r.pathPattern = "/api/v1/tokens/{id}"
+								r.args = args
+								r.count = 1
+								return r, true
+							default:
+								return
+							}
+						}
+
 					}
 
 				}

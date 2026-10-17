@@ -93,6 +93,8 @@ func TestMattermostAPICheck(t *testing.T) {
 		{"update a post", http.MethodPut, "/api/v4/posts/p1", `{"id":"p1","message":"edited"}`, true},
 		{"update without the post id", http.MethodPut, "/api/v4/posts/p1", `{"message":"edited"}`, false},
 		{"read the bot's own account", http.MethodGet, "/api/v4/users/me", ``, true},
+		{"read a channel", http.MethodGet, "/api/v4/channels/c1", ``, true},
+		{"read the bot's membership of a channel", http.MethodGet, "/api/v4/channels/c1/members/u1", ``, true},
 		{"call an undocumented endpoint", http.MethodPost, "/api/v4/postings", `{}`, false},
 	}
 	for _, tc := range tests {

@@ -23,6 +23,33 @@ type Handler interface {
 	//
 	// POST /api/v1/connections
 	CreateConnection(ctx context.Context, req *ConnectionRequest) (*Connection, error)
+	// CreateRoute implements createRoute operation.
+	//
+	// A route forwards every merge request of the source into the sink. Muted replies are not posted, but
+	// the board in the sink still shows every change.
+	//
+	// POST /api/v1/routes
+	CreateRoute(ctx context.Context, req *RouteRequest) (*TeamRoute, error)
+	// CreateSink implements createSink operation.
+	//
+	// PatchCaster first checks that the connection's bot can post into the channel, and refuses the sink
+	// with the reason when it cannot. Assign it to teams with a team change.
+	//
+	// POST /api/v1/sinks
+	CreateSink(ctx context.Context, req *SinkRequest) (*Sink, error)
+	// CreateSource implements createSource operation.
+	//
+	// A source selects the repositories of its connection by scope: the whole instance, a group, or one
+	// repository. Assign it to teams with a team change.
+	//
+	// POST /api/v1/sources
+	CreateSource(ctx context.Context, req *SourceRequest) (*Source, error)
+	// CreateTeam implements createTeam operation.
+	//
+	// A new team has no operators, sources or sinks. Give it them with a change.
+	//
+	// POST /api/v1/teams
+	CreateTeam(ctx context.Context, req *TeamRequest) (*Team, error)
 	// CreateToken implements createToken operation.
 	//
 	// The response holds the token itself, which is shown only this once.
@@ -35,6 +62,30 @@ type Handler interface {
 	//
 	// DELETE /api/v1/connections/{id}
 	DeleteConnection(ctx context.Context, params DeleteConnectionParams) error
+	// DeleteRoute implements deleteRoute operation.
+	//
+	// Messages the route already queued are still delivered.
+	//
+	// DELETE /api/v1/routes/{id}
+	DeleteRoute(ctx context.Context, params DeleteRouteParams) error
+	// DeleteSink implements deleteSink operation.
+	//
+	// A sink a route uses cannot go. It leaves its teams with it.
+	//
+	// DELETE /api/v1/sinks/{id}
+	DeleteSink(ctx context.Context, params DeleteSinkParams) error
+	// DeleteSource implements deleteSource operation.
+	//
+	// A source a route uses cannot go. It leaves its teams with it.
+	//
+	// DELETE /api/v1/sources/{id}
+	DeleteSource(ctx context.Context, params DeleteSourceParams) error
+	// DeleteTeam implements deleteTeam operation.
+	//
+	// A team with routes cannot go. Remove its routes first.
+	//
+	// DELETE /api/v1/teams/{id}
+	DeleteTeam(ctx context.Context, params DeleteTeamParams) error
 	// EndSession implements endSession operation.
 	//
 	// Log out.
@@ -59,12 +110,36 @@ type Handler interface {
 	//
 	// GET /api/v1/settings/login
 	GetLoginSettings(ctx context.Context) (*LoginSettingsHeaders, error)
+	// GetRoute implements getRoute operation.
+	//
+	// Read a route. Operators read only those of the teams they operate.
+	//
+	// GET /api/v1/routes/{id}
+	GetRoute(ctx context.Context, params GetRouteParams) (*TeamRouteHeaders, error)
 	// GetSession implements getSession operation.
 	//
 	// Describe the person this session belongs to.
 	//
 	// GET /api/v1/session
 	GetSession(ctx context.Context) (*Person, error)
+	// GetSink implements getSink operation.
+	//
+	// Read a sink. Operators read only those of the teams they operate.
+	//
+	// GET /api/v1/sinks/{id}
+	GetSink(ctx context.Context, params GetSinkParams) (*SinkHeaders, error)
+	// GetSource implements getSource operation.
+	//
+	// Read a source. Operators read only those of the teams they operate.
+	//
+	// GET /api/v1/sources/{id}
+	GetSource(ctx context.Context, params GetSourceParams) (*SourceHeaders, error)
+	// GetTeam implements getTeam operation.
+	//
+	// Read a team. Operators read only the teams they operate.
+	//
+	// GET /api/v1/teams/{id}
+	GetTeam(ctx context.Context, params GetTeamParams) (*TeamHeaders, error)
 	// ListAudit implements listAudit operation.
 	//
 	// Read the audit log, newest first, for administrators.
@@ -83,12 +158,36 @@ type Handler interface {
 	//
 	// GET /api/v1/persons
 	ListPersons(ctx context.Context, params ListPersonsParams) (*PersonPage, error)
+	// ListRoutes implements listRoutes operation.
+	//
+	// List routes. Administrators see all of them, operators those of the teams they operate.
+	//
+	// GET /api/v1/routes
+	ListRoutes(ctx context.Context, params ListRoutesParams) (*RoutePage, error)
 	// ListSigningTokens implements listSigningTokens operation.
 	//
 	// List a forge connection's webhook signing tokens, without their values.
 	//
 	// GET /api/v1/connections/{id}/signing-tokens
 	ListSigningTokens(ctx context.Context, params ListSigningTokensParams) (*SigningTokenPage, error)
+	// ListSinks implements listSinks operation.
+	//
+	// List sinks. Administrators see all of them, operators those of the teams they operate.
+	//
+	// GET /api/v1/sinks
+	ListSinks(ctx context.Context, params ListSinksParams) (*SinkPage, error)
+	// ListSources implements listSources operation.
+	//
+	// List sources. Administrators see all of them, operators those of the teams they operate.
+	//
+	// GET /api/v1/sources
+	ListSources(ctx context.Context, params ListSourcesParams) (*SourcePage, error)
+	// ListTeams implements listTeams operation.
+	//
+	// List teams. Administrators see all of them, operators the ones they operate.
+	//
+	// GET /api/v1/teams
+	ListTeams(ctx context.Context, params ListTeamsParams) (*TeamPage, error)
 	// ListTokens implements listTokens operation.
 	//
 	// List your own API tokens, including revoked and expired ones.
@@ -140,6 +239,31 @@ type Handler interface {
 	//
 	// PATCH /api/v1/persons/{id}
 	UpdatePerson(ctx context.Context, req *PersonUpdate, params UpdatePersonParams) (*PersonHeaders, error)
+	// UpdateRoute implements updateRoute operation.
+	//
+	// Its team, source and sink stay. To route elsewhere, create another route.
+	//
+	// PUT /api/v1/routes/{id}
+	UpdateRoute(ctx context.Context, req *RouteUpdate, params UpdateRouteParams) (*TeamRouteHeaders, error)
+	// UpdateSink implements updateSink operation.
+	//
+	// A new channel is checked like a new sink. Its connection stays.
+	//
+	// PUT /api/v1/sinks/{id}
+	UpdateSink(ctx context.Context, req *SinkUpdate, params UpdateSinkParams) (*SinkHeaders, error)
+	// UpdateSource implements updateSource operation.
+	//
+	// Its connection stays.
+	//
+	// PUT /api/v1/sources/{id}
+	UpdateSource(ctx context.Context, req *SourceUpdate, params UpdateSourceParams) (*SourceHeaders, error)
+	// UpdateTeam implements updateTeam operation.
+	//
+	// Renames the team and sets its operators, sources and sinks. A source or sink that one of the team's
+	// routes uses cannot leave it.
+	//
+	// PUT /api/v1/teams/{id}
+	UpdateTeam(ctx context.Context, req *TeamUpdate, params UpdateTeamParams) (*TeamHeaders, error)
 	// NewError creates *ProblemStatusCode from error returned by handler.
 	//
 	// Used for common default response.

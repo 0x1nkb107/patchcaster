@@ -393,6 +393,444 @@ paths:
           description: The token is removed.
         default:
           $ref: "#/components/responses/Problem"
+  /api/v1/teams:
+    get:
+      operationId: listTeams
+      summary: List teams. Administrators see all of them, operators the ones they operate.
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: One page, in the order they were created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamPage"
+        default:
+          $ref: "#/components/responses/Problem"
+    post:
+      operationId: createTeam
+      summary: Create a team, for administrators.
+      description: >-
+        A new team has no operators, sources or sinks. Give it them with a change.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TeamRequest"
+      responses:
+        "201":
+          description: The new team.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Team"
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/teams/{id}:
+    get:
+      operationId: getTeam
+      summary: Read a team. Operators read only the teams they operate.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: The team.
+          headers:
+            ETag:
+              $ref: "#/components/headers/ETag"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Team"
+        default:
+          $ref: "#/components/responses/Problem"
+    put:
+      operationId: updateTeam
+      summary: Change a team, for administrators.
+      description: >-
+        Renames the team and sets its operators, sources and sinks. A source or sink that one of the team's routes uses cannot leave it.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TeamUpdate"
+      responses:
+        "200":
+          description: The changed team.
+          headers:
+            ETag:
+              $ref: "#/components/headers/ETag"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Team"
+        default:
+          $ref: "#/components/responses/Problem"
+    delete:
+      operationId: deleteTeam
+      summary: Remove a team, for administrators.
+      description: >-
+        A team with routes cannot go. Remove its routes first.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/IfMatch"
+      responses:
+        "204":
+          description: The team is gone.
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/sources:
+    get:
+      operationId: listSources
+      summary: List sources. Administrators see all of them, operators those of the teams they operate.
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: One page, in the order they were created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SourcePage"
+        default:
+          $ref: "#/components/responses/Problem"
+    post:
+      operationId: createSource
+      summary: Create a source of a forge connection, for administrators.
+      description: >-
+        A source selects the repositories of its connection by scope: the whole instance, a group, or one repository. Assign it to teams with a team change.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SourceRequest"
+      responses:
+        "201":
+          description: The new source.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Source"
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/sources/{id}:
+    get:
+      operationId: getSource
+      summary: Read a source. Operators read only those of the teams they operate.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: The source.
+          headers:
+            ETag:
+              $ref: "#/components/headers/ETag"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Source"
+        default:
+          $ref: "#/components/responses/Problem"
+    put:
+      operationId: updateSource
+      summary: Change a source's name or scope, for administrators.
+      description: >-
+        Its connection stays.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SourceUpdate"
+      responses:
+        "200":
+          description: The changed source.
+          headers:
+            ETag:
+              $ref: "#/components/headers/ETag"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Source"
+        default:
+          $ref: "#/components/responses/Problem"
+    delete:
+      operationId: deleteSource
+      summary: Remove a source, for administrators.
+      description: >-
+        A source a route uses cannot go. It leaves its teams with it.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/IfMatch"
+      responses:
+        "204":
+          description: The source is gone.
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/sinks:
+    get:
+      operationId: listSinks
+      summary: List sinks. Administrators see all of them, operators those of the teams they operate.
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: One page, in the order they were created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SinkPage"
+        default:
+          $ref: "#/components/responses/Problem"
+    post:
+      operationId: createSink
+      summary: Create a sink in a channel of a chat connection, for administrators.
+      description: >-
+        PatchCaster first checks that the connection's bot can post into the channel, and refuses the sink with the reason when it cannot. Assign it to teams with a team change.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SinkRequest"
+      responses:
+        "201":
+          description: The new sink.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sink"
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/sinks/{id}:
+    get:
+      operationId: getSink
+      summary: Read a sink. Operators read only those of the teams they operate.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: The sink.
+          headers:
+            ETag:
+              $ref: "#/components/headers/ETag"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sink"
+        default:
+          $ref: "#/components/responses/Problem"
+    put:
+      operationId: updateSink
+      summary: Change a sink's name or channel, for administrators.
+      description: >-
+        A new channel is checked like a new sink. Its connection stays.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SinkUpdate"
+      responses:
+        "200":
+          description: The changed sink.
+          headers:
+            ETag:
+              $ref: "#/components/headers/ETag"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sink"
+        default:
+          $ref: "#/components/responses/Problem"
+    delete:
+      operationId: deleteSink
+      summary: Remove a sink, for administrators.
+      description: >-
+        A sink a route uses cannot go. It leaves its teams with it.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/IfMatch"
+      responses:
+        "204":
+          description: The sink is gone.
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/routes:
+    get:
+      operationId: listRoutes
+      summary: List routes. Administrators see all of them, operators those of the teams they operate.
+      parameters:
+        - name: team_id
+          in: query
+          description: Only the routes of this team.
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: One page, in the order they were created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoutePage"
+        default:
+          $ref: "#/components/responses/Problem"
+    post:
+      operationId: createRoute
+      summary: Create a route from a team's source into one of its sinks, for the team's operators and administrators.
+      description: >-
+        A route forwards every merge request of the source into the sink. Muted replies are not posted, but the board in the sink still shows every change.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RouteRequest"
+      responses:
+        "201":
+          description: The new route.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Route"
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/routes/{id}:
+    get:
+      operationId: getRoute
+      summary: Read a route. Operators read only those of the teams they operate.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: The route.
+          headers:
+            ETag:
+              $ref: "#/components/headers/ETag"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Route"
+        default:
+          $ref: "#/components/responses/Problem"
+    put:
+      operationId: updateRoute
+      summary: Change which replies a route mutes, for the team's operators and administrators.
+      description: >-
+        Its team, source and sink stay. To route elsewhere, create another route.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RouteUpdate"
+      responses:
+        "200":
+          description: The changed route.
+          headers:
+            ETag:
+              $ref: "#/components/headers/ETag"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Route"
+        default:
+          $ref: "#/components/responses/Problem"
+    delete:
+      operationId: deleteRoute
+      summary: Remove a route, for the team's operators and administrators.
+      description: >-
+        Messages the route already queued are still delivered.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/IfMatch"
+      responses:
+        "204":
+          description: The route is gone.
+        default:
+          $ref: "#/components/responses/Problem"
   /api/v1/settings/login:
     get:
       operationId: getLoginSettings
@@ -807,6 +1245,286 @@ components:
           minLength: 1
           writeOnly: true
           description: The signing token exactly as the forge shows it, such as GitLab's whsec_ form.
+    Team:
+      type: object
+      required: [id, name, operators, sources, sinks, etag]
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        operators:
+          description: The ids of the people who operate the team.
+          type: array
+          items:
+            type: integer
+            format: int64
+        sources:
+          description: The ids of the sources the team owns.
+          type: array
+          items:
+            type: integer
+            format: int64
+        sinks:
+          description: The ids of the sinks the team owns.
+          type: array
+          items:
+            type: integer
+            format: int64
+        etag:
+          type: string
+          description: The team's current version, for If-Match on a change.
+    TeamPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Team"
+        next_cursor:
+          type: string
+          description: Absent on the last page.
+    TeamRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+    TeamUpdate:
+      type: object
+      required: [name, operators, sources, sinks]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        operators:
+          type: array
+          items:
+            type: integer
+            format: int64
+        sources:
+          type: array
+          items:
+            type: integer
+            format: int64
+        sinks:
+          type: array
+          items:
+            type: integer
+            format: int64
+    SourceScope:
+      type: object
+      required: [kind]
+      properties:
+        kind:
+          type: string
+          enum: [instance, group, repository]
+          description: >-
+            The whole forge instance, one group or organization with everything
+            below it, or one repository.
+        path:
+          type: string
+          description: >-
+            The group's or the repository's full path, such as "payments" or
+            "payments/api". Empty for the whole instance.
+    Source:
+      type: object
+      required: [id, connection_id, name, scope, teams, etag]
+      properties:
+        id:
+          type: integer
+          format: int64
+        connection_id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        scope:
+          $ref: "#/components/schemas/SourceScope"
+        teams:
+          description: The ids of the teams that own the source.
+          type: array
+          items:
+            type: integer
+            format: int64
+        etag:
+          type: string
+          description: The source's current version, for If-Match on a change.
+    SourcePage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Source"
+        next_cursor:
+          type: string
+          description: Absent on the last page.
+    SourceRequest:
+      type: object
+      required: [connection_id, name, scope]
+      properties:
+        connection_id:
+          type: integer
+          format: int64
+          description: A forge connection.
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        scope:
+          $ref: "#/components/schemas/SourceScope"
+    SourceUpdate:
+      type: object
+      required: [name, scope]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        scope:
+          $ref: "#/components/schemas/SourceScope"
+    Sink:
+      type: object
+      required: [id, connection_id, name, channel_id, channel_name, teams, etag]
+      properties:
+        id:
+          type: integer
+          format: int64
+        connection_id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        channel_id:
+          type: string
+        channel_name:
+          type: string
+          description: How the platform named the channel when it was last checked.
+        teams:
+          description: The ids of the teams that own the sink.
+          type: array
+          items:
+            type: integer
+            format: int64
+        etag:
+          type: string
+          description: The sink's current version, for If-Match on a change.
+    SinkPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Sink"
+        next_cursor:
+          type: string
+          description: Absent on the last page.
+    SinkRequest:
+      type: object
+      required: [connection_id, name, channel_id]
+      properties:
+        connection_id:
+          type: integer
+          format: int64
+          description: A chat connection.
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        channel_id:
+          type: string
+          minLength: 1
+          description: The channel's id, such as Mattermost shows it in the channel's info.
+    SinkUpdate:
+      type: object
+      required: [name, channel_id]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        channel_id:
+          type: string
+          minLength: 1
+    ReplyKind:
+      type: string
+      enum: [comment, review, pipeline, push, merge, close]
+      description: >-
+        A kind of thread reply: comments, review verdicts, pipeline results,
+        new commits, merges and closes.
+    Route:
+      # The generated server has a Route type of its own.
+      x-ogen-name: TeamRoute
+      type: object
+      required: [id, team_id, source_id, sink_id, muted_replies, etag]
+      properties:
+        id:
+          type: integer
+          format: int64
+        team_id:
+          type: integer
+          format: int64
+        source_id:
+          type: integer
+          format: int64
+        sink_id:
+          type: integer
+          format: int64
+        muted_replies:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReplyKind"
+          description: The replies the route does not post. The board still shows every change.
+        etag:
+          type: string
+          description: The route's current version, for If-Match on a change.
+    RoutePage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Route"
+        next_cursor:
+          type: string
+          description: Absent on the last page.
+    RouteRequest:
+      type: object
+      required: [team_id, source_id, sink_id]
+      properties:
+        team_id:
+          type: integer
+          format: int64
+        source_id:
+          type: integer
+          format: int64
+          description: A source the team owns.
+        sink_id:
+          type: integer
+          format: int64
+          description: A sink the team owns.
+        muted_replies:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReplyKind"
+          description: The replies the route does not post. None by default.
+    RouteUpdate:
+      type: object
+      required: [muted_replies]
+      properties:
+        muted_replies:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReplyKind"
     AuditPage:
       type: object
       required: [items]

@@ -610,6 +610,18 @@ func (s *CreatedApiToken) SetSecret(val string) {
 // DeleteConnectionNoContent is response for DeleteConnection operation.
 type DeleteConnectionNoContent struct{}
 
+// DeleteRouteNoContent is response for DeleteRoute operation.
+type DeleteRouteNoContent struct{}
+
+// DeleteSinkNoContent is response for DeleteSink operation.
+type DeleteSinkNoContent struct{}
+
+// DeleteSourceNoContent is response for DeleteSource operation.
+type DeleteSourceNoContent struct{}
+
+// DeleteTeamNoContent is response for DeleteTeam operation.
+type DeleteTeamNoContent struct{}
+
 // EndSessionNoContent is response for EndSession operation.
 type EndSessionNoContent struct{}
 
@@ -1230,8 +1242,172 @@ func (s *ProblemStatusCode) SetResponse(val Problem) {
 // RemoveSigningTokenNoContent is response for RemoveSigningToken operation.
 type RemoveSigningTokenNoContent struct{}
 
+// A kind of thread reply: comments, review verdicts, pipeline results, new commits, merges and closes.
+// Ref: #/components/schemas/ReplyKind
+type ReplyKind string
+
+const (
+	ReplyKindComment  ReplyKind = "comment"
+	ReplyKindReview   ReplyKind = "review"
+	ReplyKindPipeline ReplyKind = "pipeline"
+	ReplyKindPush     ReplyKind = "push"
+	ReplyKindMerge    ReplyKind = "merge"
+	ReplyKindClose    ReplyKind = "close"
+)
+
+// AllValues returns all ReplyKind values.
+func (ReplyKind) AllValues() []ReplyKind {
+	return []ReplyKind{
+		ReplyKindComment,
+		ReplyKindReview,
+		ReplyKindPipeline,
+		ReplyKindPush,
+		ReplyKindMerge,
+		ReplyKindClose,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ReplyKind) MarshalText() ([]byte, error) {
+	switch s {
+	case ReplyKindComment:
+		return []byte(s), nil
+	case ReplyKindReview:
+		return []byte(s), nil
+	case ReplyKindPipeline:
+		return []byte(s), nil
+	case ReplyKindPush:
+		return []byte(s), nil
+	case ReplyKindMerge:
+		return []byte(s), nil
+	case ReplyKindClose:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ReplyKind) UnmarshalText(data []byte) error {
+	switch ReplyKind(data) {
+	case ReplyKindComment:
+		*s = ReplyKindComment
+		return nil
+	case ReplyKindReview:
+		*s = ReplyKindReview
+		return nil
+	case ReplyKindPipeline:
+		*s = ReplyKindPipeline
+		return nil
+	case ReplyKindPush:
+		*s = ReplyKindPush
+		return nil
+	case ReplyKindMerge:
+		*s = ReplyKindMerge
+		return nil
+	case ReplyKindClose:
+		*s = ReplyKindClose
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 // RevokeTokenNoContent is response for RevokeToken operation.
 type RevokeTokenNoContent struct{}
+
+// Ref: #/components/schemas/RoutePage
+type RoutePage struct {
+	Items []TeamRoute `json:"items"`
+	// Absent on the last page.
+	NextCursor OptString `json:"next_cursor"`
+}
+
+// GetItems returns the value of Items.
+func (s *RoutePage) GetItems() []TeamRoute {
+	return s.Items
+}
+
+// GetNextCursor returns the value of NextCursor.
+func (s *RoutePage) GetNextCursor() OptString {
+	return s.NextCursor
+}
+
+// SetItems sets the value of Items.
+func (s *RoutePage) SetItems(val []TeamRoute) {
+	s.Items = val
+}
+
+// SetNextCursor sets the value of NextCursor.
+func (s *RoutePage) SetNextCursor(val OptString) {
+	s.NextCursor = val
+}
+
+// Ref: #/components/schemas/RouteRequest
+type RouteRequest struct {
+	TeamID int64 `json:"team_id"`
+	// A source the team owns.
+	SourceID int64 `json:"source_id"`
+	// A sink the team owns.
+	SinkID int64 `json:"sink_id"`
+	// The replies the route does not post. None by default.
+	MutedReplies []ReplyKind `json:"muted_replies"`
+}
+
+// GetTeamID returns the value of TeamID.
+func (s *RouteRequest) GetTeamID() int64 {
+	return s.TeamID
+}
+
+// GetSourceID returns the value of SourceID.
+func (s *RouteRequest) GetSourceID() int64 {
+	return s.SourceID
+}
+
+// GetSinkID returns the value of SinkID.
+func (s *RouteRequest) GetSinkID() int64 {
+	return s.SinkID
+}
+
+// GetMutedReplies returns the value of MutedReplies.
+func (s *RouteRequest) GetMutedReplies() []ReplyKind {
+	return s.MutedReplies
+}
+
+// SetTeamID sets the value of TeamID.
+func (s *RouteRequest) SetTeamID(val int64) {
+	s.TeamID = val
+}
+
+// SetSourceID sets the value of SourceID.
+func (s *RouteRequest) SetSourceID(val int64) {
+	s.SourceID = val
+}
+
+// SetSinkID sets the value of SinkID.
+func (s *RouteRequest) SetSinkID(val int64) {
+	s.SinkID = val
+}
+
+// SetMutedReplies sets the value of MutedReplies.
+func (s *RouteRequest) SetMutedReplies(val []ReplyKind) {
+	s.MutedReplies = val
+}
+
+// Ref: #/components/schemas/RouteUpdate
+type RouteUpdate struct {
+	MutedReplies []ReplyKind `json:"muted_replies"`
+}
+
+// GetMutedReplies returns the value of MutedReplies.
+func (s *RouteUpdate) GetMutedReplies() []ReplyKind {
+	return s.MutedReplies
+}
+
+// SetMutedReplies sets the value of MutedReplies.
+func (s *RouteUpdate) SetMutedReplies(val []ReplyKind) {
+	s.MutedReplies = val
+}
 
 type Session struct {
 	APIKey string
@@ -1438,6 +1614,763 @@ func (s *SigningTokenRequest) SetLabel(val string) {
 // SetToken sets the value of Token.
 func (s *SigningTokenRequest) SetToken(val string) {
 	s.Token = val
+}
+
+// Ref: #/components/schemas/Sink
+type Sink struct {
+	ID           int64  `json:"id"`
+	ConnectionID int64  `json:"connection_id"`
+	Name         string `json:"name"`
+	ChannelID    string `json:"channel_id"`
+	// How the platform named the channel when it was last checked.
+	ChannelName string `json:"channel_name"`
+	// The ids of the teams that own the sink.
+	Teams []int64 `json:"teams"`
+	// The sink's current version, for If-Match on a change.
+	Etag string `json:"etag"`
+}
+
+// GetID returns the value of ID.
+func (s *Sink) GetID() int64 {
+	return s.ID
+}
+
+// GetConnectionID returns the value of ConnectionID.
+func (s *Sink) GetConnectionID() int64 {
+	return s.ConnectionID
+}
+
+// GetName returns the value of Name.
+func (s *Sink) GetName() string {
+	return s.Name
+}
+
+// GetChannelID returns the value of ChannelID.
+func (s *Sink) GetChannelID() string {
+	return s.ChannelID
+}
+
+// GetChannelName returns the value of ChannelName.
+func (s *Sink) GetChannelName() string {
+	return s.ChannelName
+}
+
+// GetTeams returns the value of Teams.
+func (s *Sink) GetTeams() []int64 {
+	return s.Teams
+}
+
+// GetEtag returns the value of Etag.
+func (s *Sink) GetEtag() string {
+	return s.Etag
+}
+
+// SetID sets the value of ID.
+func (s *Sink) SetID(val int64) {
+	s.ID = val
+}
+
+// SetConnectionID sets the value of ConnectionID.
+func (s *Sink) SetConnectionID(val int64) {
+	s.ConnectionID = val
+}
+
+// SetName sets the value of Name.
+func (s *Sink) SetName(val string) {
+	s.Name = val
+}
+
+// SetChannelID sets the value of ChannelID.
+func (s *Sink) SetChannelID(val string) {
+	s.ChannelID = val
+}
+
+// SetChannelName sets the value of ChannelName.
+func (s *Sink) SetChannelName(val string) {
+	s.ChannelName = val
+}
+
+// SetTeams sets the value of Teams.
+func (s *Sink) SetTeams(val []int64) {
+	s.Teams = val
+}
+
+// SetEtag sets the value of Etag.
+func (s *Sink) SetEtag(val string) {
+	s.Etag = val
+}
+
+// SinkHeaders wraps Sink with response headers.
+type SinkHeaders struct {
+	ETag     OptString
+	Response Sink
+}
+
+// GetETag returns the value of ETag.
+func (s *SinkHeaders) GetETag() OptString {
+	return s.ETag
+}
+
+// GetResponse returns the value of Response.
+func (s *SinkHeaders) GetResponse() Sink {
+	return s.Response
+}
+
+// SetETag sets the value of ETag.
+func (s *SinkHeaders) SetETag(val OptString) {
+	s.ETag = val
+}
+
+// SetResponse sets the value of Response.
+func (s *SinkHeaders) SetResponse(val Sink) {
+	s.Response = val
+}
+
+// Ref: #/components/schemas/SinkPage
+type SinkPage struct {
+	Items []Sink `json:"items"`
+	// Absent on the last page.
+	NextCursor OptString `json:"next_cursor"`
+}
+
+// GetItems returns the value of Items.
+func (s *SinkPage) GetItems() []Sink {
+	return s.Items
+}
+
+// GetNextCursor returns the value of NextCursor.
+func (s *SinkPage) GetNextCursor() OptString {
+	return s.NextCursor
+}
+
+// SetItems sets the value of Items.
+func (s *SinkPage) SetItems(val []Sink) {
+	s.Items = val
+}
+
+// SetNextCursor sets the value of NextCursor.
+func (s *SinkPage) SetNextCursor(val OptString) {
+	s.NextCursor = val
+}
+
+// Ref: #/components/schemas/SinkRequest
+type SinkRequest struct {
+	// A chat connection.
+	ConnectionID int64  `json:"connection_id"`
+	Name         string `json:"name"`
+	// The channel's id, such as Mattermost shows it in the channel's info.
+	ChannelID string `json:"channel_id"`
+}
+
+// GetConnectionID returns the value of ConnectionID.
+func (s *SinkRequest) GetConnectionID() int64 {
+	return s.ConnectionID
+}
+
+// GetName returns the value of Name.
+func (s *SinkRequest) GetName() string {
+	return s.Name
+}
+
+// GetChannelID returns the value of ChannelID.
+func (s *SinkRequest) GetChannelID() string {
+	return s.ChannelID
+}
+
+// SetConnectionID sets the value of ConnectionID.
+func (s *SinkRequest) SetConnectionID(val int64) {
+	s.ConnectionID = val
+}
+
+// SetName sets the value of Name.
+func (s *SinkRequest) SetName(val string) {
+	s.Name = val
+}
+
+// SetChannelID sets the value of ChannelID.
+func (s *SinkRequest) SetChannelID(val string) {
+	s.ChannelID = val
+}
+
+// Ref: #/components/schemas/SinkUpdate
+type SinkUpdate struct {
+	Name      string `json:"name"`
+	ChannelID string `json:"channel_id"`
+}
+
+// GetName returns the value of Name.
+func (s *SinkUpdate) GetName() string {
+	return s.Name
+}
+
+// GetChannelID returns the value of ChannelID.
+func (s *SinkUpdate) GetChannelID() string {
+	return s.ChannelID
+}
+
+// SetName sets the value of Name.
+func (s *SinkUpdate) SetName(val string) {
+	s.Name = val
+}
+
+// SetChannelID sets the value of ChannelID.
+func (s *SinkUpdate) SetChannelID(val string) {
+	s.ChannelID = val
+}
+
+// Ref: #/components/schemas/Source
+type Source struct {
+	ID           int64       `json:"id"`
+	ConnectionID int64       `json:"connection_id"`
+	Name         string      `json:"name"`
+	Scope        SourceScope `json:"scope"`
+	// The ids of the teams that own the source.
+	Teams []int64 `json:"teams"`
+	// The source's current version, for If-Match on a change.
+	Etag string `json:"etag"`
+}
+
+// GetID returns the value of ID.
+func (s *Source) GetID() int64 {
+	return s.ID
+}
+
+// GetConnectionID returns the value of ConnectionID.
+func (s *Source) GetConnectionID() int64 {
+	return s.ConnectionID
+}
+
+// GetName returns the value of Name.
+func (s *Source) GetName() string {
+	return s.Name
+}
+
+// GetScope returns the value of Scope.
+func (s *Source) GetScope() SourceScope {
+	return s.Scope
+}
+
+// GetTeams returns the value of Teams.
+func (s *Source) GetTeams() []int64 {
+	return s.Teams
+}
+
+// GetEtag returns the value of Etag.
+func (s *Source) GetEtag() string {
+	return s.Etag
+}
+
+// SetID sets the value of ID.
+func (s *Source) SetID(val int64) {
+	s.ID = val
+}
+
+// SetConnectionID sets the value of ConnectionID.
+func (s *Source) SetConnectionID(val int64) {
+	s.ConnectionID = val
+}
+
+// SetName sets the value of Name.
+func (s *Source) SetName(val string) {
+	s.Name = val
+}
+
+// SetScope sets the value of Scope.
+func (s *Source) SetScope(val SourceScope) {
+	s.Scope = val
+}
+
+// SetTeams sets the value of Teams.
+func (s *Source) SetTeams(val []int64) {
+	s.Teams = val
+}
+
+// SetEtag sets the value of Etag.
+func (s *Source) SetEtag(val string) {
+	s.Etag = val
+}
+
+// SourceHeaders wraps Source with response headers.
+type SourceHeaders struct {
+	ETag     OptString
+	Response Source
+}
+
+// GetETag returns the value of ETag.
+func (s *SourceHeaders) GetETag() OptString {
+	return s.ETag
+}
+
+// GetResponse returns the value of Response.
+func (s *SourceHeaders) GetResponse() Source {
+	return s.Response
+}
+
+// SetETag sets the value of ETag.
+func (s *SourceHeaders) SetETag(val OptString) {
+	s.ETag = val
+}
+
+// SetResponse sets the value of Response.
+func (s *SourceHeaders) SetResponse(val Source) {
+	s.Response = val
+}
+
+// Ref: #/components/schemas/SourcePage
+type SourcePage struct {
+	Items []Source `json:"items"`
+	// Absent on the last page.
+	NextCursor OptString `json:"next_cursor"`
+}
+
+// GetItems returns the value of Items.
+func (s *SourcePage) GetItems() []Source {
+	return s.Items
+}
+
+// GetNextCursor returns the value of NextCursor.
+func (s *SourcePage) GetNextCursor() OptString {
+	return s.NextCursor
+}
+
+// SetItems sets the value of Items.
+func (s *SourcePage) SetItems(val []Source) {
+	s.Items = val
+}
+
+// SetNextCursor sets the value of NextCursor.
+func (s *SourcePage) SetNextCursor(val OptString) {
+	s.NextCursor = val
+}
+
+// Ref: #/components/schemas/SourceRequest
+type SourceRequest struct {
+	// A forge connection.
+	ConnectionID int64       `json:"connection_id"`
+	Name         string      `json:"name"`
+	Scope        SourceScope `json:"scope"`
+}
+
+// GetConnectionID returns the value of ConnectionID.
+func (s *SourceRequest) GetConnectionID() int64 {
+	return s.ConnectionID
+}
+
+// GetName returns the value of Name.
+func (s *SourceRequest) GetName() string {
+	return s.Name
+}
+
+// GetScope returns the value of Scope.
+func (s *SourceRequest) GetScope() SourceScope {
+	return s.Scope
+}
+
+// SetConnectionID sets the value of ConnectionID.
+func (s *SourceRequest) SetConnectionID(val int64) {
+	s.ConnectionID = val
+}
+
+// SetName sets the value of Name.
+func (s *SourceRequest) SetName(val string) {
+	s.Name = val
+}
+
+// SetScope sets the value of Scope.
+func (s *SourceRequest) SetScope(val SourceScope) {
+	s.Scope = val
+}
+
+// Ref: #/components/schemas/SourceScope
+type SourceScope struct {
+	// The whole forge instance, one group or organization with everything below it, or one repository.
+	Kind SourceScopeKind `json:"kind"`
+	// The group's or the repository's full path, such as "payments" or "payments/api". Empty for the whole
+	// instance.
+	Path OptString `json:"path"`
+}
+
+// GetKind returns the value of Kind.
+func (s *SourceScope) GetKind() SourceScopeKind {
+	return s.Kind
+}
+
+// GetPath returns the value of Path.
+func (s *SourceScope) GetPath() OptString {
+	return s.Path
+}
+
+// SetKind sets the value of Kind.
+func (s *SourceScope) SetKind(val SourceScopeKind) {
+	s.Kind = val
+}
+
+// SetPath sets the value of Path.
+func (s *SourceScope) SetPath(val OptString) {
+	s.Path = val
+}
+
+// The whole forge instance, one group or organization with everything below it, or one repository.
+type SourceScopeKind string
+
+const (
+	SourceScopeKindInstance   SourceScopeKind = "instance"
+	SourceScopeKindGroup      SourceScopeKind = "group"
+	SourceScopeKindRepository SourceScopeKind = "repository"
+)
+
+// AllValues returns all SourceScopeKind values.
+func (SourceScopeKind) AllValues() []SourceScopeKind {
+	return []SourceScopeKind{
+		SourceScopeKindInstance,
+		SourceScopeKindGroup,
+		SourceScopeKindRepository,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SourceScopeKind) MarshalText() ([]byte, error) {
+	switch s {
+	case SourceScopeKindInstance:
+		return []byte(s), nil
+	case SourceScopeKindGroup:
+		return []byte(s), nil
+	case SourceScopeKindRepository:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SourceScopeKind) UnmarshalText(data []byte) error {
+	switch SourceScopeKind(data) {
+	case SourceScopeKindInstance:
+		*s = SourceScopeKindInstance
+		return nil
+	case SourceScopeKindGroup:
+		*s = SourceScopeKindGroup
+		return nil
+	case SourceScopeKindRepository:
+		*s = SourceScopeKindRepository
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/SourceUpdate
+type SourceUpdate struct {
+	Name  string      `json:"name"`
+	Scope SourceScope `json:"scope"`
+}
+
+// GetName returns the value of Name.
+func (s *SourceUpdate) GetName() string {
+	return s.Name
+}
+
+// GetScope returns the value of Scope.
+func (s *SourceUpdate) GetScope() SourceScope {
+	return s.Scope
+}
+
+// SetName sets the value of Name.
+func (s *SourceUpdate) SetName(val string) {
+	s.Name = val
+}
+
+// SetScope sets the value of Scope.
+func (s *SourceUpdate) SetScope(val SourceScope) {
+	s.Scope = val
+}
+
+// Ref: #/components/schemas/Team
+type Team struct {
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
+	// The ids of the people who operate the team.
+	Operators []int64 `json:"operators"`
+	// The ids of the sources the team owns.
+	Sources []int64 `json:"sources"`
+	// The ids of the sinks the team owns.
+	Sinks []int64 `json:"sinks"`
+	// The team's current version, for If-Match on a change.
+	Etag string `json:"etag"`
+}
+
+// GetID returns the value of ID.
+func (s *Team) GetID() int64 {
+	return s.ID
+}
+
+// GetName returns the value of Name.
+func (s *Team) GetName() string {
+	return s.Name
+}
+
+// GetOperators returns the value of Operators.
+func (s *Team) GetOperators() []int64 {
+	return s.Operators
+}
+
+// GetSources returns the value of Sources.
+func (s *Team) GetSources() []int64 {
+	return s.Sources
+}
+
+// GetSinks returns the value of Sinks.
+func (s *Team) GetSinks() []int64 {
+	return s.Sinks
+}
+
+// GetEtag returns the value of Etag.
+func (s *Team) GetEtag() string {
+	return s.Etag
+}
+
+// SetID sets the value of ID.
+func (s *Team) SetID(val int64) {
+	s.ID = val
+}
+
+// SetName sets the value of Name.
+func (s *Team) SetName(val string) {
+	s.Name = val
+}
+
+// SetOperators sets the value of Operators.
+func (s *Team) SetOperators(val []int64) {
+	s.Operators = val
+}
+
+// SetSources sets the value of Sources.
+func (s *Team) SetSources(val []int64) {
+	s.Sources = val
+}
+
+// SetSinks sets the value of Sinks.
+func (s *Team) SetSinks(val []int64) {
+	s.Sinks = val
+}
+
+// SetEtag sets the value of Etag.
+func (s *Team) SetEtag(val string) {
+	s.Etag = val
+}
+
+// TeamHeaders wraps Team with response headers.
+type TeamHeaders struct {
+	ETag     OptString
+	Response Team
+}
+
+// GetETag returns the value of ETag.
+func (s *TeamHeaders) GetETag() OptString {
+	return s.ETag
+}
+
+// GetResponse returns the value of Response.
+func (s *TeamHeaders) GetResponse() Team {
+	return s.Response
+}
+
+// SetETag sets the value of ETag.
+func (s *TeamHeaders) SetETag(val OptString) {
+	s.ETag = val
+}
+
+// SetResponse sets the value of Response.
+func (s *TeamHeaders) SetResponse(val Team) {
+	s.Response = val
+}
+
+// Ref: #/components/schemas/TeamPage
+type TeamPage struct {
+	Items []Team `json:"items"`
+	// Absent on the last page.
+	NextCursor OptString `json:"next_cursor"`
+}
+
+// GetItems returns the value of Items.
+func (s *TeamPage) GetItems() []Team {
+	return s.Items
+}
+
+// GetNextCursor returns the value of NextCursor.
+func (s *TeamPage) GetNextCursor() OptString {
+	return s.NextCursor
+}
+
+// SetItems sets the value of Items.
+func (s *TeamPage) SetItems(val []Team) {
+	s.Items = val
+}
+
+// SetNextCursor sets the value of NextCursor.
+func (s *TeamPage) SetNextCursor(val OptString) {
+	s.NextCursor = val
+}
+
+// Ref: #/components/schemas/TeamRequest
+type TeamRequest struct {
+	Name string `json:"name"`
+}
+
+// GetName returns the value of Name.
+func (s *TeamRequest) GetName() string {
+	return s.Name
+}
+
+// SetName sets the value of Name.
+func (s *TeamRequest) SetName(val string) {
+	s.Name = val
+}
+
+// Ref: #/components/schemas/Route
+type TeamRoute struct {
+	ID       int64 `json:"id"`
+	TeamID   int64 `json:"team_id"`
+	SourceID int64 `json:"source_id"`
+	SinkID   int64 `json:"sink_id"`
+	// The replies the route does not post. The board still shows every change.
+	MutedReplies []ReplyKind `json:"muted_replies"`
+	// The route's current version, for If-Match on a change.
+	Etag string `json:"etag"`
+}
+
+// GetID returns the value of ID.
+func (s *TeamRoute) GetID() int64 {
+	return s.ID
+}
+
+// GetTeamID returns the value of TeamID.
+func (s *TeamRoute) GetTeamID() int64 {
+	return s.TeamID
+}
+
+// GetSourceID returns the value of SourceID.
+func (s *TeamRoute) GetSourceID() int64 {
+	return s.SourceID
+}
+
+// GetSinkID returns the value of SinkID.
+func (s *TeamRoute) GetSinkID() int64 {
+	return s.SinkID
+}
+
+// GetMutedReplies returns the value of MutedReplies.
+func (s *TeamRoute) GetMutedReplies() []ReplyKind {
+	return s.MutedReplies
+}
+
+// GetEtag returns the value of Etag.
+func (s *TeamRoute) GetEtag() string {
+	return s.Etag
+}
+
+// SetID sets the value of ID.
+func (s *TeamRoute) SetID(val int64) {
+	s.ID = val
+}
+
+// SetTeamID sets the value of TeamID.
+func (s *TeamRoute) SetTeamID(val int64) {
+	s.TeamID = val
+}
+
+// SetSourceID sets the value of SourceID.
+func (s *TeamRoute) SetSourceID(val int64) {
+	s.SourceID = val
+}
+
+// SetSinkID sets the value of SinkID.
+func (s *TeamRoute) SetSinkID(val int64) {
+	s.SinkID = val
+}
+
+// SetMutedReplies sets the value of MutedReplies.
+func (s *TeamRoute) SetMutedReplies(val []ReplyKind) {
+	s.MutedReplies = val
+}
+
+// SetEtag sets the value of Etag.
+func (s *TeamRoute) SetEtag(val string) {
+	s.Etag = val
+}
+
+// TeamRouteHeaders wraps TeamRoute with response headers.
+type TeamRouteHeaders struct {
+	ETag     OptString
+	Response TeamRoute
+}
+
+// GetETag returns the value of ETag.
+func (s *TeamRouteHeaders) GetETag() OptString {
+	return s.ETag
+}
+
+// GetResponse returns the value of Response.
+func (s *TeamRouteHeaders) GetResponse() TeamRoute {
+	return s.Response
+}
+
+// SetETag sets the value of ETag.
+func (s *TeamRouteHeaders) SetETag(val OptString) {
+	s.ETag = val
+}
+
+// SetResponse sets the value of Response.
+func (s *TeamRouteHeaders) SetResponse(val TeamRoute) {
+	s.Response = val
+}
+
+// Ref: #/components/schemas/TeamUpdate
+type TeamUpdate struct {
+	Name      string  `json:"name"`
+	Operators []int64 `json:"operators"`
+	Sources   []int64 `json:"sources"`
+	Sinks     []int64 `json:"sinks"`
+}
+
+// GetName returns the value of Name.
+func (s *TeamUpdate) GetName() string {
+	return s.Name
+}
+
+// GetOperators returns the value of Operators.
+func (s *TeamUpdate) GetOperators() []int64 {
+	return s.Operators
+}
+
+// GetSources returns the value of Sources.
+func (s *TeamUpdate) GetSources() []int64 {
+	return s.Sources
+}
+
+// GetSinks returns the value of Sinks.
+func (s *TeamUpdate) GetSinks() []int64 {
+	return s.Sinks
+}
+
+// SetName sets the value of Name.
+func (s *TeamUpdate) SetName(val string) {
+	s.Name = val
+}
+
+// SetOperators sets the value of Operators.
+func (s *TeamUpdate) SetOperators(val []int64) {
+	s.Operators = val
+}
+
+// SetSources sets the value of Sources.
+func (s *TeamUpdate) SetSources(val []int64) {
+	s.Sources = val
+}
+
+// SetSinks sets the value of Sinks.
+func (s *TeamUpdate) SetSinks(val []int64) {
+	s.Sinks = val
 }
 
 type Token struct {

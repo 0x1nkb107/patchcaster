@@ -124,7 +124,6 @@ migrate:
 run:
 	go run ./cmd/patchcaster serve \
 	  --database-url "{{database_url}}" \
-	  --routing-file ./contrib/routing.example.yaml \
 	  --encryption-key "{{dev_encryption_key}}" \
 	  --interface-url http://127.0.0.1:8081 \
 	  --public-url http://127.0.0.1:8080

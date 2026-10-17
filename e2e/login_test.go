@@ -27,7 +27,7 @@ var (
 func startWithProvider(t *testing.T) (*service, *fakeProvider) {
 	t.Helper()
 	freshDatabase(t)
-	svc := startService(t, serviceConfig{mattermostURL: newFakeMattermost(t).url()})
+	svc := startService(t, serviceConfig{})
 	return svc, newFakeProvider(t)
 }
 
@@ -304,7 +304,7 @@ func TestAnIssuerWithoutAProviderIsRefused(t *testing.T) {
 func TestCrossSiteChangesAreRefused(t *testing.T) {
 	// arrange
 	freshDatabase(t)
-	svc := startService(t, serviceConfig{mattermostURL: newFakeMattermost(t).url()})
+	svc := startService(t, serviceConfig{})
 
 	tests := []struct {
 		name   string
@@ -374,9 +374,8 @@ func TestSecretsStaySealedAtRest(t *testing.T) {
 func TestTheClientSecretSurvivesAKeyRotation(t *testing.T) {
 	// arrange
 	freshDatabase(t)
-	mattermost := newFakeMattermost(t)
 	provider := newFakeProvider(t)
-	first := startService(t, serviceConfig{mattermostURL: mattermost.url()})
+	first := startService(t, serviceConfig{})
 	setUp(t, first, provider, setupRequest(bootstrap(t, first), provider), ada)
 	first.stop(t)
 
@@ -385,7 +384,7 @@ func TestTheClientSecretSurvivesAKeyRotation(t *testing.T) {
 		"--database-url", databaseURL,
 		"--encryption-key", rotatedKey,
 		"--previous-encryption-key", suiteKey)
-	after := startService(t, serviceConfig{mattermostURL: mattermost.url(), encryptionKey: rotatedKey})
+	after := startService(t, serviceConfig{encryptionKey: rotatedKey})
 	b := newBrowser(t, after)
 	provider.authenticateAs(carol, honest)
 	landed := b.logIn(t)

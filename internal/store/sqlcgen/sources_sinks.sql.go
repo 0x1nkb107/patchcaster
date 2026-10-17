@@ -11,6 +11,62 @@ import (
 	"time"
 )
 
+const destinations = `-- name: Destinations :many
+SELECT r.sink_id, k.connection_id AS sink_connection_id, k.channel_id, r.muted_replies
+FROM sources s
+JOIN routes r ON r.source_id = s.id
+JOIN sinks k ON k.id = r.sink_id
+WHERE s.connection_id = $1
+  AND (s.scope_kind = 'instance'
+       OR (s.scope_kind = 'group' AND starts_with($2::text, s.scope_path || '/'))
+       OR (s.scope_kind = 'repository' AND s.scope_path = $2::text))
+ORDER BY r.sink_id, r.id
+`
+
+type DestinationsParams struct {
+	ConnectionID int64
+	Repository   string
+}
+
+type DestinationsRow struct {
+	SinkID           int64
+	SinkConnectionID int64
+	ChannelID        string
+	MutedReplies     json.RawMessage
+}
+
+// Destinations lists the routes an event of a forge connection reaches:
+// those of every source of the connection whose scope holds the event's
+// repository, with the sink each route delivers to (SYSREQ-044,
+// SYSREQ-046). Paths match exactly, and a group holds everything below it.
+func (q *Queries) Destinations(ctx context.Context, arg DestinationsParams) ([]DestinationsRow, error) {
+	rows, err := q.db.QueryContext(ctx, destinations, arg.ConnectionID, arg.Repository)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []DestinationsRow
+	for rows.Next() {
+		var i DestinationsRow
+		if err := rows.Scan(
+			&i.SinkID,
+			&i.SinkConnectionID,
+			&i.ChannelID,
+			&i.MutedReplies,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const sinkCreate = `-- name: SinkCreate :one
 INSERT INTO sinks (connection_id, name, channel_id, channel_name, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $5, $5)

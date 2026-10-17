@@ -17,32 +17,26 @@ import (
 	"github.com/patchcaster-app/patchcaster/internal/deliver"
 	"github.com/patchcaster-app/patchcaster/internal/graceful"
 	"github.com/patchcaster-app/patchcaster/internal/ingest"
-	"github.com/patchcaster-app/patchcaster/internal/mattermost"
 	"github.com/patchcaster-app/patchcaster/internal/metrics"
 	"github.com/patchcaster-app/patchcaster/internal/ops"
 	"github.com/patchcaster-app/patchcaster/internal/platform"
-	"github.com/patchcaster-app/patchcaster/internal/routing"
 	"github.com/patchcaster-app/patchcaster/internal/store"
 )
 
 // ServeCmd is the running configuration.
 type ServeCmd struct {
-	Addr            string        `flag:"" default:":8080" env:"PATCHCASTER_ADDR" help:"Public listener address (webhook endpoint)."`
-	InternalAddr    string        `flag:"" default:":9090" env:"PATCHCASTER_INTERNAL_ADDR" help:"Internal listener address (probes, metrics)."`
-	ManagementAddr  string        `flag:"" default:":8081" env:"PATCHCASTER_MANAGEMENT_ADDR" help:"Management listener address (API and web interface)."`
-	InterfaceURL    string        `flag:"" required:"" env:"PATCHCASTER_INTERFACE_URL" help:"External address of the web interface, such as https://patchcaster.example.org."`
-	PublicURL       string        `flag:"" required:"" env:"PATCHCASTER_PUBLIC_URL" help:"External address of the webhook listener, from which the forges' webhook endpoints are built."`
-	DatabaseURL     string        `flag:"" required:"" env:"PATCHCASTER_DATABASE_URL" help:"PostgreSQL connection URL."`
-	MattermostURL   string        `flag:"" required:"" env:"PATCHCASTER_MATTERMOST_URL" help:"Mattermost site URL."`
-	MattermostToken string        `flag:"" required:"" env:"PATCHCASTER_MATTERMOST_TOKEN" help:"Bot account auth token."`
-	SigningSecrets  []string      `flag:"" name:"signing-secret" sep:"," env:"PATCHCASTER_SIGNING_SECRETS" required:"" help:"GitLab webhook signing token (whsec_...), exactly as GitLab shows it; repeat or comma-separate for rotation."`
-	RoutingFile     string        `flag:"" required:"" env:"PATCHCASTER_ROUTING_FILE" help:"Routing table YAML."`
-	DrainTimeout    time.Duration `flag:"" default:"30s" env:"PATCHCASTER_DRAIN_TIMEOUT" help:"In-flight budget after SIGTERM; the deployment grace period must exceed it."`
-	EventMaxAge     time.Duration `flag:"" default:"4h" env:"PATCHCASTER_EVENT_MAX_AGE" help:"Freshness cap; older verified events are discarded."`
-	SeenRetention   time.Duration `flag:"" default:"24h" env:"PATCHCASTER_SEEN_RETENTION" help:"Seen-webhook retention; GitLab retries stay inside it."`
-	ClaimLease      time.Duration `flag:"" default:"60s" env:"PATCHCASTER_CLAIM_LEASE" help:"Job claim lease before reaping."`
-	PollInterval    time.Duration `flag:"" default:"10s" env:"PATCHCASTER_POLL_INTERVAL" help:"Fallback claim interval for retries, expired leases and missed wake-ups."`
-	LogLevel        string        `flag:"" default:"info" env:"PATCHCASTER_LOG_LEVEL" help:"Log level: debug|info|warn|error."`
+	Addr           string        `flag:"" default:":8080" env:"PATCHCASTER_ADDR" help:"Public listener address (webhook endpoint)."`
+	InternalAddr   string        `flag:"" default:":9090" env:"PATCHCASTER_INTERNAL_ADDR" help:"Internal listener address (probes, metrics)."`
+	ManagementAddr string        `flag:"" default:":8081" env:"PATCHCASTER_MANAGEMENT_ADDR" help:"Management listener address (API and web interface)."`
+	InterfaceURL   string        `flag:"" required:"" env:"PATCHCASTER_INTERFACE_URL" help:"External address of the web interface, such as https://patchcaster.example.org."`
+	PublicURL      string        `flag:"" required:"" env:"PATCHCASTER_PUBLIC_URL" help:"External address of the webhook listener, from which the forges' webhook endpoints are built."`
+	DatabaseURL    string        `flag:"" required:"" env:"PATCHCASTER_DATABASE_URL" help:"PostgreSQL connection URL."`
+	DrainTimeout   time.Duration `flag:"" default:"30s" env:"PATCHCASTER_DRAIN_TIMEOUT" help:"In-flight budget after SIGTERM; the deployment grace period must exceed it."`
+	EventMaxAge    time.Duration `flag:"" default:"4h" env:"PATCHCASTER_EVENT_MAX_AGE" help:"Freshness cap; older verified events are discarded."`
+	SeenRetention  time.Duration `flag:"" default:"24h" env:"PATCHCASTER_SEEN_RETENTION" help:"Seen-webhook retention; GitLab retries stay inside it."`
+	ClaimLease     time.Duration `flag:"" default:"60s" env:"PATCHCASTER_CLAIM_LEASE" help:"Job claim lease before reaping."`
+	PollInterval   time.Duration `flag:"" default:"10s" env:"PATCHCASTER_POLL_INTERVAL" help:"Fallback claim interval for retries, expired leases and missed wake-ups."`
+	LogLevel       string        `flag:"" default:"info" env:"PATCHCASTER_LOG_LEVEL" help:"Log level: debug|info|warn|error."`
 
 	Keys KeyFlags `embed:""`
 }
@@ -51,16 +45,12 @@ type ServeCmd struct {
 // (ADR-012). Keys are ServeCmd field names; Validate renders them
 // back into operator-facing flag names.
 var serveSchema = z.Struct(z.Shape{
-	// Required, not Min(1): non-required schemas skip their tests on zero
-	// values, so only Required could catch an empty rotation entry — belt and
-	// braces, since kong was observed pruning empty segments at the separator.
-	"SigningSecrets": z.Slice(z.String().Required(z.Message("signing secret must not be empty"))).Required(),
-	"LogLevel":       z.String().OneOf([]string{"debug", "info", "warn", "error"}),
-	"DrainTimeout":   positiveDuration(),
-	"EventMaxAge":    positiveDuration(),
-	"SeenRetention":  positiveDuration(),
-	"ClaimLease":     positiveDuration(),
-	"PollInterval":   positiveDuration(),
+	"LogLevel":      z.String().OneOf([]string{"debug", "info", "warn", "error"}),
+	"DrainTimeout":  positiveDuration(),
+	"EventMaxAge":   positiveDuration(),
+	"SeenRetention": positiveDuration(),
+	"ClaimLease":    positiveDuration(),
+	"PollInterval":  positiveDuration(),
 })
 
 // replayLoopSchema keeps the replay loop closed: dedupe must outlive the
@@ -87,13 +77,12 @@ func positiveDuration() *z.Custom[time.Duration] {
 
 // flagNames renders schema field paths as the flags operators typed.
 var flagNames = map[string]string{
-	"SigningSecrets": "--signing-secret",
-	"LogLevel":       "--log-level",
-	"DrainTimeout":   "--drain-timeout",
-	"EventMaxAge":    "--event-max-age",
-	"SeenRetention":  "--seen-retention",
-	"ClaimLease":     "--claim-lease",
-	"PollInterval":   "--poll-interval",
+	"LogLevel":      "--log-level",
+	"DrainTimeout":  "--drain-timeout",
+	"EventMaxAge":   "--event-max-age",
+	"SeenRetention": "--seen-retention",
+	"ClaimLease":    "--claim-lease",
+	"PollInterval":  "--poll-interval",
 }
 
 // Validate enforces the startup invariants; kong calls it on the selected
@@ -104,9 +93,6 @@ func (c *ServeCmd) Validate() error {
 	errs := make([]error, 0, len(issues)+1)
 	for _, issue := range issues {
 		errs = append(errs, fmt.Errorf("%s: %s", flagName(issue.Path), issue.Message))
-	}
-	if _, err := c.signingKeys(); err != nil {
-		errs = append(errs, err)
 	}
 	if err := c.Keys.validate(); err != nil {
 		errs = append(errs, err)
@@ -122,24 +108,6 @@ func (c *ServeCmd) Validate() error {
 		}
 	}
 	return errors.Join(errs...)
-}
-
-// signingKeys decodes the signing tokens into the keys GitLab signs with.
-// Empty entries are left to the schema, which reports them. The errors name
-// the flag and the entry, never the token.
-func (c *ServeCmd) signingKeys() ([][]byte, error) {
-	keys := make([][]byte, 0, len(c.SigningSecrets))
-	for i, token := range c.SigningSecrets {
-		if token == "" {
-			continue
-		}
-		key, err := ingest.ParseSigningToken(token)
-		if err != nil {
-			return nil, fmt.Errorf("--signing-secret %d: %w", i+1, err)
-		}
-		keys = append(keys, key)
-	}
-	return keys, nil
 }
 
 func flagName(path []string) string {
@@ -161,10 +129,6 @@ func (c *ServeCmd) Run(ctx context.Context) error {
 	// The login's relying party logs through the default logger (ADR-033).
 	slog.SetDefault(log)
 
-	routes, err := routing.Load(c.RoutingFile)
-	if err != nil {
-		return err
-	}
 	interfaceURL, err := parseInterfaceURL(c.InterfaceURL)
 	if err != nil {
 		return err
@@ -205,14 +169,11 @@ func (c *ServeCmd) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	secrets, err := c.signingKeys()
-	if err != nil {
-		return err
-	}
+	// Ingest and delivery read the stored configuration for every event and
+	// message, so a committed change applies without a restart (SYSREQ-034).
 	handler := &ingest.Handler{
-		Secrets: secrets,
+		Keys:    ingest.Keyring{Store: st, Box: box},
 		Store:   st,
-		Routes:  routes,
 		MaxAge:  c.EventMaxAge,
 		Now:     time.Now,
 		Log:     log,
@@ -225,7 +186,7 @@ func (c *ServeCmd) Run(ctx context.Context) error {
 	wakeup := deliver.NewWakeup(listener, m, log)
 	worker := deliver.NewWorker(
 		st,
-		mattermost.New(c.MattermostURL, c.MattermostToken),
+		deliver.ConnectionPosters{Store: st, Box: box},
 		renderer, m, log,
 		deliver.Config{Poll: c.PollInterval, Lease: c.ClaimLease, Wake: wakeup.C()},
 		nil,

@@ -17,14 +17,18 @@ import (
 	"github.com/patchcaster-app/patchcaster/internal/store/sqlcgen"
 )
 
-// Job is one queued outbound message as claimed by the delivery worker.
+// Job is one queued outbound message as claimed by the delivery worker. Its
+// sink, the chat connection that delivers it and its channel were resolved
+// at acceptance and never change (SYSREQ-024).
 type Job struct {
-	ID          int64
-	MRRef       string
-	Action      string
-	DestChannel string // frozen at ingress, immutable (SYSREQ-024)
-	Payload     []byte // normalized event.Event JSON
-	Attempts    int    // completed failed attempts
+	ID           int64
+	MRRef        string
+	SinkID       int64
+	ConnectionID int64
+	Action       string
+	DestChannel  string
+	Payload      []byte // normalized event.Event JSON, with this sink's plan
+	Attempts     int    // completed failed attempts
 
 	// Delivery phases already completed (SYSREQ-028, ADR-014): a retry skips
 	// them instead of repeating a posted notice.
@@ -32,14 +36,26 @@ type Job struct {
 	RootRefreshed bool
 }
 
+// Delivery is one sink an accepted event goes to, as ingest resolved it from
+// the routes (SYSREQ-046): the sink, the chat connection that delivers to
+// it, its channel, and the plan for that sink, which the route's muted
+// replies shaped (SYSREQ-047).
+type Delivery struct {
+	SinkID       int64
+	ConnectionID int64
+	ChannelID    string
+	Plan         *event.Plan
+}
+
 // AcceptResult reports the outcome of an accept transaction.
 type AcceptResult struct {
 	// Accepted is false when the webhook identifier was already seen: a
 	// concurrent duplicate won, and neither state nor queue was touched.
 	Accepted bool
-	// Enqueued reports whether a delivery row was written; false means the
-	// delivery applied state (or attributed a push) without posting.
-	Enqueued bool
+	// Enqueued counts the messages queued, at most one per delivery. Zero
+	// means the delivery applied state, or attributed a push, without
+	// posting anywhere.
+	Enqueued int
 	// Attributed counts merge requests given the commit count of a push
 	// delivery (SYSREQ-030); zero for a push that matched no open request.
 	Attributed int
@@ -139,18 +155,15 @@ func (p *Postgres) MarkOutcome(ctx context.Context, webhookID, outcome string, n
 }
 
 // Accept durably records the delivery as seen, applies its derived state, and
-// enqueues its message — all in one transaction (SYSREQ-014, SYSREQ-017,
-// SYSREQ-027). Ingest is the only writer of board state, so applying inside
-// the seen-mark makes every counter exactly-once: the identifier admits one
-// transaction, period. It reports (accepted, enqueued): accepted false means
-// the identifier was already seen; enqueued false means the delivery moved no
-// observable state, so no delivery row was needed. ev.Plan carries the
-// ingest-side intent; Accept finalizes its Refresh flag from what actually
-// changed. An enqueue wakes OutboxListener sessions once it commits.
-func (p *Postgres) Accept(ctx context.Context, ev *event.Event, destChannel string, now time.Time) (AcceptResult, error) {
-	if ev.Plan == nil {
-		ev.Plan = &event.Plan{}
-	}
+// enqueues one message per sink — all in one transaction (SYSREQ-014,
+// SYSREQ-017, SYSREQ-027). Ingest is the only writer of board state, so
+// applying inside the seen-mark makes every counter exactly-once: the
+// identifier admits one transaction, period. Accepted false means the
+// identifier was already seen. Each delivery's plan carries the ingest-side
+// intent for its sink; Accept finalizes its Refresh flag from what actually
+// changed, and queues nothing for a sink whose plan moves nothing. An
+// enqueue wakes OutboxListener sessions once it commits.
+func (p *Postgres) Accept(ctx context.Context, ev *event.Event, deliveries []Delivery, now time.Time) (AcceptResult, error) {
 	tx, err := p.db.BeginTx(ctx, nil)
 	if err != nil {
 		return AcceptResult{}, fmt.Errorf("begin accept: %w", err)
@@ -178,6 +191,7 @@ func (p *Postgres) Accept(ctx context.Context, ev *event.Event, destChannel stri
 	// request row nor a delivery (SYSREQ-030).
 	if ev.Kind == event.KindPush {
 		attributed, err := q.StateAttributePush(ctx, sqlcgen.StateAttributePushParams{
+			ConnectionID:    ev.ConnectionID,
 			SourceProjectID: ev.PushProjectID,
 			SourceBranch:    ev.PushBranch,
 			LastPushCount:   int32(ev.PushCommits),
@@ -194,7 +208,11 @@ func (p *Postgres) Accept(ctx context.Context, ev *event.Event, destChannel stri
 
 	// Lock the board row before mutating it: deliveries for one merge request
 	// then serialize exactly like the delivery worker serializes posts.
-	if err := q.StateEnsure(ctx, sqlcgen.StateEnsureParams{MrRef: ev.MRRef, UpdatedAt: now}); err != nil {
+	if err := q.StateEnsure(ctx, sqlcgen.StateEnsureParams{
+		MrRef:        ev.MRRef,
+		ConnectionID: ev.ConnectionID,
+		UpdatedAt:    now,
+	}); err != nil {
 		return AcceptResult{}, fmt.Errorf("ensure board state for MR %s: %w", ev.MRRef, err)
 	}
 	old, err := q.StateGetForUpdate(ctx, ev.MRRef)
@@ -249,50 +267,65 @@ func (p *Postgres) Accept(ctx context.Context, ev *event.Event, destChannel stri
 		return AcceptResult{}, fmt.Errorf("unprocessed event kind %q", ev.Kind)
 	}
 
-	ev.Plan.Refresh = changed || ev.Plan.Notice != ""
-	if !planNeedsDelivery(ev.Plan) {
-		if err := tx.Commit(); err != nil {
-			return AcceptResult{}, fmt.Errorf("commit accept: %w", err)
-		}
-		return AcceptResult{Accepted: true}, nil
-	}
-
 	// Attach the attributed push count now that the row is locked and the
 	// push delivery may already have arrived (SYSREQ-030 race).
-	if ev.Plan.Notice == plan.Push {
-		if old.LastPushCount > 0 {
-			count := int(old.LastPushCount)
-			ev.PushCount = &count
-		}
+	if ev.Plan != nil && ev.Plan.Notice == plan.Push && old.LastPushCount > 0 {
+		count := int(old.LastPushCount)
+		ev.PushCount = &count
 	}
 
-	payload, err := json.Marshal(ev)
-	if err != nil {
-		return AcceptResult{}, fmt.Errorf("encode event for project %q: %w", ev.ProjectPath, err)
+	enqueued := 0
+	for _, d := range deliveries {
+		sinkPlan := *d.Plan
+		sinkPlan.Refresh = changed || sinkPlan.Notice != ""
+		if !planNeedsDelivery(&sinkPlan) {
+			continue
+		}
+		if err := enqueue(ctx, q, ev, d, &sinkPlan, now); err != nil {
+			return AcceptResult{}, err
+		}
+		enqueued++
 	}
-	if err := q.InsertOutbox(ctx, sqlcgen.InsertOutboxParams{
-		MrRef:         ev.MRRef,
-		Action:        ev.Action,
-		DestChannel:   destChannel,
-		Payload:       payload,
-		NextAttemptAt: now,
-	}); err != nil {
-		return AcceptResult{}, fmt.Errorf("enqueue webhook %q: %w", ev.WebhookID, err)
-	}
-	// PostgreSQL delivers the notification only if this transaction commits,
-	// so a woken worker always finds the row (ADR-019).
-	if err := q.NotifyOutbox(ctx, outboxChannel); err != nil {
-		return AcceptResult{}, fmt.Errorf("notify outbox listeners: %w", err)
+	if enqueued > 0 {
+		// PostgreSQL delivers the notification only if this transaction
+		// commits, so a woken worker always finds the rows (ADR-019).
+		if err := q.NotifyOutbox(ctx, outboxChannel); err != nil {
+			return AcceptResult{}, fmt.Errorf("notify outbox listeners: %w", err)
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return AcceptResult{}, fmt.Errorf("commit accept: %w", err)
 	}
-	return AcceptResult{Accepted: true, Enqueued: true}, nil
+	return AcceptResult{Accepted: true, Enqueued: enqueued}, nil
 }
 
-// planNeedsDelivery reports whether a plan maps to any Mattermost operation.
+// enqueue queues the message of one delivery, with the event and its plan
+// for that sink as the payload.
+func enqueue(ctx context.Context, q *sqlcgen.Queries, ev *event.Event, d Delivery, sinkPlan *event.Plan, now time.Time) error {
+	forSink := *ev
+	forSink.Plan = sinkPlan
+	payload, err := json.Marshal(&forSink)
+	if err != nil {
+		return fmt.Errorf("encode event for project %q: %w", ev.ProjectPath, err)
+	}
+	err = q.InsertOutbox(ctx, sqlcgen.InsertOutboxParams{
+		MrRef:         ev.MRRef,
+		SinkID:        d.SinkID,
+		ConnectionID:  d.ConnectionID,
+		Action:        ev.Action,
+		DestChannel:   d.ChannelID,
+		Payload:       payload,
+		NextAttemptAt: now,
+	})
+	if err != nil {
+		return fmt.Errorf("enqueue webhook %q for sink %d: %w", ev.WebhookID, d.SinkID, err)
+	}
+	return nil
+}
+
+// planNeedsDelivery reports whether a plan maps to any chat operation.
 func planNeedsDelivery(p *event.Plan) bool {
-	return p != nil && (p.CreateRoot || p.Notice != "" || p.Refresh)
+	return p != nil && (p.CreateRoot || p.Notice != "" || p.Refresh || p.CloseAfter)
 }
 
 // editDelta counts one edit per delivery that pushed or changed the
@@ -347,6 +380,8 @@ func (p *Postgres) ClaimDue(ctx context.Context, now time.Time, lease time.Durat
 	return &Job{
 		ID:            row.ID,
 		MRRef:         row.MrRef,
+		SinkID:        row.SinkID,
+		ConnectionID:  row.ConnectionID,
 		Action:        row.Action,
 		DestChannel:   row.DestChannel,
 		Payload:       row.Payload,
@@ -403,14 +438,15 @@ func (p *Postgres) Settle(ctx context.Context, jobID int64, now time.Time, s Set
 	return nil
 }
 
-// Thread returns the mapping for a merge request, or nil when none exists.
-func (p *Postgres) Thread(ctx context.Context, mrRef string) (*Thread, error) {
-	row, err := p.base.ThreadGet(ctx, mrRef)
+// Thread returns the mapping of a merge request in one sink, or nil when
+// none exists (SYSREQ-048).
+func (p *Postgres) Thread(ctx context.Context, mrRef string, sinkID int64) (*Thread, error) {
+	row, err := p.base.ThreadGet(ctx, sqlcgen.ThreadGetParams{MrRef: mrRef, SinkID: sinkID})
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("read thread mapping for MR %s: %w", mrRef, err)
+		return nil, fmt.Errorf("read thread mapping for MR %s in sink %d: %w", mrRef, sinkID, err)
 	}
 	return &Thread{
 		ChannelID:  row.ChannelID,
@@ -419,23 +455,35 @@ func (p *Postgres) Thread(ctx context.Context, mrRef string) (*Thread, error) {
 	}, nil
 }
 
-// OpenThread records the root post mapping for a merge request.
-func (p *Postgres) OpenThread(ctx context.Context, mrRef, channelID, rootPostID string, now time.Time) error {
-	if err := p.base.ThreadOpen(ctx, sqlcgen.ThreadOpenParams{
+// OpenThread records the root post mapping of a merge request in one sink.
+// It returns ErrNotFound when the sink was removed meanwhile.
+func (p *Postgres) OpenThread(ctx context.Context, mrRef string, sinkID int64, channelID, rootPostID string, now time.Time) error {
+	err := p.base.ThreadOpen(ctx, sqlcgen.ThreadOpenParams{
 		MrRef:      mrRef,
+		SinkID:     sinkID,
 		ChannelID:  channelID,
 		RootPostID: rootPostID,
 		CreatedAt:  now,
-	}); err != nil {
-		return fmt.Errorf("open thread mapping for MR %s: %w", mrRef, err)
+	})
+	if errors.Is(referenceProblem(err, nil), ErrInUse) {
+		return ErrNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("open thread mapping for MR %s in sink %d: %w", mrRef, sinkID, err)
 	}
 	return nil
 }
 
-// CloseThread marks a mapping closed so later replies stop (SYSREQ-026).
-func (p *Postgres) CloseThread(ctx context.Context, mrRef string, now time.Time) error {
-	if err := p.base.ThreadClose(ctx, sqlcgen.ThreadCloseParams{MrRef: mrRef, UpdatedAt: now}); err != nil {
-		return fmt.Errorf("close thread mapping for MR %s: %w", mrRef, err)
+// CloseThread marks the mapping of a merge request in one sink closed, so
+// later replies there stop (SYSREQ-026).
+func (p *Postgres) CloseThread(ctx context.Context, mrRef string, sinkID int64, now time.Time) error {
+	err := p.base.ThreadClose(ctx, sqlcgen.ThreadCloseParams{
+		MrRef:     mrRef,
+		SinkID:    sinkID,
+		UpdatedAt: now,
+	})
+	if err != nil {
+		return fmt.Errorf("close thread mapping for MR %s in sink %d: %w", mrRef, sinkID, err)
 	}
 	return nil
 }

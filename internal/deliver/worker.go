@@ -38,14 +38,24 @@ type Poster interface {
 	Update(ctx context.Context, postID, message string) error
 }
 
+// ErrSinkGone reports a message whose sink or chat connection was removed
+// after it was queued, so nothing can deliver it.
+var ErrSinkGone = errors.New("the sink or its connection was removed")
+
+// Posters gives the poster of a chat connection, with its current
+// credential. It returns ErrSinkGone when the connection is gone.
+type Posters interface {
+	Poster(ctx context.Context, connectionID int64) (Poster, error)
+}
+
 // Store is the queue, mapping, and board surface the worker claims, reads,
 // and settles on.
 type Store interface {
 	ClaimDue(ctx context.Context, now time.Time, lease time.Duration) (*store.Job, error)
 	Settle(ctx context.Context, jobID int64, now time.Time, s store.Settlement) error
-	Thread(ctx context.Context, mrRef string) (*store.Thread, error)
-	OpenThread(ctx context.Context, mrRef, channelID, rootPostID string, now time.Time) error
-	CloseThread(ctx context.Context, mrRef string, now time.Time) error
+	Thread(ctx context.Context, mrRef string, sinkID int64) (*store.Thread, error)
+	OpenThread(ctx context.Context, mrRef string, sinkID int64, channelID, rootPostID string, now time.Time) error
+	CloseThread(ctx context.Context, mrRef string, sinkID int64, now time.Time) error
 	CloseState(ctx context.Context, mrRef string, now time.Time) error
 	State(ctx context.Context, mrRef string) (*store.State, error)
 	MarkNoticePosted(ctx context.Context, jobID int64, now time.Time) error
@@ -63,16 +73,17 @@ type Config struct {
 	Wake <-chan struct{}
 }
 
-// Worker delivers queued messages to Mattermost: one thread root per merge
-// request, notices and root refreshes afterwards (SYSREQ-004/005/028/029).
+// Worker delivers queued messages to their sinks: one thread root per merge
+// request and sink, notices and root refreshes afterwards
+// (SYSREQ-004/005/028/029, SYSREQ-048).
 //
 // A single worker goroutine is run per replica (v1 deployment is one replica
 // by choice, ADR-010). The store's claim serializes all activity per merge
-// request in arrival order, which is what makes "exactly one root post"
-// robust.
+// request and sink in arrival order, which is what makes "exactly one root
+// post" robust.
 type Worker struct {
 	store    Store
-	poster   Poster
+	posters  Posters
 	renderer *Renderer
 	metrics  *metrics.Metrics
 	log      *slog.Logger
@@ -105,7 +116,7 @@ func (w *Worker) stopRequested() bool {
 }
 
 // NewWorker wires a worker; a nil clock defaults to time.Now.
-func NewWorker(st Store, poster Poster, r *Renderer, m *metrics.Metrics, log *slog.Logger, cfg Config, now func() time.Time) *Worker {
+func NewWorker(st Store, posters Posters, r *Renderer, m *metrics.Metrics, log *slog.Logger, cfg Config, now func() time.Time) *Worker {
 	if now == nil {
 		now = time.Now
 	}
@@ -117,7 +128,7 @@ func NewWorker(st Store, poster Poster, r *Renderer, m *metrics.Metrics, log *sl
 	}
 	return &Worker{
 		store:    st,
-		poster:   poster,
+		posters:  posters,
 		renderer: r,
 		metrics:  m,
 		log:      log,
@@ -207,18 +218,45 @@ func (w *Worker) process(ctx context.Context, job *store.Job) {
 		ev.Plan = plan.For(ev)
 	}
 
-	log := w.log.With("job", job.ID, "mr", ev.MRRef, "action", ev.Action, "project", ev.ProjectPath)
-	thread, err := w.store.Thread(ctx, ev.MRRef)
+	log := w.log.With("job", job.ID, "mr", ev.MRRef, "sink", job.SinkID, "action", ev.Action, "project", ev.ProjectPath)
+	poster, err := w.posters.Poster(ctx, job.ConnectionID)
+	if errors.Is(err, ErrSinkGone) {
+		w.skipGoneSink(ctx, job, log)
+		return
+	}
+	if err != nil {
+		log.Error("connection lookup failed", "err", err)
+		w.settle(ctx, job, store.Retried(job.Attempts, w.now().Add(storeFaultDelay), err.Error()))
+		return
+	}
+	thread, err := w.store.Thread(ctx, ev.MRRef, job.SinkID)
 	if err != nil {
 		log.Error("thread mapping lookup failed", "err", err)
 		w.settle(ctx, job, store.Retried(job.Attempts, w.now().Add(storeFaultDelay), err.Error()))
 		return
 	}
+	d := delivery{job: job, ev: ev, poster: poster, log: log}
 	if ev.Plan.CreateRoot {
-		w.deliverRoot(ctx, job, ev, thread, log)
+		w.deliverRoot(ctx, d, thread)
 		return
 	}
-	w.deliverUpdate(ctx, job, ev, thread, log)
+	w.deliverUpdate(ctx, d, thread)
+}
+
+// delivery is one claimed job on its way to its sink.
+type delivery struct {
+	job    *store.Job
+	ev     *event.Event
+	poster Poster
+	log    *slog.Logger
+}
+
+// skipGoneSink settles a job whose sink or connection was removed: nothing
+// can ever deliver it.
+func (w *Worker) skipGoneSink(ctx context.Context, job *store.Job, log *slog.Logger) {
+	log.Info("sink removed, skipping", "cause", metrics.CauseSinkGone)
+	w.settle(ctx, job, store.Skipped(metrics.CauseSinkGone))
+	w.metrics.Skipped.WithLabelValues(metrics.CauseSinkGone).Inc()
 }
 
 // deliverRoot posts the thread-opening message. An existing mapping means the
@@ -226,7 +264,8 @@ func (w *Worker) process(ctx context.Context, job *store.Job) {
 // never invent a second root (SYSREQ-002/007). The announcement renders from
 // the same board as every later refresh, so early-linked events (a comment
 // that beat the open event) already show on the status line.
-func (w *Worker) deliverRoot(ctx context.Context, job *store.Job, ev *event.Event, thread *store.Thread, log *slog.Logger) {
+func (w *Worker) deliverRoot(ctx context.Context, d delivery, thread *store.Thread) {
+	job, ev, log := d.job, d.ev, d.log
 	if thread != nil {
 		cause := metrics.CauseDuplicateOpen
 		if !thread.Open {
@@ -256,7 +295,7 @@ func (w *Worker) deliverRoot(ctx context.Context, job *store.Job, ev *event.Even
 		return
 	}
 
-	postID, err := w.post(ctx, job.DestChannel, message, "")
+	postID, err := w.post(ctx, d, job.DestChannel, message, "")
 	if err != nil {
 		w.deferOrFail(ctx, job, err, log)
 		return
@@ -265,7 +304,12 @@ func (w *Worker) deliverRoot(ctx context.Context, job *store.Job, ev *event.Even
 	// The post is accepted; recording the mapping is the known at-least-once
 	// window. On failure we leave the row claimed and let the lease reaper
 	// requeue it — a rare duplicate root beats a lost thread mapping.
-	if err := w.store.OpenThread(ctx, ev.MRRef, job.DestChannel, postID, w.now()); err != nil {
+	err = w.store.OpenThread(ctx, ev.MRRef, job.SinkID, job.DestChannel, postID, w.now())
+	if errors.Is(err, store.ErrNotFound) {
+		w.skipGoneSink(ctx, job, log)
+		return
+	}
+	if err != nil {
 		log.Error("root posted but mapping persist failed; leaving for lease reap", "err", err)
 		return
 	}
@@ -278,7 +322,8 @@ func (w *Worker) deliverRoot(ctx context.Context, job *store.Job, ev *event.Even
 // flag proves it already posted — then the root status refresh, whose missing
 // or closed thread skips the refresh rather than failing the notice
 // (SYSREQ-028/029). Only then may CloseAfter retire the mapping.
-func (w *Worker) deliverUpdate(ctx context.Context, job *store.Job, ev *event.Event, thread *store.Thread, log *slog.Logger) {
+func (w *Worker) deliverUpdate(ctx context.Context, d delivery, thread *store.Thread) {
+	job, ev, log := d.job, d.ev, d.log
 	if thread == nil {
 		log.Info("no thread mapping, skipping", "cause", metrics.CauseNoMapping)
 		w.settle(ctx, job, store.Skipped(metrics.CauseNoMapping))
@@ -301,8 +346,8 @@ func (w *Worker) deliverUpdate(ctx context.Context, job *store.Job, ev *event.Ev
 			w.metrics.Parked.WithLabelValues("render_failed").Inc()
 			return
 		}
-		if _, err := w.post(ctx, thread.ChannelID, message, thread.RootPostID); err != nil {
-			if w.parkIfRootGone(ctx, job, ev.MRRef, err, log) {
+		if _, err := w.post(ctx, d, thread.ChannelID, message, thread.RootPostID); err != nil {
+			if w.parkIfRootGone(ctx, d, err) {
 				return
 			}
 			w.deferOrFail(ctx, job, err, log)
@@ -320,7 +365,7 @@ func (w *Worker) deliverUpdate(ctx context.Context, job *store.Job, ev *event.Ev
 
 	// Phase 2: root status refresh.
 	if ev.Plan.Refresh && !job.RootRefreshed {
-		err := w.refreshRoot(ctx, job, ev, thread, log)
+		err := w.refreshRoot(ctx, d, thread)
 		switch {
 		case err == nil:
 			log.Info("root refreshed")
@@ -342,7 +387,7 @@ func (w *Worker) deliverUpdate(ctx context.Context, job *store.Job, ev *event.Ev
 
 	// Mapping retirement after the merge/close notice and final refresh.
 	if ev.Plan.CloseAfter {
-		if err := w.store.CloseThread(ctx, ev.MRRef, w.now()); err != nil {
+		if err := w.store.CloseThread(ctx, ev.MRRef, job.SinkID, w.now()); err != nil {
 			log.Error("closing mapping failed; leaving for lease reap", "err", err)
 			return
 		}
@@ -368,8 +413,9 @@ var (
 
 // refreshRoot PUTs the current board onto the root message. The render is
 // idempotent: retrying against unchanged state sends identical text.
-func (w *Worker) refreshRoot(ctx context.Context, job *store.Job, ev *event.Event, thread *store.Thread, log *slog.Logger) error {
-	board, err := w.board(ctx, ev)
+func (w *Worker) refreshRoot(ctx context.Context, d delivery, thread *store.Thread) error {
+	job, log := d.job, d.log
+	board, err := w.board(ctx, d.ev)
 	if err != nil {
 		return errStoreFault
 	}
@@ -383,8 +429,8 @@ func (w *Worker) refreshRoot(ctx context.Context, job *store.Job, ev *event.Even
 		w.metrics.Parked.WithLabelValues("render_failed").Inc()
 		return errSettledHere
 	}
-	if err := w.updatePost(ctx, thread.RootPostID, message); err != nil {
-		if w.parkIfRootGone(ctx, job, ev.MRRef, err, log) {
+	if err := w.updatePost(ctx, d, thread.RootPostID, message); err != nil {
+		if w.parkIfRootGone(ctx, d, err) {
 			return errSettledHere
 		}
 		return err
@@ -397,21 +443,20 @@ func (w *Worker) refreshRoot(ctx context.Context, job *store.Job, ev *event.Even
 	return nil
 }
 
-// parkIfRootGone applies SYSREQ-026: a root Mattermost reports missing parks
-// the delivery and closes the mapping forever. It reports whether the error
-// was that terminal outcome.
-func (w *Worker) parkIfRootGone(ctx context.Context, job *store.Job, mrRef string, causeErr error, log *slog.Logger) bool {
+// parkIfRootGone applies SYSREQ-026: a root the platform reports missing
+// parks the delivery and closes the mapping in that sink forever. The board
+// and the other sinks' threads stay as they are (SYSREQ-048). It reports
+// whether the error was that terminal outcome.
+func (w *Worker) parkIfRootGone(ctx context.Context, d delivery, causeErr error) bool {
+	job, log := d.job, d.log
 	var gone *mattermost.ThreadGoneError
 	if !errors.As(causeErr, &gone) {
 		return false
 	}
 	log.Warn("thread root deleted, parking and closing mapping")
-	if err := w.store.CloseThread(ctx, mrRef, w.now()); err != nil {
+	if err := w.store.CloseThread(ctx, d.ev.MRRef, job.SinkID, w.now()); err != nil {
 		log.Error("closing mapping failed; leaving for lease reap", "err", err)
 		return true
-	}
-	if err := w.store.CloseState(ctx, mrRef, w.now()); err != nil {
-		log.Error("closing board state failed; leaving for lease reap", "err", err)
 	}
 	w.settle(ctx, job, store.Parked(metrics.CauseThreadGone, job.Attempts+1, causeErr.Error()))
 	w.metrics.Parked.WithLabelValues(metrics.CauseThreadGone).Inc()
@@ -439,12 +484,12 @@ func headerFromEvent(ev *event.Event) *store.State {
 	}
 }
 
-// post performs one Mattermost create attempt with metrics.
-func (w *Worker) post(ctx context.Context, channelID, message, rootID string) (string, error) {
+// post performs one create attempt at the sink's platform, with metrics.
+func (w *Worker) post(ctx context.Context, d delivery, channelID, message, rootID string) (string, error) {
 	start := time.Now()
 	defer func() { w.metrics.MMDuration.Observe(time.Since(start).Seconds()) }()
 
-	postID, err := w.poster.Post(ctx, channelID, message, rootID)
+	postID, err := d.poster.Post(ctx, channelID, message, rootID)
 	if err != nil {
 		w.recordAttemptOutcome(err)
 		return "", err
@@ -454,12 +499,13 @@ func (w *Worker) post(ctx context.Context, channelID, message, rootID string) (s
 	return postID, nil
 }
 
-// updatePost performs one Mattermost update attempt with metrics.
-func (w *Worker) updatePost(ctx context.Context, postID, message string) error {
+// updatePost performs one update attempt at the sink's platform, with
+// metrics.
+func (w *Worker) updatePost(ctx context.Context, d delivery, postID, message string) error {
 	start := time.Now()
 	defer func() { w.metrics.MMDuration.Observe(time.Since(start).Seconds()) }()
 
-	if err := w.poster.Update(ctx, postID, message); err != nil {
+	if err := d.poster.Update(ctx, postID, message); err != nil {
 		w.recordAttemptOutcome(err)
 		return err
 	}

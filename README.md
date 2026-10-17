@@ -24,23 +24,19 @@ pushes, merge and close.
 
 ## Getting started
 
-1. [Create a Mattermost bot account](docs/integrations/mattermost.md) and
-   add it to every channel it should post to.
-2. [Install](docs/install.md) PatchCaster next to a PostgreSQL 18 database,
-   with a [routing table](docs/configuration.md#routing-table) naming the
-   channel for each project.
-3. [Add the GitLab webhook](docs/integrations/gitlab.md) and enable its
-   triggers.
+1. [Create a Mattermost bot account](docs/integrations/mattermost.md) and add it to every channel it should post to.
+2. [Install](docs/install.md) PatchCaster next to a PostgreSQL 18 database, and run the [first setup](docs/operations.md#first-setup) to connect your identity provider.
+3. [Connect GitLab and Mattermost](docs/operations.md#connections), and set up the [teams and routes](docs/operations.md#teams-and-routes) that send each project's merge requests to its channels.
+4. [Add the GitLab webhook](docs/integrations/gitlab.md) at the GitLab connection's address, and enable its triggers.
 
-Just want to watch it work? The [local demo](demo/README.md) runs without
-GitLab, Mattermost or network access.
+The [local demo](demo/README.md) does not work with the stored configuration yet.
 
 ## Documentation
 
 | Guide | Covers |
 | --- | --- |
 | [Install](docs/install.md) | prerequisites, Helm chart, container image, binaries, verifying releases |
-| [Configuration](docs/configuration.md) | every flag and environment variable, the routing table |
+| [Configuration](docs/configuration.md) | every flag and environment variable |
 | [GitLab](docs/integrations/gitlab.md) | webhook, signing token, required triggers |
 | [Mattermost](docs/integrations/mattermost.md) | bot account, channel membership, channel ids |
 | [Operations](docs/operations.md) | probes, metrics, drain, upgrades, delivery guarantees |

@@ -12,8 +12,6 @@ then point GitLab at it.
   The bot must be a member of every channel it posts to.
 * **GitLab 19.0 or later**, able to reach PatchCaster with
   [signed webhooks](integrations/gitlab.md).
-* **A routing table** naming the channel for each project
-  ([format](configuration.md#routing-table)).
 * **An OpenID Connect identity provider**, such as Entra ID, Keycloak or Okta, at which PatchCaster is registered as a client. People log in to the management interface through it.
 
 ## Kubernetes: Helm chart
@@ -38,12 +36,7 @@ every variable:
 ```sh
 podman run -d --name patchcaster \
   -p 8080:8080 -p 8081:8081 -p 9090:9090 \
-  -v "$PWD/routing.yaml:/etc/patchcaster/routing.yaml:ro" \
-  -e PATCHCASTER_ROUTING_FILE=/etc/patchcaster/routing.yaml \
   -e PATCHCASTER_DATABASE_URL='postgres://patchcaster:…@db.example.com:5432/patchcaster?sslmode=require' \
-  -e PATCHCASTER_MATTERMOST_URL=https://mattermost.example.com \
-  -e PATCHCASTER_MATTERMOST_TOKEN=… \
-  -e PATCHCASTER_SIGNING_SECRETS=… \
   -e PATCHCASTER_ENCRYPTION_KEY=… \
   -e PATCHCASTER_INTERFACE_URL=https://patchcaster.example.com \
   -e PATCHCASTER_PUBLIC_URL=https://hooks.patchcaster.example.com \
@@ -90,11 +83,14 @@ docker buildx imagetools inspect ghcr.io/patchcaster-app/patchcaster:vX.Y.Z \
 
 ## First start
 
-On startup PatchCaster loads the routing table, connects to PostgreSQL,
-applies any pending migrations, then listens. Once `GET :9090/readyz`
-answers 200, [add the GitLab webhook](integrations/gitlab.md) and open a
-merge request in a routed project; its thread should appear in the mapped
-channel. Then run the [first setup](operations.md#first-setup) to connect the identity provider and become the first administrator.
+On startup PatchCaster connects to PostgreSQL, applies any pending migrations, then listens. Once `GET :9090/readyz` answers 200:
+
+1. Run the [first setup](operations.md#first-setup) to connect the identity provider and become the first administrator.
+2. [Connect](operations.md#connections) GitLab and Mattermost.
+3. Set up a [team](operations.md#teams-and-routes) with a source, a sink and a route between them.
+4. [Add the GitLab webhook](integrations/gitlab.md) at the GitLab connection's `webhook_url`.
+
+Then open a merge request in a routed project. Its thread should appear in the routed channel.
 
 From here on, [operations](operations.md) covers probes, metrics, shutdown,
 upgrades and what to do with parked messages.

@@ -71,24 +71,24 @@ func TestPostgres_CommentCountIsExactlyOnce(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Millisecond)
 
 	// a human comment creates counts once and enqueues the notice
-	res, err := st.Accept(ctx, noteEvent("msg-c", "create", false), "chan-1", now)
+	res, err := acceptAtTestSink(ctx, st, noteEvent("msg-c", "create", false), now)
 	require.NoError(t, err)
 	require.True(t, res.Accepted)
-	require.True(t, res.Enqueued)
+	require.Equal(t, 1, res.Enqueued)
 
 	// the webhook replay changes nothing at all (SYSREQ-027)
-	res, err = st.Accept(ctx, noteEvent("msg-c", "create", false), "chan-1", now)
+	res, err = acceptAtTestSink(ctx, st, noteEvent("msg-c", "create", false), now)
 	require.NoError(t, err)
 	assert.False(t, res.Accepted)
 
 	// comment edits and system notes move no count and post nothing
-	res, err = st.Accept(ctx, noteEvent("msg-c2", "update", false), "chan-1", now)
+	res, err = acceptAtTestSink(ctx, st, noteEvent("msg-c2", "update", false), now)
 	require.NoError(t, err)
 	assert.True(t, res.Accepted)
-	assert.False(t, res.Enqueued)
-	res, err = st.Accept(ctx, noteEvent("msg-c3", "create", true), "chan-1", now)
+	assert.Zero(t, res.Enqueued)
+	res, err = acceptAtTestSink(ctx, st, noteEvent("msg-c3", "create", true), now)
 	require.NoError(t, err)
-	assert.False(t, res.Enqueued, "system notes never notify")
+	assert.Zero(t, res.Enqueued, "system notes never notify")
 
 	board, err := st.State(ctx, "1234")
 	require.NoError(t, err)
@@ -100,26 +100,26 @@ func TestPostgres_EditsAndSilentDeliveries(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now().UTC().Truncate(time.Millisecond)
 
-	_, err := st.Accept(ctx, mrEvent("msg-e0", "open", nil), "chan-1", now)
+	_, err := acceptAtTestSink(ctx, st, mrEvent("msg-e0", "open", nil), now)
 	require.NoError(t, err)
 
 	// a description change is one edit and silently refreshes (no notice)
-	res, err := st.Accept(ctx, mrEvent("msg-e1", "update",
-		func(ev *event.Event) { ev.EditChanged = true }), "chan-1", now)
+	res, err := acceptAtTestSink(ctx, st, mrEvent("msg-e1", "update",
+		func(ev *event.Event) { ev.EditChanged = true }), now)
 	require.NoError(t, err)
-	require.True(t, res.Enqueued, "a moved board refreshes the root")
+	require.Equal(t, 1, res.Enqueued, "a moved board refreshes the root")
 
 	// a label-only update moves no observable field: accepted, unqueued
-	res, err = st.Accept(ctx, mrEvent("msg-e2", "update", nil), "chan-1", now)
+	res, err = acceptAtTestSink(ctx, st, mrEvent("msg-e2", "update", nil), now)
 	require.NoError(t, err)
 	assert.True(t, res.Accepted, "the seen mark still commits")
-	assert.False(t, res.Enqueued)
+	assert.Zero(t, res.Enqueued)
 
 	// a title change moves the rendered header: silent refresh (SYSREQ-028)
-	res, err = st.Accept(ctx, mrEvent("msg-e3", "update",
-		func(ev *event.Event) { ev.Title = "Renamed"; ev.TitleChanged = true }), "chan-1", now)
+	res, err = acceptAtTestSink(ctx, st, mrEvent("msg-e3", "update",
+		func(ev *event.Event) { ev.Title = "Renamed"; ev.TitleChanged = true }), now)
 	require.NoError(t, err)
-	assert.True(t, res.Enqueued)
+	assert.Equal(t, 1, res.Enqueued)
 
 	board, err := st.State(ctx, "1234")
 	require.NoError(t, err)
@@ -132,18 +132,18 @@ func TestPostgres_PipelineStatusIsConditionalWrite(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now().UTC().Truncate(time.Millisecond)
 
-	res, err := st.Accept(ctx, pipelineEvent("msg-p1", "running"), "chan-1", now)
+	res, err := acceptAtTestSink(ctx, st, pipelineEvent("msg-p1", "running"), now)
 	require.NoError(t, err)
-	assert.True(t, res.Enqueued, "first linked event moves the board")
+	assert.Equal(t, 1, res.Enqueued, "first linked event moves the board")
 
-	res, err = st.Accept(ctx, pipelineEvent("msg-p2", "running"), "chan-1", now)
+	res, err = acceptAtTestSink(ctx, st, pipelineEvent("msg-p2", "running"), now)
 	require.NoError(t, err)
 	assert.True(t, res.Accepted)
-	assert.False(t, res.Enqueued, "the same status changes nothing: no refresh churn")
+	assert.Zero(t, res.Enqueued, "the same status changes nothing: no refresh churn")
 
-	res, err = st.Accept(ctx, pipelineEvent("msg-p3", "success"), "chan-1", now)
+	res, err = acceptAtTestSink(ctx, st, pipelineEvent("msg-p3", "success"), now)
 	require.NoError(t, err)
-	require.True(t, res.Enqueued)
+	require.Equal(t, 1, res.Enqueued)
 
 	board, err := st.State(ctx, "1234")
 	require.NoError(t, err)
@@ -155,7 +155,7 @@ func TestPostgres_PushAttributionAndCountAttach(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now().UTC().Truncate(time.Millisecond)
 
-	_, err := st.Accept(ctx, mrEvent("msg-a0", "open", nil), "chan-1", now)
+	_, err := acceptAtTestSink(ctx, st, mrEvent("msg-a0", "open", nil), now)
 	require.NoError(t, err)
 	seed, err := st.ClaimDue(ctx, now, time.Minute) // drain the announcement job
 	require.NoError(t, err)
@@ -163,17 +163,17 @@ func TestPostgres_PushAttributionAndCountAttach(t *testing.T) {
 	require.NoError(t, st.Settle(ctx, seed.ID, now, store.Sent()))
 
 	// the push hook attributes its count to the open request, posts nothing
-	res, err := st.Accept(ctx, pushEvent("msg-a1", 42, "feat", 3), "chan-1", now)
+	res, err := acceptAtTestSink(ctx, st, pushEvent("msg-a1", 42, "feat", 3), now)
 	require.NoError(t, err)
 	require.True(t, res.Accepted)
-	assert.False(t, res.Enqueued, "pushes never post (SYSREQ-030)")
+	assert.Zero(t, res.Enqueued, "pushes never post (SYSREQ-030)")
 	assert.Equal(t, 1, res.Attributed)
 
 	// the update-with-push accepted afterwards carries the count
-	res, err = st.Accept(ctx, mrEvent("msg-a2", "update",
-		func(ev *event.Event) { ev.Pushed = true; ev.EditChanged = true }), "chan-1", now)
+	res, err = acceptAtTestSink(ctx, st, mrEvent("msg-a2", "update",
+		func(ev *event.Event) { ev.Pushed = true; ev.EditChanged = true }), now)
 	require.NoError(t, err)
-	require.True(t, res.Enqueued)
+	require.Equal(t, 1, res.Enqueued)
 	job, err := st.ClaimDue(ctx, now, time.Minute)
 	require.NoError(t, err)
 	require.NotNil(t, job)
@@ -184,14 +184,14 @@ func TestPostgres_PushAttributionAndCountAttach(t *testing.T) {
 	assert.Equal(t, plan.Push, got.Plan.Notice)
 
 	// a push nobody tracks is a miss, not an error (fork pushes)
-	res, err = st.Accept(ctx, pushEvent("msg-a3", 42, "other-branch", 9), "chan-1", now)
+	res, err = acceptAtTestSink(ctx, st, pushEvent("msg-a3", 42, "other-branch", 9), now)
 	require.NoError(t, err)
 	assert.True(t, res.Accepted)
 	assert.Equal(t, 0, res.Attributed)
 
 	// closing the request stops attribution: late pushes are misses
 	require.NoError(t, st.CloseState(ctx, "1234", now))
-	res, err = st.Accept(ctx, pushEvent("msg-a4", 42, "feat", 5), "chan-1", now)
+	res, err = acceptAtTestSink(ctx, st, pushEvent("msg-a4", 42, "feat", 5), now)
 	require.NoError(t, err)
 	assert.Equal(t, 0, res.Attributed, "closed merge requests take no pushes")
 }
@@ -201,7 +201,7 @@ func TestPostgres_PushBeforeUpdateOmitsCount(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now().UTC().Truncate(time.Millisecond)
 
-	_, err := st.Accept(ctx, mrEvent("msg-r0", "open", nil), "chan-1", now)
+	_, err := acceptAtTestSink(ctx, st, mrEvent("msg-r0", "open", nil), now)
 	require.NoError(t, err)
 	seed, err := st.ClaimDue(ctx, now, time.Minute) // drain the announcement job
 	require.NoError(t, err)
@@ -209,10 +209,10 @@ func TestPostgres_PushBeforeUpdateOmitsCount(t *testing.T) {
 	require.NoError(t, st.Settle(ctx, seed.ID, now, store.Sent()))
 
 	// the update-with-push lands before its push hook: honest fallback text
-	res, err := st.Accept(ctx, mrEvent("msg-r1", "update",
-		func(ev *event.Event) { ev.Pushed = true; ev.EditChanged = true }), "chan-1", now)
+	res, err := acceptAtTestSink(ctx, st, mrEvent("msg-r1", "update",
+		func(ev *event.Event) { ev.Pushed = true; ev.EditChanged = true }), now)
 	require.NoError(t, err)
-	require.True(t, res.Enqueued)
+	require.Equal(t, 1, res.Enqueued)
 	job, err := st.ClaimDue(ctx, now, time.Minute)
 	require.NoError(t, err)
 	require.NotNil(t, job, "the push notice itself must still deliver")
@@ -226,16 +226,16 @@ func TestPostgres_ReviewerTallyIsRecomputed(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now().UTC().Truncate(time.Millisecond)
 
-	_, err := st.Accept(ctx, mrEvent("msg-v0", "update",
-		func(ev *event.Event) { ev.ReviewersDone, ev.ReviewersRequired = 2, 3 }), "chan-1", now)
+	_, err := acceptAtTestSink(ctx, st, mrEvent("msg-v0", "update",
+		func(ev *event.Event) { ev.ReviewersDone, ev.ReviewersRequired = 2, 3 }), now)
 	require.NoError(t, err)
 
 	// an approval-reset push recomputes downward — never a decrement drift.
 	// Real unapproved deliveries carry the full payload: done reset, policy
 	// unchanged.
-	_, err = st.Accept(ctx, mrEvent("msg-v1", "unapproved", func(ev *event.Event) {
+	_, err = acceptAtTestSink(ctx, st, mrEvent("msg-v1", "unapproved", func(ev *event.Event) {
 		ev.ReviewersDone, ev.ReviewersRequired = 0, 3
-	}), "chan-1", now)
+	}), now)
 	require.NoError(t, err)
 
 	board, err := st.State(ctx, "1234")
@@ -249,7 +249,7 @@ func TestPostgres_PhaseFlagsSurviveReclaim(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now().UTC().Truncate(time.Millisecond)
 
-	_, err := st.Accept(ctx, mrEvent("msg-f1", "open", nil), "chan-1", now)
+	_, err := acceptAtTestSink(ctx, st, mrEvent("msg-f1", "open", nil), now)
 	require.NoError(t, err)
 	job, err := st.ClaimDue(ctx, now, time.Minute)
 	require.NoError(t, err)

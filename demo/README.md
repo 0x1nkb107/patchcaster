@@ -1,5 +1,7 @@
 # Local demo
 
+> **Not working at the moment.** PatchCaster now reads its connections and routes from the database, which administrators fill through the management API after logging in through an identity provider. The demo has no identity provider yet, and its stub Mattermost does not answer the account and channel checks. Until the demo catches up, the steps below describe how it worked before.
+
 Watch the live status board without GitLab, Mattermost, or the internet:
 a stub Mattermost prints every post, and an event simulator delivers signed
 GitLab webhooks. All defaults are mutual — copy the commands, they work.

@@ -120,7 +120,7 @@ func TestARevokedOrExpiredTokenIsRefused(t *testing.T) {
 	// arrange
 	ctx := context.Background()
 	db := freshDatabase(t)
-	svc := startService(t, serviceConfig{mattermostURL: newFakeMattermost(t).url()})
+	svc := startService(t, serviceConfig{})
 	provider := newFakeProvider(t)
 	admin := setUp(t, svc, provider, setupRequest(bootstrap(t, svc), provider), ada)
 	revoked := createToken(t, admin, "revoked")

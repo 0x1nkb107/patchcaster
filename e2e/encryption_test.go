@@ -44,11 +44,10 @@ func (s *service) stop(t *testing.T) {
 func TestAnotherEncryptionKeyIsRefused(t *testing.T) {
 	// arrange
 	freshDatabase(t)
-	mattermost := newFakeMattermost(t)
-	startService(t, serviceConfig{mattermostURL: mattermost.url()}).stop(t)
+	startService(t, serviceConfig{}).stop(t)
 
 	// act
-	svc := launch(t, serviceConfig{mattermostURL: mattermost.url(), encryptionKey: rotatedKey})
+	svc := launch(t, serviceConfig{encryptionKey: rotatedKey})
 	code := svc.awaitExit(t, 15*time.Second)
 
 	// assert
@@ -64,12 +63,10 @@ func TestAnotherEncryptionKeyIsRefused(t *testing.T) {
 func TestTheEncryptionKeyRotates(t *testing.T) {
 	// arrange
 	freshDatabase(t)
-	mattermost := newFakeMattermost(t)
-	startService(t, serviceConfig{mattermostURL: mattermost.url()}).stop(t)
+	startService(t, serviceConfig{}).stop(t)
 
 	// act
 	during := startService(t, serviceConfig{
-		mattermostURL: mattermost.url(),
 		encryptionKey: rotatedKey,
 		previousKeys:  []string{suiteKey},
 	})
@@ -78,7 +75,7 @@ func TestTheEncryptionKeyRotates(t *testing.T) {
 		"--database-url", databaseURL,
 		"--encryption-key", rotatedKey,
 		"--previous-encryption-key", suiteKey)
-	after := startService(t, serviceConfig{mattermostURL: mattermost.url(), encryptionKey: rotatedKey})
+	after := startService(t, serviceConfig{encryptionKey: rotatedKey})
 
 	// assert
 	assert.Contains(t, during.logs.String(), "run patchcaster secrets reseal")

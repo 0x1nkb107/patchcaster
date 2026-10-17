@@ -23,6 +23,7 @@ WHERE id = (
             SELECT 1
             FROM outbox AS earlier
             WHERE earlier.mr_ref = candidate.mr_ref
+                AND earlier.sink_id = candidate.sink_id
                 AND earlier.id < candidate.id
                 AND earlier.state IN ('pending', 'claimed')
         )
@@ -30,8 +31,8 @@ WHERE id = (
     FOR UPDATE SKIP LOCKED
     LIMIT 1
 )
-RETURNING id, mr_ref, action, dest_channel, payload, attempts,
-    notice_posted, root_refreshed
+RETURNING id, mr_ref, sink_id, connection_id, action, dest_channel, payload,
+    attempts, notice_posted, root_refreshed
 `
 
 type ClaimDueParams struct {
@@ -42,6 +43,8 @@ type ClaimDueParams struct {
 type ClaimDueRow struct {
 	ID            int64
 	MrRef         string
+	SinkID        int64
+	ConnectionID  int64
 	Action        string
 	DestChannel   string
 	Payload       json.RawMessage
@@ -51,9 +54,10 @@ type ClaimDueRow struct {
 }
 
 // ClaimDue claims the oldest due row under a lease. A row waits while an
-// older row of its merge request is still pending or claimed: a retrying or
-// in-flight delivery holds back the rest of its merge request, so replies
-// never overtake their root (SYSARCH-002). Parked and skipped rows are
+// older row of its merge request and sink is still pending or claimed: a
+// retrying or in-flight delivery holds back the rest of its thread, so
+// replies never overtake their root (SYSARCH-002). Other sinks of the same
+// merge request never wait for it (SYSREQ-048). Parked and skipped rows are
 // settled and hold nothing back.
 func (q *Queries) ClaimDue(ctx context.Context, arg ClaimDueParams) (ClaimDueRow, error) {
 	row := q.db.QueryRowContext(ctx, claimDue, arg.ClaimedAt, arg.LeaseExpiry)
@@ -61,6 +65,8 @@ func (q *Queries) ClaimDue(ctx context.Context, arg ClaimDueParams) (ClaimDueRow
 	err := row.Scan(
 		&i.ID,
 		&i.MrRef,
+		&i.SinkID,
+		&i.ConnectionID,
 		&i.Action,
 		&i.DestChannel,
 		&i.Payload,
@@ -72,13 +78,15 @@ func (q *Queries) ClaimDue(ctx context.Context, arg ClaimDueParams) (ClaimDueRow
 }
 
 const insertOutbox = `-- name: InsertOutbox :exec
-INSERT INTO outbox (mr_ref, action, dest_channel, payload, state, attempts,
-    next_attempt_at, created_at, updated_at)
-VALUES ($1, $2, $3, $4, 'pending', 0, $5, $5, $5)
+INSERT INTO outbox (mr_ref, sink_id, connection_id, action, dest_channel, payload,
+    state, attempts, next_attempt_at, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, 'pending', 0, $7, $7, $7)
 `
 
 type InsertOutboxParams struct {
 	MrRef         string
+	SinkID        int64
+	ConnectionID  int64
 	Action        string
 	DestChannel   string
 	Payload       json.RawMessage
@@ -89,6 +97,8 @@ type InsertOutboxParams struct {
 func (q *Queries) InsertOutbox(ctx context.Context, arg InsertOutboxParams) error {
 	_, err := q.db.ExecContext(ctx, insertOutbox,
 		arg.MrRef,
+		arg.SinkID,
+		arg.ConnectionID,
 		arg.Action,
 		arg.DestChannel,
 		arg.Payload,

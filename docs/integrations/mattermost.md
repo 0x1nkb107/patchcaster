@@ -17,13 +17,9 @@ used: each is fixed to one channel and cannot thread replies reliably.
    mmctl token generate patchcaster "PatchCaster relay"
    ```
 
-2. Give the token to PatchCaster as `--mattermost-token`
-   (`PATCHCASTER_MATTERMOST_TOKEN`), and the server's site URL as
-   `--mattermost-url`. The token only ever travels in the `Authorization`
-   header.
+2. Create a Mattermost [connection](../operations.md#connections) with the token and the server's site URL. PatchCaster checks the token at once and shows the bot's account. The token only ever travels in the `Authorization` header.
 
-3. Add the bot to the team and to every channel the
-   [routing table](../configuration.md#routing-table) names:
+3. Add the bot to the team and to every channel a [sink](../operations.md#teams-and-routes) names. PatchCaster checks the membership when it creates the sink:
 
    ```sh
    mmctl team users add <team> patchcaster
@@ -32,12 +28,10 @@ used: each is fixed to one channel and cannot thread replies reliably.
 
 ## Channel ids
 
-The routing table wants channel **ids**, not the names shown in channel
-URLs. With the bot's token, the API resolves a team and channel name to its
-id:
+A sink wants the channel's **id**, not the name shown in channel URLs. With the bot's token, the API resolves a team and channel name to its id:
 
 ```sh
-curl -s -H "Authorization: Bearer $PATCHCASTER_MATTERMOST_TOKEN" \
+curl -s -H "Authorization: Bearer $BOT_TOKEN" \
   https://mattermost.example.com/api/v4/teams/name/<team>/channels/name/<channel> \
   | jq -r .id
 ```

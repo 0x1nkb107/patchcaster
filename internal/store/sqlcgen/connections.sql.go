@@ -437,6 +437,40 @@ func (q *Queries) SigningTokenReplace(ctx context.Context, arg SigningTokenRepla
 	return result.RowsAffected()
 }
 
+const signingTokensOf = `-- name: SigningTokensOf :many
+SELECT id, token FROM signing_tokens WHERE connection_id = $1 ORDER BY id
+`
+
+type SigningTokensOfRow struct {
+	ID    int64
+	Token []byte
+}
+
+// SigningTokensOf lists the sealed signing tokens of one connection, for
+// verifying its webhooks.
+func (q *Queries) SigningTokensOf(ctx context.Context, connectionID int64) ([]SigningTokensOfRow, error) {
+	rows, err := q.db.QueryContext(ctx, signingTokensOf, connectionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SigningTokensOfRow
+	for rows.Next() {
+		var i SigningTokensOfRow
+		if err := rows.Scan(&i.ID, &i.Token); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const signingTokensSealed = `-- name: SigningTokensSealed :many
 SELECT id, token FROM signing_tokens ORDER BY id
 `

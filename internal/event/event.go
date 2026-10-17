@@ -70,8 +70,9 @@ type Event struct {
 	PushCommits       int    `json:"push_commits,omitempty"` // total_commits_count
 
 	// Filled by ingest when enqueueing (not by the wire):
-	PushCount *int  `json:"push_count,omitempty"` // attributed commit count for a push notice (SYSREQ-030)
-	Plan      *Plan `json:"plan,omitempty"`       // delivery plan decided at acceptance (ADR-014)
+	ConnectionID int64 `json:"connection_id,omitempty"` // forge connection the delivery came through
+	PushCount    *int  `json:"push_count,omitempty"`    // attributed commit count for a push notice (SYSREQ-030)
+	Plan         *Plan `json:"plan,omitempty"`          // delivery plan decided at acceptance, for one sink (ADR-014)
 }
 
 // Plan is the delivery instruction set decided at acceptance, so the worker

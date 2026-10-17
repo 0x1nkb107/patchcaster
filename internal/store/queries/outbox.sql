@@ -1,8 +1,8 @@
 -- name: InsertOutbox :exec
 -- InsertOutbox enqueues a delivery as pending and due at once (SYSREQ-017).
-INSERT INTO outbox (mr_ref, action, dest_channel, payload, state, attempts,
-    next_attempt_at, created_at, updated_at)
-VALUES ($1, $2, $3, $4, 'pending', 0, $5, $5, $5);
+INSERT INTO outbox (mr_ref, sink_id, connection_id, action, dest_channel, payload,
+    state, attempts, next_attempt_at, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, 'pending', 0, $7, $7, $7);
 
 -- name: NotifyOutbox :exec
 -- NotifyOutbox wakes listening workers once the enqueuing transaction
@@ -11,9 +11,10 @@ SELECT pg_notify(sqlc.arg(channel)::text, '');
 
 -- name: ClaimDue :one
 -- ClaimDue claims the oldest due row under a lease. A row waits while an
--- older row of its merge request is still pending or claimed: a retrying or
--- in-flight delivery holds back the rest of its merge request, so replies
--- never overtake their root (SYSARCH-002). Parked and skipped rows are
+-- older row of its merge request and sink is still pending or claimed: a
+-- retrying or in-flight delivery holds back the rest of its thread, so
+-- replies never overtake their root (SYSARCH-002). Other sinks of the same
+-- merge request never wait for it (SYSREQ-048). Parked and skipped rows are
 -- settled and hold nothing back.
 UPDATE outbox
 SET claimed_at = $1, lease_expiry = $2, state = 'claimed', updated_at = $1
@@ -25,6 +26,7 @@ WHERE id = (
             SELECT 1
             FROM outbox AS earlier
             WHERE earlier.mr_ref = candidate.mr_ref
+                AND earlier.sink_id = candidate.sink_id
                 AND earlier.id < candidate.id
                 AND earlier.state IN ('pending', 'claimed')
         )
@@ -32,8 +34,8 @@ WHERE id = (
     FOR UPDATE SKIP LOCKED
     LIMIT 1
 )
-RETURNING id, mr_ref, action, dest_channel, payload, attempts,
-    notice_posted, root_refreshed;
+RETURNING id, mr_ref, sink_id, connection_id, action, dest_channel, payload,
+    attempts, notice_posted, root_refreshed;
 
 -- name: ReapLeases :exec
 -- ReapLeases returns the rows of expired claims to the pending pool.

@@ -77,6 +77,20 @@ func (f *fakePoster) Update(_ context.Context, postID, message string) error {
 	return nil
 }
 
+// fakePosters hands out the one fake poster for every connection, or
+// ErrSinkGone once the connection is removed.
+type fakePosters struct {
+	poster *fakePoster
+	gone   bool
+}
+
+func (f *fakePosters) Poster(context.Context, int64) (Poster, error) {
+	if f.gone {
+		return nil, ErrSinkGone
+	}
+	return f.poster, nil
+}
+
 type settleRec struct {
 	jobID int64
 	s     store.Settlement
@@ -94,6 +108,7 @@ type fakeStore struct {
 	stateClosed []string
 	noticeFlags []int64
 	rootFlags   []int64
+	sinkGone    bool          // the sink was removed after the job was queued
 	settledCh   chan struct{} // pinged on every settle when non-nil
 	idleCh      chan struct{} // pinged when a claim finds nothing, when non-nil
 }
@@ -124,13 +139,17 @@ func (f *fakeStore) Settle(_ context.Context, jobID int64, _ time.Time, s store.
 	return nil
 }
 
-func (f *fakeStore) Thread(context.Context, string) (*store.Thread, error) {
+func (f *fakeStore) Thread(context.Context, string, int64) (*store.Thread, error) {
 	return f.thread, f.errThread
 }
 
 // OpenThread mirrors Postgres behavior: after a root is mapped, later claims
-// in the same test run must observe the mapping.
-func (f *fakeStore) OpenThread(_ context.Context, mrRef, channelID, rootPostID string, _ time.Time) error {
+// in the same test run must observe the mapping. A removed sink takes no
+// mapping.
+func (f *fakeStore) OpenThread(_ context.Context, mrRef string, _ int64, channelID, rootPostID string, _ time.Time) error {
+	if f.sinkGone {
+		return store.ErrNotFound
+	}
 	f.opened = append(f.opened, mrRef+"|"+channelID+"|"+rootPostID)
 	if f.thread == nil {
 		f.thread = &store.Thread{ChannelID: channelID, RootPostID: rootPostID, Open: true}
@@ -138,7 +157,7 @@ func (f *fakeStore) OpenThread(_ context.Context, mrRef, channelID, rootPostID s
 	return nil
 }
 
-func (f *fakeStore) CloseThread(_ context.Context, mrRef string, _ time.Time) error {
+func (f *fakeStore) CloseThread(_ context.Context, mrRef string, _ int64, _ time.Time) error {
 	f.closed = append(f.closed, mrRef)
 	if f.thread != nil {
 		f.thread.Open = false
@@ -192,10 +211,11 @@ func queuedJob(id int64, attempts int, dest string, ev *event.Event) *store.Job 
 }
 
 type harness struct {
-	w  *Worker
-	fs *fakeStore
-	fp *fakePoster
-	m  *metrics.Metrics
+	w       *Worker
+	fs      *fakeStore
+	fp      *fakePoster
+	posters *fakePosters
+	m       *metrics.Metrics
 }
 
 func newHarness(t *testing.T) *harness {
@@ -203,7 +223,8 @@ func newHarness(t *testing.T) *harness {
 	r, err := NewRenderer()
 	require.NoError(t, err)
 	h := &harness{fs: &fakeStore{}, fp: &fakePoster{}, m: metrics.New()}
-	h.w = NewWorker(h.fs, h.fp, r, h.m, slog.New(slog.DiscardHandler),
+	h.posters = &fakePosters{poster: h.fp}
+	h.w = NewWorker(h.fs, h.posters, r, h.m, slog.New(slog.DiscardHandler),
 		Config{Poll: 10 * time.Millisecond, Lease: time.Minute},
 		func() time.Time { return workerNow })
 	return h
@@ -817,4 +838,33 @@ func TestWorker_DeletedRootOnRefreshParksAndCloses(t *testing.T) {
 	assert.Equal(t, store.SettlementParked, h.fs.settles[0].s.Kind)
 	assert.Equal(t, metrics.CauseThreadGone, h.fs.settles[0].s.Reason)
 	assert.Equal(t, []string{"987"}, h.fs.closed)
+	assert.Empty(t, h.fs.stateClosed, "the board stays open for the other sinks (SYSREQ-048)")
+}
+
+func TestWorker_RemovedSinkSkips(t *testing.T) {
+	tests := []struct {
+		name   string
+		remove func(h *harness)
+		posts  int
+	}{
+		{"the connection is gone", func(h *harness) { h.posters.gone = true }, 0},
+		{"the sink went while its root was posted", func(h *harness) { h.fs.sinkGone = true }, 1},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// arrange
+			h := newHarness(t)
+			tc.remove(h)
+
+			// act
+			h.w.process(context.Background(), openJob(0))
+
+			// assert
+			assert.Len(t, h.fp.calls, tc.posts)
+			require.Len(t, h.fs.settles, 1)
+			assert.Equal(t, store.SettlementSkipped, h.fs.settles[0].s.Kind)
+			assert.Equal(t, metrics.CauseSinkGone, h.fs.settles[0].s.Reason)
+			assert.Equal(t, 1.0, testutil.ToFloat64(h.m.Skipped.WithLabelValues(metrics.CauseSinkGone)))
+		})
+	}
 }

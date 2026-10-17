@@ -3,8 +3,8 @@
 -- The first delivery that names the merge request creates it, even a note or
 -- pipeline delivery that arrives before the merge request event
 -- (SYSREQ-027).
-INSERT INTO mr_state (mr_ref, updated_at)
-VALUES ($1, $2)
+INSERT INTO mr_state (mr_ref, connection_id, updated_at)
+VALUES ($1, $2, $3)
 ON CONFLICT (mr_ref) DO NOTHING;
 
 -- name: StateGet :one
@@ -50,10 +50,12 @@ WHERE mr_ref = $1;
 
 -- name: StateAttributePush :execrows
 -- StateAttributePush gives a push's commit count to the open merge requests
--- of the pushed project and branch (SYSREQ-030).
+-- of the pushed project and branch, on the connection the push came from
+-- (SYSREQ-030).
 UPDATE mr_state
-SET last_push_count = $3, updated_at = $4
-WHERE open AND source_project_id = $1 AND source_branch = $2;
+SET last_push_count = sqlc.arg(last_push_count), updated_at = sqlc.arg(updated_at)
+WHERE open AND connection_id = sqlc.arg(connection_id)
+    AND source_project_id = sqlc.arg(source_project_id) AND source_branch = sqlc.arg(source_branch);
 
 -- name: StateClose :exec
 -- StateClose marks the board of a merged or closed merge request.

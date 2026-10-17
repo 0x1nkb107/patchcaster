@@ -17,7 +17,7 @@ import (
 func TestTheManagementAPIDescribesTheInstance(t *testing.T) {
 	// arrange
 	freshDatabase(t)
-	svc := startService(t, serviceConfig{mattermostURL: newFakeMattermost(t).url()})
+	svc := startService(t, serviceConfig{})
 	want, err := os.ReadFile("../internal/api/openapi-v1.yaml")
 	require.NoError(t, err)
 
@@ -41,7 +41,7 @@ func TestTheManagementAPIDescribesTheInstance(t *testing.T) {
 func TestEachListenerServesOnlyItsOwnPaths(t *testing.T) {
 	// arrange
 	freshDatabase(t)
-	svc := startService(t, serviceConfig{mattermostURL: newFakeMattermost(t).url()})
+	svc := startService(t, serviceConfig{})
 	webhookURL := "http://" + svc.publicAddr
 
 	tests := []struct {

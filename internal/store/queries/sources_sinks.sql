@@ -75,3 +75,18 @@ WHERE id = sqlc.arg(id) AND version = sqlc.arg(version);
 -- SinkDelete removes a sink at the version the caller read, with its team
 -- assignments. A sink a route uses cannot go.
 DELETE FROM sinks WHERE id = $1 AND version = $2;
+
+-- name: Destinations :many
+-- Destinations lists the routes an event of a forge connection reaches:
+-- those of every source of the connection whose scope holds the event's
+-- repository, with the sink each route delivers to (SYSREQ-044,
+-- SYSREQ-046). Paths match exactly, and a group holds everything below it.
+SELECT r.sink_id, k.connection_id AS sink_connection_id, k.channel_id, r.muted_replies
+FROM sources s
+JOIN routes r ON r.source_id = s.id
+JOIN sinks k ON k.id = r.sink_id
+WHERE s.connection_id = sqlc.arg(connection_id)
+  AND (s.scope_kind = 'instance'
+       OR (s.scope_kind = 'group' AND starts_with(sqlc.arg(repository)::text, s.scope_path || '/'))
+       OR (s.scope_kind = 'repository' AND s.scope_path = sqlc.arg(repository)::text))
+ORDER BY r.sink_id, r.id;

@@ -60,25 +60,29 @@ func (q *Queries) StateApplyMR(ctx context.Context, arg StateApplyMRParams) erro
 
 const stateAttributePush = `-- name: StateAttributePush :execrows
 UPDATE mr_state
-SET last_push_count = $3, updated_at = $4
-WHERE open AND source_project_id = $1 AND source_branch = $2
+SET last_push_count = $1, updated_at = $2
+WHERE open AND connection_id = $3
+    AND source_project_id = $4 AND source_branch = $5
 `
 
 type StateAttributePushParams struct {
-	SourceProjectID int64
-	SourceBranch    string
 	LastPushCount   int32
 	UpdatedAt       time.Time
+	ConnectionID    int64
+	SourceProjectID int64
+	SourceBranch    string
 }
 
 // StateAttributePush gives a push's commit count to the open merge requests
-// of the pushed project and branch (SYSREQ-030).
+// of the pushed project and branch, on the connection the push came from
+// (SYSREQ-030).
 func (q *Queries) StateAttributePush(ctx context.Context, arg StateAttributePushParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, stateAttributePush,
-		arg.SourceProjectID,
-		arg.SourceBranch,
 		arg.LastPushCount,
 		arg.UpdatedAt,
+		arg.ConnectionID,
+		arg.SourceProjectID,
+		arg.SourceBranch,
 	)
 	if err != nil {
 		return 0, err
@@ -104,14 +108,15 @@ func (q *Queries) StateClose(ctx context.Context, arg StateCloseParams) error {
 }
 
 const stateEnsure = `-- name: StateEnsure :exec
-INSERT INTO mr_state (mr_ref, updated_at)
-VALUES ($1, $2)
+INSERT INTO mr_state (mr_ref, connection_id, updated_at)
+VALUES ($1, $2, $3)
 ON CONFLICT (mr_ref) DO NOTHING
 `
 
 type StateEnsureParams struct {
-	MrRef     string
-	UpdatedAt time.Time
+	MrRef        string
+	ConnectionID int64
+	UpdatedAt    time.Time
 }
 
 // StateEnsure creates the board row of a merge request if it is missing.
@@ -119,7 +124,7 @@ type StateEnsureParams struct {
 // pipeline delivery that arrives before the merge request event
 // (SYSREQ-027).
 func (q *Queries) StateEnsure(ctx context.Context, arg StateEnsureParams) error {
-	_, err := q.db.ExecContext(ctx, stateEnsure, arg.MrRef, arg.UpdatedAt)
+	_, err := q.db.ExecContext(ctx, stateEnsure, arg.MrRef, arg.ConnectionID, arg.UpdatedAt)
 	return err
 }
 

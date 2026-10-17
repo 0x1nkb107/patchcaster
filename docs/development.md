@@ -34,11 +34,11 @@ the release workflow installs it.
 | `internal/event` | GitLab payloads parsed into the normalized event model |
 | `internal/plan` | the delivery-policy table: what an accepted delivery posts |
 | `internal/deliver` | outbox worker and the embedded message templates |
-| `internal/mattermost` | bot-account client that posts and updates messages |
+| `internal/mattermost` | bot-account client that posts and updates messages, and reads the bot's account and channels |
+| `internal/gitlab`, `internal/platform` | GitLab API client, and the credential and channel checks of each platform |
 | `internal/store` | PostgreSQL queue, thread mappings and dedupe records; migrations, queries, generated `sqlcgen` |
-| `internal/routing`, `internal/metrics`, `internal/ops` | routing table, funnel counters, probe and metrics handlers |
+| `internal/metrics`, `internal/ops` | funnel counters, probe and metrics handlers |
 | `internal/graceful` | HTTP serving with a drain budget, for both listeners |
-| `contrib/` | the example routing table `just run` serves with |
 | `demo/` | stub Mattermost and signed-webhook simulator |
 | `docs/specs/` | requirements, architecture and ADRs (SARA) |
 | `tools/` | pinned tool modules |
@@ -57,7 +57,7 @@ just lint             # vet + pinned golangci-lint
 just race             # full suite under the race detector (needs cgo)
 just devdb            # PostgreSQL 18 on 127.0.0.1:5433 (podman)
 just migrate          # apply the embedded schema to the dev database
-just run              # serve with the example routing table (see below)
+just run              # serve against the dev database (see below)
 just test-integration # store contract tests only, in their own PostgreSQL container
 just test-e2e         # end-to-end tests: the real binary against its own PostgreSQL container
 just sqlc             # regenerate query code after touching internal/store/{queries,migrations}
@@ -77,29 +77,19 @@ packages, e.g. `just test -run TestRenderer -v`.
 
 ## Run it locally
 
-`just run` serves against the dev database with
-[`contrib/routing.example.yaml`](../contrib/routing.example.yaml). The
-remaining required settings come from the environment; the
-[configuration reference](configuration.md) lists all of them.
+`just run` serves against the dev database, with a fixed encryption key and the interface at `http://127.0.0.1:8081`. Connections and routes come from the database, so a new dev database needs the [first setup](operations.md#first-setup), with `just bootstrap` for its setup link, and an identity provider to log in through.
 
 ```sh
 just devdb     # once
-PATCHCASTER_MATTERMOST_URL=https://mattermost.example.com \
-PATCHCASTER_MATTERMOST_TOKEN=<bot account token> \
-PATCHCASTER_SIGNING_SECRETS=<webhook signing token, whsec_...> \
 just run
 ```
 
-Startup applies pending migrations, so `just migrate` is only needed to
-migrate without serving. Webhooks go to `POST http://127.0.0.1:8080/webhook`;
-probes and metrics answer on `:9090`. Remove the database with
+Startup applies pending migrations, so `just migrate` is only needed to migrate without serving. Webhooks go to `POST http://127.0.0.1:8080/webhooks/<connection id>`; probes and metrics answer on `:9090`. Remove the database with
 `podman rm -f patchcaster-pg`. `compose.yaml` describes the same database for
 `podman compose` or `docker compose` users; run one or the other, since both
 bind port 5433.
 
-No GitLab or Mattermost at hand? The [local demo](../demo/README.md) pairs a
-stub Mattermost that prints every post with a simulator that sends signed
-GitLab webhooks, so you can watch the live board change event by event.
+No GitLab or Mattermost at hand? The [local demo](../demo/README.md) pairs a stub Mattermost that prints every post with a simulator that sends signed GitLab webhooks. It does not work with the stored configuration yet.
 
 ## Testing
 

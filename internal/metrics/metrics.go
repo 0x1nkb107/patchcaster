@@ -7,8 +7,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// Rejection causes (HTTP 401/400 paths).
+// Rejection causes (HTTP 404/401/400 paths).
 const (
+	CauseEndpoint  = "endpoint"
 	CauseSignature = "signature"
 	CauseParse     = "parse"
 )
@@ -27,6 +28,7 @@ const (
 	CauseNoMapping     = "no_mapping"
 	CauseThreadClosed  = "thread_closed"
 	CauseDuplicateOpen = "duplicate_open"
+	CauseSinkGone      = "sink_gone"
 )
 
 // Park causes.

@@ -25,7 +25,7 @@ ADR-031 makes the OpenAPI description the source of the management API. Its grou
   - This is the shape that sveltekit-superforms reports as all of a form's errors, and on which formsnap builds. The interface can therefore attach each message to its field with superforms' `setError`, without mapping code per form.
 - **Names:** JSON members use snake_case, as PatchCaster's stored events already do.
 - **Lists:** lists page with a `limit` and an opaque `cursor`. Each page carries the cursor of the next one, and the order is stable.
-- **Concurrent changes:** every resource carries an `ETag`. A change must send `If-Match` with it, and it fails with `412 Precondition Failed` when the resource changed meanwhile. A change without `If-Match` answers `428 Precondition Required`. The interface and automation therefore cannot overwrite each other unnoticed.
+- **Concurrent changes:** every resource carries an `ETag`. A change must send `If-Match` with it, and it fails with `412 Precondition Failed` when the resource changed meanwhile. A change without `If-Match` answers `428 Precondition Required`. The interface and automation therefore cannot overwrite each other unnoticed. Revocations are the exception: repeating one changes nothing and no concurrent change can be lost, so they need no `If-Match`, and API tokens carry no `ETag` (owner decision 2026-10-17).
 - **Authentication:** the interface uses its session cookie, and automation uses `Authorization: Bearer` with an API token (SYSREQ-040). Both reach the same authorizer (SYSREQ-039).
 
 ## Consequences

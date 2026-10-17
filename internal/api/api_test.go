@@ -34,6 +34,7 @@ type fakeStore struct {
 	peopleAfter    int64
 	setupLinkValid bool
 	setupSettings  *store.LoginSettings
+	tokens         map[string]*store.APIToken // by hash
 }
 
 func (f *fakeStore) AdministratorCount(context.Context) (int, error) {
@@ -84,6 +85,38 @@ func (f *fakeStore) AuditEntries(context.Context, int64, int) ([]store.AuditEntr
 	return nil, errNotInTest
 }
 
+func (f *fakeStore) CreateToken(_ context.Context, _ store.Actor, t store.NewAPIToken, now time.Time) (*store.APIToken, error) {
+	token := &store.APIToken{
+		ID:        int64(len(f.tokens) + 1),
+		PersonID:  t.PersonID,
+		Name:      t.Name,
+		CreatedAt: now,
+		ExpiresAt: t.ExpiresAt,
+	}
+	f.tokens[string(t.Hash)] = token
+	return token, nil
+}
+
+func (f *fakeStore) AuthenticateToken(_ context.Context, hash []byte, now time.Time) (*store.APIToken, error) {
+	token, ok := f.tokens[string(hash)]
+	if !ok || !now.Before(token.ExpiresAt) {
+		return nil, store.ErrNotFound
+	}
+	return token, nil
+}
+
+func (f *fakeStore) Tokens(context.Context, int64, int64, int) ([]store.APIToken, error) {
+	return nil, errNotInTest
+}
+
+func (f *fakeStore) RevokeToken(context.Context, store.Actor, int64, int64, time.Time) error {
+	return errNotInTest
+}
+
+func (f *fakeStore) RevokeAccess(context.Context, store.Actor, int64, time.Time) (int, error) {
+	return 0, errNotInTest
+}
+
 // fakeLogin answers the provider check with checkErr.
 type fakeLogin struct{ checkErr error }
 
@@ -101,9 +134,11 @@ type fixture struct {
 	handler  http.Handler
 }
 
+// The people of the tests. Each fixture keeps copies, which tests may
+// change.
 var (
-	ada = &store.Person{ID: 1, Issuer: "https://idp.example", Subject: "ada", Administrator: true, Version: 3}
-	bob = &store.Person{ID: 2, Issuer: "https://idp.example", Subject: "bob", Version: 1}
+	ada = store.Person{ID: 1, Issuer: "https://idp.example", Subject: "ada", Administrator: true, Version: 3, SessionEpoch: 1}
+	bob = store.Person{ID: 2, Issuer: "https://idp.example", Subject: "bob", Version: 1, SessionEpoch: 1}
 )
 
 func newFixture(t *testing.T) *fixture {
@@ -113,7 +148,8 @@ func newFixture(t *testing.T) *fixture {
 	f := &fixture{
 		store: &fakeStore{
 			admins:  1,
-			persons: map[int64]*store.Person{ada.ID: ada, bob.ID: bob},
+			persons: map[int64]*store.Person{ada.ID: new(ada), bob.ID: new(bob)},
+			tokens:  map[string]*store.APIToken{},
 		},
 		login:    &fakeLogin{},
 		box:      seal.NewBox(key),
@@ -134,10 +170,10 @@ func newFixture(t *testing.T) *fixture {
 }
 
 // sessionOf logs person in and returns their session cookie.
-func (f *fixture) sessionOf(t *testing.T, person *store.Person) *http.Cookie {
+func (f *fixture) sessionOf(t *testing.T, person store.Person) *http.Cookie {
 	t.Helper()
 	start := f.sessions.LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.NoError(t, auth.StartSession(r.Context(), f.sessions, person.ID))
+		require.NoError(t, auth.StartSession(r.Context(), f.sessions, f.store.persons[person.ID]))
 	}))
 	rec := httptest.NewRecorder()
 	start.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
@@ -375,7 +411,7 @@ func TestARequestProblemNeverEchoesTheBody(t *testing.T) {
 func TestPagesCarryTheNextCursor(t *testing.T) {
 	// arrange
 	f := newFixture(t)
-	f.store.people = []store.Person{*ada, *bob, {ID: 3, Subject: "carol", Version: 1}}
+	f.store.people = []store.Person{ada, bob, {ID: 3, Subject: "carol", Version: 1}}
 	admin := f.sessionOf(t, ada)
 
 	// act
@@ -476,4 +512,83 @@ func TestAProblemReturnedByAHandlerKeepsItsStatus(t *testing.T) {
 
 	// assert
 	assert.Same(t, conflict, problem)
+}
+
+func TestATokenActsAsItsOwner(t *testing.T) {
+	// arrange
+	f := newFixture(t)
+	created := f.serve(t, request{
+		method:  http.MethodPost,
+		path:    "/api/v1/tokens",
+		body:    `{"name":"ci"}`,
+		session: f.sessionOf(t, ada),
+	})
+	require.Equal(t, http.StatusCreated, created.Code, created.Body.String())
+	var token struct {
+		Token struct {
+			ExpiresAt time.Time `json:"expires_at"`
+		} `json:"token"`
+		Secret string `json:"secret"`
+	}
+	require.NoError(t, json.Unmarshal(created.Body.Bytes(), &token))
+	bearer := map[string]string{"Authorization": "Bearer " + token.Secret}
+
+	// act
+	listed := f.serve(t, request{method: http.MethodGet, path: "/api/v1/persons", header: bearer})
+	minted := f.serve(t, request{method: http.MethodPost, path: "/api/v1/tokens", body: `{"name":"next"}`, header: bearer})
+
+	// assert
+	assert.True(t, strings.HasPrefix(token.Secret, auth.TokenPrefix))
+	assert.WithinDuration(t, time.Now().Add(90*24*time.Hour), token.Token.ExpiresAt, time.Minute, "a token lives 90 days unless told otherwise")
+	assert.Equal(t, http.StatusOK, listed.Code, "the token acts as its administrator owner")
+	assert.Equal(t, http.StatusUnauthorized, minted.Code, "a token cannot create tokens")
+}
+
+func TestUnknownCredentialsAreUnauthorized(t *testing.T) {
+	// arrange
+	f := newFixture(t)
+	stale := f.sessionOf(t, ada)
+	f.store.persons[ada.ID].SessionEpoch++
+
+	tests := []struct {
+		name string
+		req  request
+	}{
+		{"an unknown token", request{
+			method: http.MethodGet,
+			path:   "/api/v1/session",
+			header: map[string]string{"Authorization": "Bearer " + auth.TokenPrefix + "forged"},
+		}},
+		{"a session from before the access was revoked", request{
+			method:  http.MethodGet,
+			path:    "/api/v1/session",
+			session: stale,
+		}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// act
+			rec := f.serve(t, tc.req)
+
+			// assert
+			assert.Equal(t, http.StatusUnauthorized, rec.Code)
+		})
+	}
+}
+
+func TestATokenLivesAtMost90Days(t *testing.T) {
+	// arrange
+	f := newFixture(t)
+
+	// act
+	rec := f.serve(t, request{
+		method:  http.MethodPost,
+		path:    "/api/v1/tokens",
+		body:    `{"name":"forever","lifetime_days":91}`,
+		session: f.sessionOf(t, ada),
+	})
+
+	// assert
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Equal(t, []string{"lifetime_days"}, paths(readProblem(t, rec)))
 }

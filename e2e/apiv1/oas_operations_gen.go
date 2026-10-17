@@ -6,13 +6,17 @@ package apiv1
 type OperationName = string
 
 const (
+	CreateTokenOperation      OperationName = "CreateToken"
 	EndSessionOperation       OperationName = "EndSession"
 	GetInstanceOperation      OperationName = "GetInstance"
 	GetLoginSettingsOperation OperationName = "GetLoginSettings"
 	GetSessionOperation       OperationName = "GetSession"
 	ListAuditOperation        OperationName = "ListAudit"
 	ListPersonsOperation      OperationName = "ListPersons"
+	ListTokensOperation       OperationName = "ListTokens"
 	PutLoginSettingsOperation OperationName = "PutLoginSettings"
+	RevokeAccessOperation     OperationName = "RevokeAccess"
+	RevokeTokenOperation      OperationName = "RevokeToken"
 	SetUpOperation            OperationName = "SetUp"
 	UpdatePersonOperation     OperationName = "UpdatePerson"
 )

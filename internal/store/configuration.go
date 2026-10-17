@@ -20,24 +20,29 @@ var (
 )
 
 // Actor names who makes a change, for the audit log. PersonID is zero for
-// the commands that act with the database credentials alone.
+// the commands that act with the database credentials alone. TokenID is
+// zero unless the person acts with an API token (SYSREQ-040).
 type Actor struct {
-	PersonID int64
-	Label    string
+	PersonID  int64
+	Label     string
+	TokenID   int64
+	TokenName string
 }
 
 // AuditEntry is one recorded change (SYSREQ-041). Before and After hold JSON,
 // with secrets already redacted, or null.
 type AuditEntry struct {
-	ID            int64
-	At            time.Time
-	ActorPersonID int64
-	ActorLabel    string
-	Action        string
-	TargetKind    string
-	TargetID      string
-	Before        json.RawMessage
-	After         json.RawMessage
+	ID             int64
+	At             time.Time
+	ActorPersonID  int64
+	ActorLabel     string
+	ActorTokenID   int64
+	ActorTokenName string
+	Action         string
+	TargetKind     string
+	TargetID       string
+	Before         json.RawMessage
+	After          json.RawMessage
 }
 
 // change is one audit entry to write along with the change it describes.
@@ -85,11 +90,16 @@ func audit(ctx context.Context, q *sqlcgen.Queries, actor Actor, now time.Time, 
 			Valid: actor.PersonID != 0,
 		},
 		ActorLabel: actor.Label,
-		Action:     c.action,
-		TargetKind: c.targetKind,
-		TargetID:   c.targetID,
-		Before:     before,
-		After:      after,
+		ActorTokenID: sql.NullInt64{
+			Int64: actor.TokenID,
+			Valid: actor.TokenID != 0,
+		},
+		ActorTokenName: actor.TokenName,
+		Action:         c.action,
+		TargetKind:     c.targetKind,
+		TargetID:       c.targetID,
+		Before:         before,
+		After:          after,
 	})
 	if err != nil {
 		return fmt.Errorf("record %s in the audit log: %w", c.action, err)
@@ -110,15 +120,17 @@ func (p *Postgres) AuditEntries(ctx context.Context, beforeID int64, limit int) 
 	entries := make([]AuditEntry, 0, len(rows))
 	for _, row := range rows {
 		entries = append(entries, AuditEntry{
-			ID:            row.ID,
-			At:            row.At,
-			ActorPersonID: row.ActorPersonID.Int64,
-			ActorLabel:    row.ActorLabel,
-			Action:        row.Action,
-			TargetKind:    row.TargetKind,
-			TargetID:      row.TargetID,
-			Before:        row.Before,
-			After:         row.After,
+			ID:             row.ID,
+			At:             row.At,
+			ActorPersonID:  row.ActorPersonID.Int64,
+			ActorLabel:     row.ActorLabel,
+			ActorTokenID:   row.ActorTokenID.Int64,
+			ActorTokenName: row.ActorTokenName,
+			Action:         row.Action,
+			TargetKind:     row.TargetKind,
+			TargetID:       row.TargetID,
+			Before:         row.Before,
+			After:          row.After,
 		})
 	}
 	return entries, nil

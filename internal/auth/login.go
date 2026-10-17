@@ -220,7 +220,7 @@ func (l *Login) admit(w http.ResponseWriter, r *http.Request, settings *store.Lo
 		l.refuse(w, http.StatusInternalServerError, "the login could not be recorded")
 		return
 	}
-	if err := StartSession(ctx, l.sessions, person.ID); err != nil {
+	if err := StartSession(ctx, l.sessions, person); err != nil {
 		l.log.Error("start session failed", "err", err)
 		l.refuse(w, http.StatusInternalServerError, "the session could not be started")
 		return

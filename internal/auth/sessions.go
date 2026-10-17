@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/alexedwards/scs/v2"
+
+	"github.com/patchcaster-app/patchcaster/internal/store"
 )
 
 // Session lifetimes of ADR-033: an hour without activity, twelve hours after
@@ -21,6 +23,7 @@ const (
 // Session keys.
 const (
 	sessionPerson    = "person_id"
+	sessionEpoch     = "session_epoch"
 	sessionSetupLink = "setup_link"
 )
 
@@ -45,21 +48,24 @@ func NewSessions(store scs.Store, secure bool) *scs.SessionManager {
 	return sessions
 }
 
-// StartSession binds a request's session to the person who logged in. It
-// renews the session token first, so that a token planted before the login
-// is worthless after it (ADR-033).
-func StartSession(ctx context.Context, sessions *scs.SessionManager, personID int64) error {
+// StartSession binds a request's session to the person who logged in, at
+// the person's current session epoch. It renews the session token first, so
+// that a token planted before the login is worthless after it (ADR-033).
+func StartSession(ctx context.Context, sessions *scs.SessionManager, person *store.Person) error {
 	if err := sessions.RenewToken(ctx); err != nil {
 		return fmt.Errorf("renew session token: %w", err)
 	}
 	sessions.Remove(ctx, sessionSetupLink)
-	sessions.Put(ctx, sessionPerson, personID)
+	sessions.Put(ctx, sessionPerson, person.ID)
+	sessions.Put(ctx, sessionEpoch, person.SessionEpoch)
 	return nil
 }
 
-// PersonID returns the person a request's session belongs to, or zero.
-func PersonID(ctx context.Context, sessions *scs.SessionManager) int64 {
-	return sessions.GetInt64(ctx, sessionPerson)
+// SessionOf returns whom a request's session belongs to: the person's id
+// and the session epoch of their login. Both are zero without a login. The
+// session counts only while the epoch is still the person's current one.
+func SessionOf(ctx context.Context, sessions *scs.SessionManager) (personID, epoch int64) {
+	return sessions.GetInt64(ctx, sessionPerson), sessions.GetInt64(ctx, sessionEpoch)
 }
 
 // RememberSetupLink keeps a setup link's hash in the session, so that the

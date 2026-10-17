@@ -8,6 +8,12 @@ import (
 
 // Handler handles operations described by OpenAPI v3 specification.
 type Handler interface {
+	// CreateToken implements createToken operation.
+	//
+	// The response holds the token itself, which is shown only this once.
+	//
+	// POST /api/v1/tokens
+	CreateToken(ctx context.Context, req *ApiTokenRequest) (*CreatedApiToken, error)
 	// EndSession implements endSession operation.
 	//
 	// Log out.
@@ -44,12 +50,30 @@ type Handler interface {
 	//
 	// GET /api/v1/persons
 	ListPersons(ctx context.Context, params ListPersonsParams) (*PersonPage, error)
+	// ListTokens implements listTokens operation.
+	//
+	// List your own API tokens, including revoked and expired ones.
+	//
+	// GET /api/v1/tokens
+	ListTokens(ctx context.Context, params ListTokensParams) (*ApiTokenPage, error)
 	// PutLoginSettings implements putLoginSettings operation.
 	//
 	// Change the identity provider settings, for administrators.
 	//
 	// PUT /api/v1/settings/login
 	PutLoginSettings(ctx context.Context, req *LoginSettingsUpdate, params PutLoginSettingsParams) (*LoginSettingsHeaders, error)
+	// RevokeAccess implements revokeAccess operation.
+	//
+	// Takes effect at once. The person can log in again, unless the identity provider refuses them.
+	//
+	// POST /api/v1/persons/{id}/revoke-access
+	RevokeAccess(ctx context.Context, params RevokeAccessParams) (*AccessRevoked, error)
+	// RevokeToken implements revokeToken operation.
+	//
+	// Revoking a revoked token changes nothing, so no If-Match is needed.
+	//
+	// DELETE /api/v1/tokens/{id}
+	RevokeToken(ctx context.Context, params RevokeTokenParams) error
 	// SetUp implements setUp operation.
 	//
 	// Takes the setup link's token from the bootstrap command, checks that the provider answers, and

@@ -20,13 +20,21 @@ A new instance has no identity provider and no administrator yet:
 
 Everyone who logs in later starts with the role User. To admit only some of the people the provider knows, name the ID token claim that lists a person's groups (`groups_claim`) and the groups that may log in (`allowed_groups`), at setup or later through `PUT /api/v1/settings/login`. A refused login tells the person why.
 
+## API tokens
+
+Automation authenticates with a personal API token, sent as `Authorization: Bearer <token>`. A token acts with its owner's permissions as they are at each request, so a person who loses a role loses it for their tokens at once. Create one during a login with `POST /api/v1/tokens`, naming it and, optionally, its lifetime in days (`lifetime_days`, 1 to 90, 90 by default). The response holds the token, which starts with `patchcaster_` and is shown only that once: PatchCaster keeps only a hash of it. Changes made with a token name the token in the audit log, next to its owner.
+
+Only a login lists (`GET /api/v1/tokens`) and revokes (`DELETE /api/v1/tokens/{id}`) tokens, so a leaked token cannot create its successor. A revoked or expired token answers `401` on its next use.
+
+To cut someone off at once, for example when they leave, an administrator calls `POST /api/v1/persons/{id}/revoke-access`. It revokes all their tokens and ends all their sessions. They can log in again unless the identity provider refuses them, so remove them there too.
+
 ## Restoring administrator access
 
 When no administrator can log in any more, run `patchcaster admin grant --issuer <issuer> --subject <subject>` with the database URL. It names the person exactly as their ID tokens do. The grant takes effect at once, even in a running session.
 
 ## Audit log
 
-Administrators read every change to the configuration, every setup step, every grant and every administrator's login at `GET /api/v1/audit`, newest first. Each entry names who acted, when, and what changed. Secret values never appear: a changed secret shows only as `secret changed`. Nobody can edit or delete entries.
+Administrators read every change to the configuration, every setup step, every grant and every administrator's login at `GET /api/v1/audit`, newest first. Each entry names who acted, with the API token they used, when, and what changed. Secret values never appear: a changed secret shows only as `secret changed`. Nobody can edit or delete entries.
 
 ## Probes and metrics
 

@@ -26,6 +26,11 @@ type Store interface {
 	SetupLinkValid(ctx context.Context, linkHash []byte, now time.Time) (bool, error)
 	PutSetupLoginSettings(ctx context.Context, actor store.Actor, linkHash []byte, s store.LoginSettings, now time.Time) error
 	AuditEntries(ctx context.Context, beforeID int64, limit int) ([]store.AuditEntry, error)
+	CreateToken(ctx context.Context, actor store.Actor, t store.NewAPIToken, now time.Time) (*store.APIToken, error)
+	AuthenticateToken(ctx context.Context, hash []byte, now time.Time) (*store.APIToken, error)
+	Tokens(ctx context.Context, personID, afterID int64, limit int) ([]store.APIToken, error)
+	RevokeToken(ctx context.Context, actor store.Actor, personID, tokenID int64, now time.Time) error
+	RevokeAccess(ctx context.Context, actor store.Actor, personID int64, now time.Time) (int, error)
 }
 
 // Login is what the v1 operations need from the login flow.
@@ -86,21 +91,36 @@ func (s *Service) NewError(ctx context.Context, err error) *v1gen.ProblemStatusC
 	return problem
 }
 
-// personKey carries the authenticated person through a request's context.
-type personKey struct{}
+// principal is who a request acts for: a person, and the API token they
+// sent, if any. The person is read afresh for every request, so a changed
+// role applies at once to sessions and tokens alike (SYSREQ-040).
+type principal struct {
+	person *store.Person
+	token  *store.APIToken
+}
 
-// errNoSession reports a session cookie that names no live session of a
-// person who still exists.
-var errNoSession = errors.New("no valid session")
+// principalKey carries the principal through a request's context.
+type principalKey struct{}
 
-// security resolves the session cookie of every operation that needs one.
+var (
+	// errNoSession reports a session cookie that names no live session of
+	// a person who still exists.
+	errNoSession = errors.New("no valid session")
+	// errNoToken reports a bearer token that is unknown, revoked or
+	// expired.
+	errNoToken = errors.New("no valid API token")
+)
+
+// security resolves the credentials of every operation that needs them: a
+// session cookie or an API token.
 type security struct{ svc *Service }
 
 // HandleSession finds the person the request's session belongs to. The
 // session manager's middleware has already loaded the session from the same
-// cookie.
+// cookie. A session from before the person's access was revoked counts for
+// nothing.
 func (s security) HandleSession(ctx context.Context, _ v1gen.OperationName, _ v1gen.Session) (context.Context, error) {
-	id := auth.PersonID(ctx, s.svc.sessions)
+	id, epoch := auth.SessionOf(ctx, s.svc.sessions)
 	if id == 0 {
 		return ctx, errNoSession
 	}
@@ -111,14 +131,51 @@ func (s security) HandleSession(ctx context.Context, _ v1gen.OperationName, _ v1
 	if err != nil {
 		return ctx, err
 	}
-	return context.WithValue(ctx, personKey{}, person), nil
+	if person.SessionEpoch != epoch {
+		return ctx, errNoSession
+	}
+	return context.WithValue(ctx, principalKey{}, &principal{person: person}), nil
+}
+
+// HandleToken finds the person a live API token belongs to.
+func (s security) HandleToken(ctx context.Context, _ v1gen.OperationName, t v1gen.Token) (context.Context, error) {
+	token, err := s.svc.store.AuthenticateToken(ctx, auth.TokenHash(t.Token), s.svc.now())
+	if errors.Is(err, store.ErrNotFound) {
+		return ctx, errNoToken
+	}
+	if err != nil {
+		return ctx, err
+	}
+	person, err := s.svc.store.Person(ctx, token.PersonID)
+	if err != nil {
+		return ctx, err
+	}
+	return context.WithValue(ctx, principalKey{}, &principal{person: person, token: token}), nil
 }
 
 // caller returns the authenticated person of a request. Every operation
-// with session security has one.
+// with security has one.
 func caller(ctx context.Context) *store.Person {
-	person, _ := ctx.Value(personKey{}).(*store.Person)
-	return person
+	p, _ := ctx.Value(principalKey{}).(*principal)
+	if p == nil {
+		return nil
+	}
+	return p.person
+}
+
+// actorOf names the caller in the audit log, with the token they used
+// (SYSREQ-041).
+func actorOf(ctx context.Context) store.Actor {
+	p, _ := ctx.Value(principalKey{}).(*principal)
+	if p == nil {
+		return store.Actor{}
+	}
+	actor := store.ActorOf(p.person)
+	if p.token != nil {
+		actor.TokenID = p.token.ID
+		actor.TokenName = p.token.Name
+	}
+	return actor
 }
 
 // administrator returns the caller when they are an administrator, and a

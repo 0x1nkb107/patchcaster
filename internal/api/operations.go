@@ -149,7 +149,7 @@ func (s *Service) ListPersons(ctx context.Context, params v1gen.ListPersonsParam
 
 // UpdatePerson changes a person's role, for administrators.
 func (s *Service) UpdatePerson(ctx context.Context, req *v1gen.PersonUpdate, params v1gen.UpdatePersonParams) (*v1gen.PersonHeaders, error) {
-	admin, err := administrator(ctx)
+	_, err := administrator(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +157,7 @@ func (s *Service) UpdatePerson(ctx context.Context, req *v1gen.PersonUpdate, par
 	if err != nil {
 		return nil, err
 	}
-	person, err := s.store.SetAdministrator(ctx, store.ActorOf(admin), params.ID, req.Administrator, version, s.now())
+	person, err := s.store.SetAdministrator(ctx, actorOf(ctx), params.ID, req.Administrator, version, s.now())
 	if err != nil {
 		return nil, storeProblem(err)
 	}
@@ -199,7 +199,7 @@ func (s *Service) GetLoginSettings(ctx context.Context) (*v1gen.LoginSettingsHea
 // PutLoginSettings changes the identity provider settings, for
 // administrators. Without a new client secret, the stored one stays.
 func (s *Service) PutLoginSettings(ctx context.Context, req *v1gen.LoginSettingsUpdate, params v1gen.PutLoginSettingsParams) (*v1gen.LoginSettingsHeaders, error) {
-	admin, err := administrator(ctx)
+	_, err := administrator(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +223,7 @@ func (s *Service) PutLoginSettings(ctx context.Context, req *v1gen.LoginSettings
 			return nil, err
 		}
 	}
-	updated, err := s.store.UpdateLoginSettings(ctx, store.ActorOf(admin), settings, s.now())
+	updated, err := s.store.UpdateLoginSettings(ctx, actorOf(ctx), settings, s.now())
 	if err != nil {
 		return nil, storeProblem(err)
 	}
@@ -266,6 +266,12 @@ func auditEntryOf(e store.AuditEntry) v1gen.AuditEntry {
 	}
 	if e.ActorPersonID != 0 {
 		entry.ActorPersonID = v1gen.NewOptInt64(e.ActorPersonID)
+	}
+	if e.ActorTokenName != "" {
+		entry.ActorToken = v1gen.NewOptString(e.ActorTokenName)
+	}
+	if e.ActorTokenID != 0 {
+		entry.ActorTokenID = v1gen.NewOptInt64(e.ActorTokenID)
 	}
 	return entry
 }

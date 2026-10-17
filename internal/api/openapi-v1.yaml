@@ -8,11 +8,13 @@ info:
   description: >-
     Every configuration operation of the web interface, for automation. Errors
     are RFC 9457 problem details; validation errors list each field by its
-    path.
+    path. Clients authenticate with the session cookie of a login, or with an
+    API token as a bearer token. Only a login manages API tokens.
 servers:
   - url: /
 security:
   - session: []
+  - token: []
 paths:
   /api/v1/instance:
     get:
@@ -69,6 +71,8 @@ paths:
     delete:
       operationId: endSession
       summary: Log out.
+      security:
+        - session: []
       responses:
         "204":
           description: The session has ended.
@@ -118,6 +122,89 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Person"
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/persons/{id}/revoke-access:
+    post:
+      operationId: revokeAccess
+      summary: Revoke all tokens and end all sessions of a person, for administrators.
+      description: >-
+        Takes effect at once. The person can log in again, unless the identity
+        provider refuses them.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: The person's tokens are revoked and their sessions ended.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccessRevoked"
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/tokens:
+    get:
+      operationId: listTokens
+      summary: List your own API tokens, including revoked and expired ones.
+      security:
+        - session: []
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: One page of tokens, in the order they were created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiTokenPage"
+        default:
+          $ref: "#/components/responses/Problem"
+    post:
+      operationId: createToken
+      summary: Create an API token that acts with your permissions.
+      description: >-
+        The response holds the token itself, which is shown only this once.
+      security:
+        - session: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiTokenRequest"
+      responses:
+        "201":
+          description: The new token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreatedApiToken"
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/tokens/{id}:
+    delete:
+      operationId: revokeToken
+      summary: Revoke one of your own API tokens.
+      description: >-
+        Revoking a revoked token changes nothing, so no If-Match is needed.
+      security:
+        - session: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "204":
+          description: The token is revoked.
         default:
           $ref: "#/components/responses/Problem"
   /api/v1/settings/login:
@@ -182,6 +269,10 @@ components:
       in: cookie
       name: patchcaster_session
       description: The session cookie the login sets.
+    token:
+      type: http
+      scheme: bearer
+      description: An API token, created by its owner during a login.
   parameters:
     Cursor:
       name: cursor
@@ -340,6 +431,12 @@ components:
         actor_person_id:
           type: integer
           format: int64
+        actor_token:
+          type: string
+          description: The token the actor used, by its name then. Absent for a login.
+        actor_token_id:
+          type: integer
+          format: int64
         action:
           type: string
         target_kind:
@@ -350,6 +447,67 @@ components:
           description: The target before the change, with secrets redacted.
         after:
           description: The target after the change, with secrets redacted.
+    ApiToken:
+      type: object
+      required: [id, name, created_at, expires_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+        revoked_at:
+          type: string
+          format: date-time
+          description: Absent while the token is not revoked.
+    ApiTokenPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ApiToken"
+        next_cursor:
+          type: string
+          description: Absent on the last page.
+    ApiTokenRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: What the token is for, such as the job that uses it.
+        lifetime_days:
+          type: integer
+          minimum: 1
+          maximum: 90
+          default: 90
+          description: How many days the token works.
+    CreatedApiToken:
+      type: object
+      required: [token, secret]
+      properties:
+        token:
+          $ref: "#/components/schemas/ApiToken"
+        secret:
+          type: string
+          description: The token to send as a bearer token. It is shown only once.
+    AccessRevoked:
+      type: object
+      required: [revoked_tokens]
+      properties:
+        revoked_tokens:
+          type: integer
+          description: How many working tokens were revoked.
     AuditPage:
       type: object
       required: [items]

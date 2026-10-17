@@ -67,6 +67,31 @@ func (s sessionSource) Session(context.Context, apiv1.OperationName) (apiv1.Sess
 	return apiv1.Session{APIKey: cookie.Value}, nil
 }
 
+// Token sends no API token: a browser authenticates with its session.
+func (sessionSource) Token(context.Context, apiv1.OperationName) (apiv1.Token, error) {
+	return apiv1.Token{}, ogenerrors.ErrSkipClientSecurity
+}
+
+// tokenSource authenticates automation with an API token alone.
+type tokenSource struct{ secret string }
+
+func (tokenSource) Session(context.Context, apiv1.OperationName) (apiv1.Session, error) {
+	return apiv1.Session{}, ogenerrors.ErrSkipClientSecurity
+}
+
+func (s tokenSource) Token(context.Context, apiv1.OperationName) (apiv1.Token, error) {
+	return apiv1.Token{Token: s.secret}, nil
+}
+
+// automation returns a management API client that authenticates with the
+// API token secret, as a CI job does.
+func automation(t *testing.T, svc *service, secret string) *apiv1.Client {
+	t.Helper()
+	client, err := apiv1.NewClient(svc.managementURL, tokenSource{secret: secret})
+	require.NoError(t, err)
+	return client
+}
+
 // api returns the management API client of this browser, generated from
 // the same description as the server (ADR-031). It shares the browser's
 // cookies, so the setup and the login that follows share one session.

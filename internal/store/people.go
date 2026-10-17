@@ -16,7 +16,8 @@ import (
 var ErrLastAdministrator = errors.New("the instance needs at least one administrator")
 
 // Person is someone who logged in through the identity provider, or whom the
-// recovery command named (SYSREQ-037, SYSREQ-038).
+// recovery command named (SYSREQ-037, SYSREQ-038). A session counts only
+// while it carries the person's current SessionEpoch.
 type Person struct {
 	ID            int64
 	Issuer        string
@@ -25,6 +26,7 @@ type Person struct {
 	Email         string
 	Administrator bool
 	Version       int64
+	SessionEpoch  int64
 }
 
 // Login is what a successful login tells about the person.
@@ -46,6 +48,7 @@ func personFrom(row sqlcgen.PersonGetRow) *Person {
 		Email:         row.Email,
 		Administrator: row.IsAdministrator,
 		Version:       row.Version,
+		SessionEpoch:  row.SessionEpoch,
 	}
 }
 

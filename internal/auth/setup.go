@@ -33,6 +33,12 @@ func NewSetupLink(interfaceURL *url.URL) SetupLink {
 // stored. The database keeps only the hash, so its contents cannot open the
 // setup.
 func SetupTokenHash(token string) []byte {
-	sum := sha256.Sum256([]byte(token))
+	return secretHash(token)
+}
+
+// secretHash hashes a random secret for storage. The secrets carry 128 bits
+// of randomness, so a plain SHA-256 suffices: there is nothing to guess.
+func secretHash(secret string) []byte {
+	sum := sha256.Sum256([]byte(secret))
 	return sum[:]
 }

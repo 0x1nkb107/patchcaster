@@ -7,7 +7,7 @@ shuts down and upgrades, and what its delivery guarantees mean in practice.
 
 The management listener (`--management-addr`, `:8081` by default) serves the web interface at the interface URL, the management API under `/api/v1/`, and the API's OpenAPI description at `GET /api/v1/openapi.yaml`. It answers nothing else, and the webhook and internal listeners never answer interface or API paths, so each listener can be exposed differently: the webhook listener to the forges, the management listener only to the organization's people and automation. Errors are RFC 9457 problem details (`application/problem+json`). A validation error lists each field at fault by its path, such as `allowed_groups[0]`. Lists page with `limit` and the `next_cursor` of the previous page. Every change sends the `ETag` of what it read in `If-Match`, and fails with `412 Precondition Failed` when the resource changed meanwhile.
 
-The web interface covers the first setup, the login and API tokens so far. Everything else goes through the API, which the interface uses too.
+The web interface covers the first setup, the login and API tokens so far. Everything else goes through the API, which the interface uses too. The interface runs only its own scripts, and no other site may show it in a frame. Every page links to the licences of the third-party packages it contains.
 
 The management listener also serves the login. People log in through the organization's OpenID Connect provider, and PatchCaster keeps no passwords. A session ends after one hour without activity, twelve hours after login at the latest, or at logout (`DELETE /api/v1/session`). The API refuses any change that a browser sends from another site.
 

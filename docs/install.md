@@ -81,6 +81,8 @@ docker buildx imagetools inspect ghcr.io/patchcaster-app/patchcaster:vX.Y.Z \
   --format '{{ json .SBOM }}'
 ```
 
+The binary embeds the web interface. The GitHub release carries an SBOM of the JavaScript packages in it, `patchcaster_<version>_web.cdx.json`, in the CycloneDX format. `checksums.txt` lists it, so the signature above covers it too.
+
 ## First start
 
 On startup PatchCaster connects to PostgreSQL, applies any pending migrations, then listens. Once `GET :9090/readyz` answers 200:

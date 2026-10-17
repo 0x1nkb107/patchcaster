@@ -13,19 +13,21 @@ import (
 )
 
 const auditAppend = `-- name: AuditAppend :exec
-INSERT INTO audit_log (at, actor_person_id, actor_label, action, target_kind, target_id, before, after)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+INSERT INTO audit_log (at, actor_person_id, actor_label, actor_token_id, actor_token_name, action, target_kind, target_id, before, after)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 `
 
 type AuditAppendParams struct {
-	At            time.Time
-	ActorPersonID sql.NullInt64
-	ActorLabel    string
-	Action        string
-	TargetKind    string
-	TargetID      string
-	Before        json.RawMessage
-	After         json.RawMessage
+	At             time.Time
+	ActorPersonID  sql.NullInt64
+	ActorLabel     string
+	ActorTokenID   sql.NullInt64
+	ActorTokenName string
+	Action         string
+	TargetKind     string
+	TargetID       string
+	Before         json.RawMessage
+	After          json.RawMessage
 }
 
 // AuditAppend records one change, inside the change's own transaction
@@ -35,6 +37,8 @@ func (q *Queries) AuditAppend(ctx context.Context, arg AuditAppendParams) error 
 		arg.At,
 		arg.ActorPersonID,
 		arg.ActorLabel,
+		arg.ActorTokenID,
+		arg.ActorTokenName,
 		arg.Action,
 		arg.TargetKind,
 		arg.TargetID,
@@ -45,7 +49,7 @@ func (q *Queries) AuditAppend(ctx context.Context, arg AuditAppendParams) error 
 }
 
 const auditList = `-- name: AuditList :many
-SELECT id, at, actor_person_id, actor_label, action, target_kind, target_id, before, after
+SELECT id, at, actor_person_id, actor_label, actor_token_id, actor_token_name, action, target_kind, target_id, before, after
 FROM audit_log
 WHERE $1::bigint = 0 OR id < $1::bigint
 ORDER BY id DESC
@@ -57,21 +61,37 @@ type AuditListParams struct {
 	PageSize int32
 }
 
+type AuditListRow struct {
+	ID             int64
+	At             time.Time
+	ActorPersonID  sql.NullInt64
+	ActorLabel     string
+	ActorTokenID   sql.NullInt64
+	ActorTokenName string
+	Action         string
+	TargetKind     string
+	TargetID       string
+	Before         json.RawMessage
+	After          json.RawMessage
+}
+
 // AuditList pages through the record, newest first.
-func (q *Queries) AuditList(ctx context.Context, arg AuditListParams) ([]AuditLog, error) {
+func (q *Queries) AuditList(ctx context.Context, arg AuditListParams) ([]AuditListRow, error) {
 	rows, err := q.db.QueryContext(ctx, auditList, arg.BeforeID, arg.PageSize)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []AuditLog
+	var items []AuditListRow
 	for rows.Next() {
-		var i AuditLog
+		var i AuditListRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.At,
 			&i.ActorPersonID,
 			&i.ActorLabel,
+			&i.ActorTokenID,
+			&i.ActorTokenName,
 			&i.Action,
 			&i.TargetKind,
 			&i.TargetID,

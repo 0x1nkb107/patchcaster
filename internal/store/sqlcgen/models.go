@@ -10,16 +10,28 @@ import (
 	"time"
 )
 
+type ApiToken struct {
+	ID        int64
+	PersonID  int64
+	Name      string
+	TokenHash []byte
+	CreatedAt time.Time
+	ExpiresAt time.Time
+	RevokedAt sql.NullTime
+}
+
 type AuditLog struct {
-	ID            int64
-	At            time.Time
-	ActorPersonID sql.NullInt64
-	ActorLabel    string
-	Action        string
-	TargetKind    string
-	TargetID      string
-	Before        json.RawMessage
-	After         json.RawMessage
+	ID             int64
+	At             time.Time
+	ActorPersonID  sql.NullInt64
+	ActorLabel     string
+	Action         string
+	TargetKind     string
+	TargetID       string
+	Before         json.RawMessage
+	After          json.RawMessage
+	ActorTokenID   sql.NullInt64
+	ActorTokenName string
 }
 
 type InstanceKeyCheck struct {
@@ -98,6 +110,7 @@ type Person struct {
 	CreatedAt       time.Time
 	LastLoginAt     sql.NullTime
 	Version         int64
+	SessionEpoch    int64
 }
 
 type SeenWebhook struct {

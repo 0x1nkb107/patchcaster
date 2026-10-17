@@ -24,7 +24,7 @@ func (q *Queries) AdministratorCount(ctx context.Context) (int64, error) {
 }
 
 const personGet = `-- name: PersonGet :one
-SELECT id, issuer, subject, display_name, email, is_administrator, version
+SELECT id, issuer, subject, display_name, email, is_administrator, version, session_epoch
 FROM persons
 WHERE id = $1
 `
@@ -37,6 +37,7 @@ type PersonGetRow struct {
 	Email           string
 	IsAdministrator bool
 	Version         int64
+	SessionEpoch    int64
 }
 
 // PersonGet reads one person.
@@ -51,6 +52,7 @@ func (q *Queries) PersonGet(ctx context.Context, id int64) (PersonGetRow, error)
 		&i.Email,
 		&i.IsAdministrator,
 		&i.Version,
+		&i.SessionEpoch,
 	)
 	return i, err
 }
@@ -80,7 +82,7 @@ func (q *Queries) PersonGrantAdministrator(ctx context.Context, arg PersonGrantA
 }
 
 const personList = `-- name: PersonList :many
-SELECT id, issuer, subject, display_name, email, is_administrator, version
+SELECT id, issuer, subject, display_name, email, is_administrator, version, session_epoch
 FROM persons
 WHERE id > $1
 ORDER BY id
@@ -100,6 +102,7 @@ type PersonListRow struct {
 	Email           string
 	IsAdministrator bool
 	Version         int64
+	SessionEpoch    int64
 }
 
 // PersonList pages through people in the order they first logged in.
@@ -120,6 +123,7 @@ func (q *Queries) PersonList(ctx context.Context, arg PersonListParams) ([]Perso
 			&i.Email,
 			&i.IsAdministrator,
 			&i.Version,
+			&i.SessionEpoch,
 		); err != nil {
 			return nil, err
 		}
@@ -163,7 +167,7 @@ ON CONFLICT (issuer, subject) DO UPDATE
 SET display_name = EXCLUDED.display_name,
     email = EXCLUDED.email,
     last_login_at = EXCLUDED.last_login_at
-RETURNING id, issuer, subject, display_name, email, is_administrator, version
+RETURNING id, issuer, subject, display_name, email, is_administrator, version, session_epoch
 `
 
 type PersonUpsertLoginParams struct {
@@ -182,6 +186,7 @@ type PersonUpsertLoginRow struct {
 	Email           string
 	IsAdministrator bool
 	Version         int64
+	SessionEpoch    int64
 }
 
 // PersonUpsertLogin records a login: it creates the person at their first
@@ -204,6 +209,7 @@ func (q *Queries) PersonUpsertLogin(ctx context.Context, arg PersonUpsertLoginPa
 		&i.Email,
 		&i.IsAdministrator,
 		&i.Version,
+		&i.SessionEpoch,
 	)
 	return i, err
 }

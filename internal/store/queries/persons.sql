@@ -8,17 +8,17 @@ ON CONFLICT (issuer, subject) DO UPDATE
 SET display_name = EXCLUDED.display_name,
     email = EXCLUDED.email,
     last_login_at = EXCLUDED.last_login_at
-RETURNING id, issuer, subject, display_name, email, is_administrator, version;
+RETURNING id, issuer, subject, display_name, email, is_administrator, version, session_epoch;
 
 -- name: PersonGet :one
 -- PersonGet reads one person.
-SELECT id, issuer, subject, display_name, email, is_administrator, version
+SELECT id, issuer, subject, display_name, email, is_administrator, version, session_epoch
 FROM persons
 WHERE id = $1;
 
 -- name: PersonList :many
 -- PersonList pages through people in the order they first logged in.
-SELECT id, issuer, subject, display_name, email, is_administrator, version
+SELECT id, issuer, subject, display_name, email, is_administrator, version, session_epoch
 FROM persons
 WHERE id > sqlc.arg(after_id)
 ORDER BY id

@@ -28,9 +28,11 @@ var version = "dev"
 // Precedence is flags > environment variables > built-in defaults, and any
 // invalid value exits non-zero before the service listens (SYSREQ-022).
 type CLI struct {
-	Serve   ServeCmd   `cmd:"" default:"withargs" help:"Run the webhook relay."`
-	Migrate MigrateCmd `cmd:"" help:"Apply database migrations and exit."`
-	Secrets SecretsCmd `cmd:"" help:"Manage the secrets PatchCaster stores."`
+	Serve     ServeCmd     `cmd:"" default:"withargs" help:"Run the webhook relay."`
+	Migrate   MigrateCmd   `cmd:"" help:"Apply database migrations and exit."`
+	Bootstrap BootstrapCmd `cmd:"" help:"Issue the one-time setup link that creates the first administrator."`
+	Admin     AdminCmd     `cmd:"" help:"Restore administrator access."`
+	Secrets   SecretsCmd   `cmd:"" help:"Manage the secrets PatchCaster stores."`
 
 	Version kong.VersionFlag `help:"Show the build version and exit."`
 }
@@ -103,6 +105,22 @@ func migrate(ctx context.Context, db *sql.DB, log *slog.Logger) error {
 	return nil
 }
 
+// openMigratedStore opens the database for a one-off command and migrates it
+// first, like serve, so that the command always meets the schema it was
+// built for. The returned function closes the database.
+func openMigratedStore(ctx context.Context, url string) (*store.Postgres, func(), error) {
+	db, err := openDB(url)
+	if err != nil {
+		return nil, nil, err
+	}
+	closeDB := func() { _ = db.Close() }
+	if err := migrate(ctx, db, newLogger("info")); err != nil {
+		closeDB()
+		return nil, nil, err
+	}
+	return store.New(db), closeDB, nil
+}
+
 // SecretsCmd groups the maintenance of stored secrets (ADR-035).
 type SecretsCmd struct {
 	Reseal ResealCmd `cmd:"" help:"Seal every stored secret again with the active encryption key, after a key rotation."`
@@ -120,26 +138,21 @@ func (c *ResealCmd) Validate() error {
 	return c.Keys.validate()
 }
 
-// Run reseals over a connection it opens and closes. It migrates first, like
-// serve, so that it always meets the schema it was built for.
+// Run reseals over a connection it opens and closes.
 func (c *ResealCmd) Run(ctx context.Context) error {
-	log := newLogger("info")
 	box, err := c.Keys.box()
 	if err != nil {
 		return err
 	}
-	db, err := openDB(c.DatabaseURL)
+	st, closeDB, err := openMigratedStore(ctx, c.DatabaseURL)
 	if err != nil {
 		return err
 	}
-	defer func() { _ = db.Close() }()
-	if err := migrate(ctx, db, log); err != nil {
-		return err
-	}
-	resealed, err := resealSecrets(ctx, store.New(db), box, time.Now())
+	defer closeDB()
+	resealed, err := resealSecrets(ctx, st, box, time.Now())
 	if err != nil {
 		return err
 	}
-	log.Info("secrets resealed", "count", resealed)
+	newLogger("info").Info("secrets resealed", "count", resealed)
 	return nil
 }

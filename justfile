@@ -125,7 +125,15 @@ run:
 	go run ./cmd/patchcaster serve \
 	  --database-url "{{database_url}}" \
 	  --routing-file ./contrib/routing.example.yaml \
-	  --encryption-key "{{dev_encryption_key}}"
+	  --encryption-key "{{dev_encryption_key}}" \
+	  --interface-url http://127.0.0.1:8081
+
+# Issue a setup link for the dev instance that `just run` serves.
+[group('dev')]
+bootstrap:
+	go run ./cmd/patchcaster bootstrap \
+	  --database-url "{{database_url}}" \
+	  --interface-url http://127.0.0.1:8081
 
 # Disposable PostgreSQL 18 for local work (podman or docker via $ENGINE).
 [group('dev')]

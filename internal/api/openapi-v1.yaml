@@ -11,11 +11,14 @@ info:
     path.
 servers:
   - url: /
+security:
+  - session: []
 paths:
   /api/v1/instance:
     get:
       operationId: getInstance
       summary: Describe this instance.
+      security: []
       responses:
         "200":
           description: The instance.
@@ -25,7 +28,188 @@ paths:
                 $ref: "#/components/schemas/Instance"
         default:
           $ref: "#/components/responses/Problem"
+  /api/v1/setup:
+    post:
+      operationId: setUp
+      summary: Configure the identity provider during the first setup.
+      description: >-
+        Takes the setup link's token from the bootstrap command, checks that
+        the provider answers, and stores it. The response names the login
+        that makes the person logging in the first administrator. Fails once
+        an administrator exists.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetupRequest"
+      responses:
+        "200":
+          description: The provider is stored; log in to finish the setup.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SetupStarted"
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/session:
+    get:
+      operationId: getSession
+      summary: Describe the person this session belongs to.
+      responses:
+        "200":
+          description: The person logged in.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Person"
+        default:
+          $ref: "#/components/responses/Problem"
+    delete:
+      operationId: endSession
+      summary: Log out.
+      responses:
+        "204":
+          description: The session has ended.
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/persons:
+    get:
+      operationId: listPersons
+      summary: List people, for administrators.
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: One page of people, in the order they first logged in.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonPage"
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/persons/{id}:
+    patch:
+      operationId: updatePerson
+      summary: Change a person's role, for administrators.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PersonUpdate"
+      responses:
+        "200":
+          description: The changed person.
+          headers:
+            ETag:
+              $ref: "#/components/headers/ETag"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Person"
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/settings/login:
+    get:
+      operationId: getLoginSettings
+      summary: Read the identity provider settings, for administrators.
+      responses:
+        "200":
+          description: The settings, without the client secret.
+          headers:
+            ETag:
+              $ref: "#/components/headers/ETag"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginSettings"
+        default:
+          $ref: "#/components/responses/Problem"
+    put:
+      operationId: putLoginSettings
+      summary: Change the identity provider settings, for administrators.
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginSettingsUpdate"
+      responses:
+        "200":
+          description: The changed settings.
+          headers:
+            ETag:
+              $ref: "#/components/headers/ETag"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginSettings"
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/audit:
+    get:
+      operationId: listAudit
+      summary: Read the audit log, newest first, for administrators.
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: One page of entries.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditPage"
+        default:
+          $ref: "#/components/responses/Problem"
 components:
+  securitySchemes:
+    session:
+      type: apiKey
+      in: cookie
+      name: patchcaster_session
+      description: The session cookie the login sets.
+  parameters:
+    Cursor:
+      name: cursor
+      in: query
+      description: Where the page starts, from the previous page's next_cursor.
+      schema:
+        type: string
+    Limit:
+      name: limit
+      in: query
+      description: How many items the page holds at most.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 50
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      description: The ETag of the resource as last read. A change without it, or with an old one, is refused.
+      schema:
+        type: string
+  headers:
+    ETag:
+      description: The resource's current version, for If-Match.
+      schema:
+        type: string
   responses:
     Problem:
       description: An RFC 9457 problem.
@@ -34,10 +218,156 @@ components:
           schema:
             $ref: "#/components/schemas/Problem"
   schemas:
+    SetupRequest:
+      type: object
+      required: [setup_token, issuer, client_id, client_secret]
+      properties:
+        setup_token:
+          type: string
+          minLength: 1
+          description: The token from the setup link.
+        issuer:
+          type: string
+          minLength: 1
+          description: The OpenID Connect issuer URL.
+        client_id:
+          type: string
+          minLength: 1
+        client_secret:
+          type: string
+          minLength: 1
+          writeOnly: true
+        groups_claim:
+          type: string
+          description: The ID token claim that lists a person's groups. Empty admits everyone the provider authenticates.
+        allowed_groups:
+          type: array
+          items:
+            type: string
+          description: The groups whose members may log in. Empty admits everyone.
+    SetupStarted:
+      type: object
+      required: [login_url]
+      properties:
+        login_url:
+          type: string
+          description: Log in here to become the first administrator.
+    Person:
+      type: object
+      required: [id, issuer, subject, display_name, email, administrator, etag]
+      properties:
+        etag:
+          type: string
+          description: The person's current version, for If-Match on a change.
+        id:
+          type: integer
+          format: int64
+        issuer:
+          type: string
+        subject:
+          type: string
+        display_name:
+          type: string
+        email:
+          type: string
+        administrator:
+          type: boolean
+    PersonPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Person"
+        next_cursor:
+          type: string
+          description: Absent on the last page.
+    PersonUpdate:
+      type: object
+      required: [administrator]
+      properties:
+        administrator:
+          type: boolean
+    LoginSettings:
+      type: object
+      required: [issuer, client_id, groups_claim, allowed_groups]
+      properties:
+        issuer:
+          type: string
+        client_id:
+          type: string
+        groups_claim:
+          type: string
+        allowed_groups:
+          type: array
+          items:
+            type: string
+    LoginSettingsUpdate:
+      type: object
+      required: [issuer, client_id, groups_claim, allowed_groups]
+      properties:
+        issuer:
+          type: string
+          minLength: 1
+        client_id:
+          type: string
+          minLength: 1
+        client_secret:
+          type: string
+          minLength: 1
+          writeOnly: true
+          description: A new client secret. Absent keeps the current one.
+        groups_claim:
+          type: string
+        allowed_groups:
+          type: array
+          items:
+            type: string
+    AuditEntry:
+      type: object
+      required: [id, at, actor, action, target_kind, target_id]
+      properties:
+        id:
+          type: integer
+          format: int64
+        at:
+          type: string
+          format: date-time
+        actor:
+          type: string
+          description: Who acted, as their name was then.
+        actor_person_id:
+          type: integer
+          format: int64
+        action:
+          type: string
+        target_kind:
+          type: string
+        target_id:
+          type: string
+        before:
+          description: The target before the change, with secrets redacted.
+        after:
+          description: The target after the change, with secrets redacted.
+    AuditPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditEntry"
+        next_cursor:
+          type: string
+          description: Absent on the last page.
     Instance:
       type: object
-      required: [version]
+      required: [version, setup_required]
       properties:
+        setup_required:
+          type: boolean
+          description: True until the first administrator has logged in.
         version:
           type: string
           description: The build version, "dev" for source builds.

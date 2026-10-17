@@ -4,11 +4,150 @@ package apiv1
 
 import (
 	"fmt"
+	"time"
+
+	"github.com/go-faster/jx"
 )
 
 func (s *ProblemStatusCode) Error() string {
 	return fmt.Sprintf("code %d: %+v", s.StatusCode, s.Response)
 }
+
+// Ref: #/components/schemas/AuditEntry
+type AuditEntry struct {
+	ID int64     `json:"id"`
+	At time.Time `json:"at"`
+	// Who acted, as their name was then.
+	Actor         string   `json:"actor"`
+	ActorPersonID OptInt64 `json:"actor_person_id"`
+	Action        string   `json:"action"`
+	TargetKind    string   `json:"target_kind"`
+	TargetID      string   `json:"target_id"`
+	// The target before the change, with secrets redacted.
+	Before jx.Raw `json:"before"`
+	// The target after the change, with secrets redacted.
+	After jx.Raw `json:"after"`
+}
+
+// GetID returns the value of ID.
+func (s *AuditEntry) GetID() int64 {
+	return s.ID
+}
+
+// GetAt returns the value of At.
+func (s *AuditEntry) GetAt() time.Time {
+	return s.At
+}
+
+// GetActor returns the value of Actor.
+func (s *AuditEntry) GetActor() string {
+	return s.Actor
+}
+
+// GetActorPersonID returns the value of ActorPersonID.
+func (s *AuditEntry) GetActorPersonID() OptInt64 {
+	return s.ActorPersonID
+}
+
+// GetAction returns the value of Action.
+func (s *AuditEntry) GetAction() string {
+	return s.Action
+}
+
+// GetTargetKind returns the value of TargetKind.
+func (s *AuditEntry) GetTargetKind() string {
+	return s.TargetKind
+}
+
+// GetTargetID returns the value of TargetID.
+func (s *AuditEntry) GetTargetID() string {
+	return s.TargetID
+}
+
+// GetBefore returns the value of Before.
+func (s *AuditEntry) GetBefore() jx.Raw {
+	return s.Before
+}
+
+// GetAfter returns the value of After.
+func (s *AuditEntry) GetAfter() jx.Raw {
+	return s.After
+}
+
+// SetID sets the value of ID.
+func (s *AuditEntry) SetID(val int64) {
+	s.ID = val
+}
+
+// SetAt sets the value of At.
+func (s *AuditEntry) SetAt(val time.Time) {
+	s.At = val
+}
+
+// SetActor sets the value of Actor.
+func (s *AuditEntry) SetActor(val string) {
+	s.Actor = val
+}
+
+// SetActorPersonID sets the value of ActorPersonID.
+func (s *AuditEntry) SetActorPersonID(val OptInt64) {
+	s.ActorPersonID = val
+}
+
+// SetAction sets the value of Action.
+func (s *AuditEntry) SetAction(val string) {
+	s.Action = val
+}
+
+// SetTargetKind sets the value of TargetKind.
+func (s *AuditEntry) SetTargetKind(val string) {
+	s.TargetKind = val
+}
+
+// SetTargetID sets the value of TargetID.
+func (s *AuditEntry) SetTargetID(val string) {
+	s.TargetID = val
+}
+
+// SetBefore sets the value of Before.
+func (s *AuditEntry) SetBefore(val jx.Raw) {
+	s.Before = val
+}
+
+// SetAfter sets the value of After.
+func (s *AuditEntry) SetAfter(val jx.Raw) {
+	s.After = val
+}
+
+// Ref: #/components/schemas/AuditPage
+type AuditPage struct {
+	Items []AuditEntry `json:"items"`
+	// Absent on the last page.
+	NextCursor OptString `json:"next_cursor"`
+}
+
+// GetItems returns the value of Items.
+func (s *AuditPage) GetItems() []AuditEntry {
+	return s.Items
+}
+
+// GetNextCursor returns the value of NextCursor.
+func (s *AuditPage) GetNextCursor() OptString {
+	return s.NextCursor
+}
+
+// SetItems sets the value of Items.
+func (s *AuditPage) SetItems(val []AuditEntry) {
+	s.Items = val
+}
+
+// SetNextCursor sets the value of NextCursor.
+func (s *AuditPage) SetNextCursor(val OptString) {
+	s.NextCursor = val
+}
+
+// EndSessionNoContent is response for EndSession operation.
+type EndSessionNoContent struct{}
 
 // Ref: #/components/schemas/FieldError
 type FieldError struct {
@@ -38,8 +177,15 @@ func (s *FieldError) SetMessages(val []string) {
 
 // Ref: #/components/schemas/Instance
 type Instance struct {
+	// True until the first administrator has logged in.
+	SetupRequired bool `json:"setup_required"`
 	// The build version, "dev" for source builds.
 	Version string `json:"version"`
+}
+
+// GetSetupRequired returns the value of SetupRequired.
+func (s *Instance) GetSetupRequired() bool {
+	return s.SetupRequired
 }
 
 // GetVersion returns the value of Version.
@@ -47,9 +193,240 @@ func (s *Instance) GetVersion() string {
 	return s.Version
 }
 
+// SetSetupRequired sets the value of SetupRequired.
+func (s *Instance) SetSetupRequired(val bool) {
+	s.SetupRequired = val
+}
+
 // SetVersion sets the value of Version.
 func (s *Instance) SetVersion(val string) {
 	s.Version = val
+}
+
+// Ref: #/components/schemas/LoginSettings
+type LoginSettings struct {
+	Issuer        string   `json:"issuer"`
+	ClientID      string   `json:"client_id"`
+	GroupsClaim   string   `json:"groups_claim"`
+	AllowedGroups []string `json:"allowed_groups"`
+}
+
+// GetIssuer returns the value of Issuer.
+func (s *LoginSettings) GetIssuer() string {
+	return s.Issuer
+}
+
+// GetClientID returns the value of ClientID.
+func (s *LoginSettings) GetClientID() string {
+	return s.ClientID
+}
+
+// GetGroupsClaim returns the value of GroupsClaim.
+func (s *LoginSettings) GetGroupsClaim() string {
+	return s.GroupsClaim
+}
+
+// GetAllowedGroups returns the value of AllowedGroups.
+func (s *LoginSettings) GetAllowedGroups() []string {
+	return s.AllowedGroups
+}
+
+// SetIssuer sets the value of Issuer.
+func (s *LoginSettings) SetIssuer(val string) {
+	s.Issuer = val
+}
+
+// SetClientID sets the value of ClientID.
+func (s *LoginSettings) SetClientID(val string) {
+	s.ClientID = val
+}
+
+// SetGroupsClaim sets the value of GroupsClaim.
+func (s *LoginSettings) SetGroupsClaim(val string) {
+	s.GroupsClaim = val
+}
+
+// SetAllowedGroups sets the value of AllowedGroups.
+func (s *LoginSettings) SetAllowedGroups(val []string) {
+	s.AllowedGroups = val
+}
+
+// LoginSettingsHeaders wraps LoginSettings with response headers.
+type LoginSettingsHeaders struct {
+	ETag     OptString
+	Response LoginSettings
+}
+
+// GetETag returns the value of ETag.
+func (s *LoginSettingsHeaders) GetETag() OptString {
+	return s.ETag
+}
+
+// GetResponse returns the value of Response.
+func (s *LoginSettingsHeaders) GetResponse() LoginSettings {
+	return s.Response
+}
+
+// SetETag sets the value of ETag.
+func (s *LoginSettingsHeaders) SetETag(val OptString) {
+	s.ETag = val
+}
+
+// SetResponse sets the value of Response.
+func (s *LoginSettingsHeaders) SetResponse(val LoginSettings) {
+	s.Response = val
+}
+
+// Ref: #/components/schemas/LoginSettingsUpdate
+type LoginSettingsUpdate struct {
+	Issuer   string `json:"issuer"`
+	ClientID string `json:"client_id"`
+	// A new client secret. Absent keeps the current one.
+	ClientSecret  OptString `json:"client_secret"`
+	GroupsClaim   string    `json:"groups_claim"`
+	AllowedGroups []string  `json:"allowed_groups"`
+}
+
+// GetIssuer returns the value of Issuer.
+func (s *LoginSettingsUpdate) GetIssuer() string {
+	return s.Issuer
+}
+
+// GetClientID returns the value of ClientID.
+func (s *LoginSettingsUpdate) GetClientID() string {
+	return s.ClientID
+}
+
+// GetClientSecret returns the value of ClientSecret.
+func (s *LoginSettingsUpdate) GetClientSecret() OptString {
+	return s.ClientSecret
+}
+
+// GetGroupsClaim returns the value of GroupsClaim.
+func (s *LoginSettingsUpdate) GetGroupsClaim() string {
+	return s.GroupsClaim
+}
+
+// GetAllowedGroups returns the value of AllowedGroups.
+func (s *LoginSettingsUpdate) GetAllowedGroups() []string {
+	return s.AllowedGroups
+}
+
+// SetIssuer sets the value of Issuer.
+func (s *LoginSettingsUpdate) SetIssuer(val string) {
+	s.Issuer = val
+}
+
+// SetClientID sets the value of ClientID.
+func (s *LoginSettingsUpdate) SetClientID(val string) {
+	s.ClientID = val
+}
+
+// SetClientSecret sets the value of ClientSecret.
+func (s *LoginSettingsUpdate) SetClientSecret(val OptString) {
+	s.ClientSecret = val
+}
+
+// SetGroupsClaim sets the value of GroupsClaim.
+func (s *LoginSettingsUpdate) SetGroupsClaim(val string) {
+	s.GroupsClaim = val
+}
+
+// SetAllowedGroups sets the value of AllowedGroups.
+func (s *LoginSettingsUpdate) SetAllowedGroups(val []string) {
+	s.AllowedGroups = val
+}
+
+// NewOptInt returns new OptInt with value set to v.
+func NewOptInt(v int) OptInt {
+	return OptInt{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptInt is optional int.
+type OptInt struct {
+	Value int
+	Set   bool
+}
+
+// IsSet returns true if OptInt was set.
+func (o OptInt) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptInt) Reset() {
+	var v int
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptInt) SetTo(v int) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptInt) Get() (v int, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptInt) Or(d int) int {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptInt64 returns new OptInt64 with value set to v.
+func NewOptInt64(v int64) OptInt64 {
+	return OptInt64{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptInt64 is optional int64.
+type OptInt64 struct {
+	Value int64
+	Set   bool
+}
+
+// IsSet returns true if OptInt64 was set.
+func (o OptInt64) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptInt64) Reset() {
+	var v int64
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptInt64) SetTo(v int64) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptInt64) Get() (v int64, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptInt64) Or(d int64) int64 {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
 }
 
 // NewOptString returns new OptString with value set to v.
@@ -96,6 +473,156 @@ func (o OptString) Or(d string) string {
 		return v
 	}
 	return d
+}
+
+// Ref: #/components/schemas/Person
+type Person struct {
+	// The person's current version, for If-Match on a change.
+	Etag          string `json:"etag"`
+	ID            int64  `json:"id"`
+	Issuer        string `json:"issuer"`
+	Subject       string `json:"subject"`
+	DisplayName   string `json:"display_name"`
+	Email         string `json:"email"`
+	Administrator bool   `json:"administrator"`
+}
+
+// GetEtag returns the value of Etag.
+func (s *Person) GetEtag() string {
+	return s.Etag
+}
+
+// GetID returns the value of ID.
+func (s *Person) GetID() int64 {
+	return s.ID
+}
+
+// GetIssuer returns the value of Issuer.
+func (s *Person) GetIssuer() string {
+	return s.Issuer
+}
+
+// GetSubject returns the value of Subject.
+func (s *Person) GetSubject() string {
+	return s.Subject
+}
+
+// GetDisplayName returns the value of DisplayName.
+func (s *Person) GetDisplayName() string {
+	return s.DisplayName
+}
+
+// GetEmail returns the value of Email.
+func (s *Person) GetEmail() string {
+	return s.Email
+}
+
+// GetAdministrator returns the value of Administrator.
+func (s *Person) GetAdministrator() bool {
+	return s.Administrator
+}
+
+// SetEtag sets the value of Etag.
+func (s *Person) SetEtag(val string) {
+	s.Etag = val
+}
+
+// SetID sets the value of ID.
+func (s *Person) SetID(val int64) {
+	s.ID = val
+}
+
+// SetIssuer sets the value of Issuer.
+func (s *Person) SetIssuer(val string) {
+	s.Issuer = val
+}
+
+// SetSubject sets the value of Subject.
+func (s *Person) SetSubject(val string) {
+	s.Subject = val
+}
+
+// SetDisplayName sets the value of DisplayName.
+func (s *Person) SetDisplayName(val string) {
+	s.DisplayName = val
+}
+
+// SetEmail sets the value of Email.
+func (s *Person) SetEmail(val string) {
+	s.Email = val
+}
+
+// SetAdministrator sets the value of Administrator.
+func (s *Person) SetAdministrator(val bool) {
+	s.Administrator = val
+}
+
+// PersonHeaders wraps Person with response headers.
+type PersonHeaders struct {
+	ETag     OptString
+	Response Person
+}
+
+// GetETag returns the value of ETag.
+func (s *PersonHeaders) GetETag() OptString {
+	return s.ETag
+}
+
+// GetResponse returns the value of Response.
+func (s *PersonHeaders) GetResponse() Person {
+	return s.Response
+}
+
+// SetETag sets the value of ETag.
+func (s *PersonHeaders) SetETag(val OptString) {
+	s.ETag = val
+}
+
+// SetResponse sets the value of Response.
+func (s *PersonHeaders) SetResponse(val Person) {
+	s.Response = val
+}
+
+// Ref: #/components/schemas/PersonPage
+type PersonPage struct {
+	Items []Person `json:"items"`
+	// Absent on the last page.
+	NextCursor OptString `json:"next_cursor"`
+}
+
+// GetItems returns the value of Items.
+func (s *PersonPage) GetItems() []Person {
+	return s.Items
+}
+
+// GetNextCursor returns the value of NextCursor.
+func (s *PersonPage) GetNextCursor() OptString {
+	return s.NextCursor
+}
+
+// SetItems sets the value of Items.
+func (s *PersonPage) SetItems(val []Person) {
+	s.Items = val
+}
+
+// SetNextCursor sets the value of NextCursor.
+func (s *PersonPage) SetNextCursor(val OptString) {
+	s.NextCursor = val
+}
+
+// Ref: #/components/schemas/PersonUpdate
+type PersonUpdate struct {
+	Administrator bool `json:"administrator"`
+}
+
+// GetAdministrator returns the value of Administrator.
+func (s *PersonUpdate) GetAdministrator() bool {
+	return s.Administrator
+}
+
+// SetAdministrator sets the value of Administrator.
+func (s *PersonUpdate) SetAdministrator(val bool) {
+	s.Administrator = val
 }
 
 // An RFC 9457 problem.
@@ -188,4 +715,119 @@ func (s *ProblemStatusCode) SetStatusCode(val int) {
 // SetResponse sets the value of Response.
 func (s *ProblemStatusCode) SetResponse(val Problem) {
 	s.Response = val
+}
+
+type Session struct {
+	APIKey string
+	Roles  []string
+}
+
+// GetAPIKey returns the value of APIKey.
+func (s *Session) GetAPIKey() string {
+	return s.APIKey
+}
+
+// GetRoles returns the value of Roles.
+func (s *Session) GetRoles() []string {
+	return s.Roles
+}
+
+// SetAPIKey sets the value of APIKey.
+func (s *Session) SetAPIKey(val string) {
+	s.APIKey = val
+}
+
+// SetRoles sets the value of Roles.
+func (s *Session) SetRoles(val []string) {
+	s.Roles = val
+}
+
+// Ref: #/components/schemas/SetupRequest
+type SetupRequest struct {
+	// The token from the setup link.
+	SetupToken string `json:"setup_token"`
+	// The OpenID Connect issuer URL.
+	Issuer       string `json:"issuer"`
+	ClientID     string `json:"client_id"`
+	ClientSecret string `json:"client_secret"`
+	// The ID token claim that lists a person's groups. Empty admits everyone the provider authenticates.
+	GroupsClaim OptString `json:"groups_claim"`
+	// The groups whose members may log in. Empty admits everyone.
+	AllowedGroups []string `json:"allowed_groups"`
+}
+
+// GetSetupToken returns the value of SetupToken.
+func (s *SetupRequest) GetSetupToken() string {
+	return s.SetupToken
+}
+
+// GetIssuer returns the value of Issuer.
+func (s *SetupRequest) GetIssuer() string {
+	return s.Issuer
+}
+
+// GetClientID returns the value of ClientID.
+func (s *SetupRequest) GetClientID() string {
+	return s.ClientID
+}
+
+// GetClientSecret returns the value of ClientSecret.
+func (s *SetupRequest) GetClientSecret() string {
+	return s.ClientSecret
+}
+
+// GetGroupsClaim returns the value of GroupsClaim.
+func (s *SetupRequest) GetGroupsClaim() OptString {
+	return s.GroupsClaim
+}
+
+// GetAllowedGroups returns the value of AllowedGroups.
+func (s *SetupRequest) GetAllowedGroups() []string {
+	return s.AllowedGroups
+}
+
+// SetSetupToken sets the value of SetupToken.
+func (s *SetupRequest) SetSetupToken(val string) {
+	s.SetupToken = val
+}
+
+// SetIssuer sets the value of Issuer.
+func (s *SetupRequest) SetIssuer(val string) {
+	s.Issuer = val
+}
+
+// SetClientID sets the value of ClientID.
+func (s *SetupRequest) SetClientID(val string) {
+	s.ClientID = val
+}
+
+// SetClientSecret sets the value of ClientSecret.
+func (s *SetupRequest) SetClientSecret(val string) {
+	s.ClientSecret = val
+}
+
+// SetGroupsClaim sets the value of GroupsClaim.
+func (s *SetupRequest) SetGroupsClaim(val OptString) {
+	s.GroupsClaim = val
+}
+
+// SetAllowedGroups sets the value of AllowedGroups.
+func (s *SetupRequest) SetAllowedGroups(val []string) {
+	s.AllowedGroups = val
+}
+
+// Ref: #/components/schemas/SetupStarted
+type SetupStarted struct {
+	// Log in here to become the first administrator.
+	LoginURL string `json:"login_url"`
+}
+
+// GetLoginURL returns the value of LoginURL.
+func (s *SetupStarted) GetLoginURL() string {
+	return s.LoginURL
+}
+
+// SetLoginURL sets the value of LoginURL.
+func (s *SetupStarted) SetLoginURL(val string) {
+	s.LoginURL = val
 }

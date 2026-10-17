@@ -5,7 +5,28 @@ shuts down and upgrades, and what its delivery guarantees mean in practice.
 
 ## Management API
 
-The management listener (`--management-addr`, `:8081` by default) serves the management API under `/api/v1/`, and its OpenAPI description at `GET /api/v1/openapi.yaml`. It answers nothing else, and the webhook and internal listeners never answer API paths, so each listener can be exposed differently: the webhook listener to the forges, the management listener only to the organization's people and automation. Errors are RFC 9457 problem details (`application/problem+json`).
+The management listener (`--management-addr`, `:8081` by default) serves the management API under `/api/v1/`, and its OpenAPI description at `GET /api/v1/openapi.yaml`. It answers nothing else, and the webhook and internal listeners never answer API paths, so each listener can be exposed differently: the webhook listener to the forges, the management listener only to the organization's people and automation. Errors are RFC 9457 problem details (`application/problem+json`). A validation error lists each field at fault by its path, such as `allowed_groups[0]`. Lists page with `limit` and the `next_cursor` of the previous page. Every change sends the `ETag` of what it read in `If-Match`, and fails with `412 Precondition Failed` when the resource changed meanwhile.
+
+The management listener also serves the login. People log in through the organization's OpenID Connect provider, and PatchCaster keeps no passwords. A session ends after one hour without activity, twelve hours after login at the latest, or at logout (`DELETE /api/v1/session`). The API refuses any change that a browser sends from another site.
+
+## First setup
+
+A new instance has no identity provider and no administrator yet:
+
+1. Register PatchCaster as a confidential client at the identity provider, with the authorization code flow and the redirect address `<interface URL>/auth/callback`.
+2. Run `patchcaster bootstrap`. It prints a setup link of the form `<interface URL>/setup#<token>`, which works once, for one hour.
+3. Send the token from the link, the provider's issuer, the client ID and the client secret to `POST /api/v1/setup`, from the browser that will log in. PatchCaster checks that a provider answers at the issuer, seals the client secret, and answers with the login address. The web interface will do this step for you once it exists.
+4. Log in at that address in the same browser. You become the first administrator, and the setup link stops working.
+
+Everyone who logs in later starts with the role User. To admit only some of the people the provider knows, name the ID token claim that lists a person's groups (`groups_claim`) and the groups that may log in (`allowed_groups`), at setup or later through `PUT /api/v1/settings/login`. A refused login tells the person why.
+
+## Restoring administrator access
+
+When no administrator can log in any more, run `patchcaster admin grant --issuer <issuer> --subject <subject>` with the database URL. It names the person exactly as their ID tokens do. The grant takes effect at once, even in a running session.
+
+## Audit log
+
+Administrators read every change to the configuration, every setup step, every grant and every administrator's login at `GET /api/v1/audit`, newest first. Each entry names who acted, when, and what changed. Secret values never appear: a changed secret shows only as `secret changed`. Nobody can edit or delete entries.
 
 ## Probes and metrics
 
@@ -62,7 +83,7 @@ The [encryption key](configuration.md#encryption-key) rotates without downtime:
 
 1. Generate a new key with `openssl rand -base64 32`.
 2. Restart PatchCaster with the new key in `PATCHCASTER_ENCRYPTION_KEY` and the old one in `PATCHCASTER_PREVIOUS_ENCRYPTION_KEYS`. It starts, and warns that stored secrets are still sealed with a previous key.
-3. Run `patchcaster secrets reseal` with the same two settings and the database URL.
+3. Run `patchcaster secrets reseal` with the same two settings and the database URL. It seals the identity provider's client secret again too.
 4. Restart with the new key alone, and discard the old one.
 
 Before the reseal, a start with only the new key fails. After it, a start with only the old key fails.

@@ -1,0 +1,3 @@
+kind: Added
+body: 'Log in through the organization''s OpenID Connect provider, optionally limited to members of named groups. A new instance prints its one-time setup link with patchcaster bootstrap, and patchcaster admin grant restores administrator access.'
+time: 2026-10-17T10:39:40.171348760+02:00

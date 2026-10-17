@@ -10,18 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/patchcaster-app/patchcaster/e2e/apiv1"
 )
-
-// apiClient talks to the service's management API through the client
-// generated from the same description as the server (ADR-031).
-func apiClient(t *testing.T, s *service) *apiv1.Client {
-	t.Helper()
-	client, err := apiv1.NewClient(s.managementURL)
-	require.NoError(t, err)
-	return client
-}
 
 // The management API answers, and it serves the description it was built
 // from (SYSREQ-035).
@@ -33,7 +22,7 @@ func TestTheManagementAPIDescribesTheInstance(t *testing.T) {
 	require.NoError(t, err)
 
 	// act
-	instance, instanceErr := apiClient(t, svc).GetInstance(context.Background())
+	instance, instanceErr := newBrowser(t, svc).api(t).GetInstance(context.Background())
 	resp, getErr := http.Get(svc.managementURL + "/api/v1/openapi.yaml")
 	require.NoError(t, getErr)
 	defer func() { _ = resp.Body.Close() }()

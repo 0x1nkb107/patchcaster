@@ -45,14 +45,19 @@ func TestEachListenerServesOnlyItsOwnPaths(t *testing.T) {
 	webhookURL := "http://" + svc.publicAddr
 
 	tests := []struct {
-		name   string
-		method string
-		url    string
+		name       string
+		method     string
+		url        string
+		wantStatus int
+		wantType   string // the content type, when the listener answers at all
 	}{
-		{"the API on the webhook listener", http.MethodGet, webhookURL + "/api/v1/instance"},
-		{"the API on the internal listener", http.MethodGet, svc.internalURL + "/api/v1/instance"},
-		{"webhooks on the management listener", http.MethodPost, svc.managementURL + "/webhook"},
-		{"probes on the management listener", http.MethodGet, svc.managementURL + "/readyz"},
+		{"the API on the webhook listener", http.MethodGet, webhookURL + "/api/v1/instance", http.StatusNotFound, ""},
+		{"the API on the internal listener", http.MethodGet, svc.internalURL + "/api/v1/instance", http.StatusNotFound, ""},
+		{"the interface on the webhook listener", http.MethodGet, webhookURL + "/", http.StatusNotFound, ""},
+		// The interface routes in the browser, so the management listener
+		// answers every other read with its page and refuses every write.
+		{"webhooks on the management listener", http.MethodPost, svc.managementURL + "/webhooks/1", http.StatusMethodNotAllowed, ""},
+		{"probes on the management listener", http.MethodGet, svc.managementURL + "/readyz", http.StatusOK, "text/html; charset=utf-8"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -64,7 +69,37 @@ func TestEachListenerServesOnlyItsOwnPaths(t *testing.T) {
 			_ = resp.Body.Close()
 
 			// assert
-			assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+			assert.Equal(t, tc.wantStatus, resp.StatusCode)
+			if tc.wantType != "" {
+				assert.Equal(t, tc.wantType, resp.Header.Get("Content-Type"), "the interface's page, not the probe")
+			}
 		})
 	}
+}
+
+// The binary serves its web interface on the management listener, and the
+// interface's router takes every path that names no file (ADR-032).
+func TestTheManagementListenerServesTheInterface(t *testing.T) {
+	// arrange
+	freshDatabase(t)
+	svc := startService(t, serviceConfig{})
+	read := func(path string) (int, string, string) {
+		resp, err := http.Get(svc.managementURL + path)
+		require.NoError(t, err)
+		defer func() { _ = resp.Body.Close() }()
+		body, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		return resp.StatusCode, resp.Header.Get("Cache-Control"), string(body)
+	}
+
+	// act
+	rootStatus, rootCache, root := read("/")
+	deepStatus, _, deep := read("/tokens")
+
+	// assert
+	assert.Equal(t, http.StatusOK, rootStatus)
+	assert.Equal(t, "no-cache", rootCache, "the page names the release's files, so browsers check it every time")
+	assert.Equal(t, http.StatusOK, deepStatus)
+	assert.Equal(t, root, deep, "a deep link gets the same page")
+	assert.Contains(t, root, "<title>PatchCaster</title>")
 }

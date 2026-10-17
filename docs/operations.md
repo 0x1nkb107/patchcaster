@@ -3,9 +3,11 @@
 Running PatchCaster once it is [installed](install.md): what to watch, how it
 shuts down and upgrades, and what its delivery guarantees mean in practice.
 
-## Management API
+## Web interface and management API
 
-The management listener (`--management-addr`, `:8081` by default) serves the management API under `/api/v1/`, and its OpenAPI description at `GET /api/v1/openapi.yaml`. It answers nothing else, and the webhook and internal listeners never answer API paths, so each listener can be exposed differently: the webhook listener to the forges, the management listener only to the organization's people and automation. Errors are RFC 9457 problem details (`application/problem+json`). A validation error lists each field at fault by its path, such as `allowed_groups[0]`. Lists page with `limit` and the `next_cursor` of the previous page. Every change sends the `ETag` of what it read in `If-Match`, and fails with `412 Precondition Failed` when the resource changed meanwhile.
+The management listener (`--management-addr`, `:8081` by default) serves the web interface at the interface URL, the management API under `/api/v1/`, and the API's OpenAPI description at `GET /api/v1/openapi.yaml`. It answers nothing else, and the webhook and internal listeners never answer interface or API paths, so each listener can be exposed differently: the webhook listener to the forges, the management listener only to the organization's people and automation. Errors are RFC 9457 problem details (`application/problem+json`). A validation error lists each field at fault by its path, such as `allowed_groups[0]`. Lists page with `limit` and the `next_cursor` of the previous page. Every change sends the `ETag` of what it read in `If-Match`, and fails with `412 Precondition Failed` when the resource changed meanwhile.
+
+The web interface covers the first setup, the login and API tokens so far. Everything else goes through the API, which the interface uses too.
 
 The management listener also serves the login. People log in through the organization's OpenID Connect provider, and PatchCaster keeps no passwords. A session ends after one hour without activity, twelve hours after login at the latest, or at logout (`DELETE /api/v1/session`). The API refuses any change that a browser sends from another site.
 
@@ -15,8 +17,8 @@ A new instance has no identity provider and no administrator yet:
 
 1. Register PatchCaster as a confidential client at the identity provider, with the authorization code flow and the redirect address `<interface URL>/auth/callback`.
 2. Run `patchcaster bootstrap`. It prints a setup link of the form `<interface URL>/setup#<token>`, which works once, for one hour.
-3. Send the token from the link, the provider's issuer, the client ID and the client secret to `POST /api/v1/setup`, from the browser that will log in. PatchCaster checks that a provider answers at the issuer, seals the client secret, and answers with the login address. The web interface will do this step for you once it exists.
-4. Log in at that address in the same browser. You become the first administrator, and the setup link stops working.
+3. Open the setup link in the browser that will log in, and enter the provider's issuer, the client ID and the client secret. PatchCaster checks that a provider answers at the issuer, seals the client secret, and sends the browser on to the login. Without the interface, send the token from the link and the same values to `POST /api/v1/setup` from that browser. It answers with the login address.
+4. Log in in the same browser. You become the first administrator, and the setup link stops working.
 
 Everyone who logs in later starts with the role User. To admit only some of the people the provider knows, name the ID token claim that lists a person's groups (`groups_claim`) and the groups that may log in (`allowed_groups`), at setup or later through `PUT /api/v1/settings/login`. A refused login tells the person why.
 
@@ -45,9 +47,9 @@ A change applies to the next event, without a restart. Messages already queued k
 
 ## API tokens
 
-Automation authenticates with a personal API token, sent as `Authorization: Bearer <token>`. A token acts with its owner's permissions as they are at each request, so a person who loses a role loses it for their tokens at once. Create one during a login with `POST /api/v1/tokens`, naming it and, optionally, its lifetime in days (`lifetime_days`, 1 to 90, 90 by default). The response holds the token, which starts with `patchcaster_` and is shown only that once: PatchCaster keeps only a hash of it. Changes made with a token name the token in the audit log, next to its owner.
+Automation authenticates with a personal API token, sent as `Authorization: Bearer <token>`. A token acts with its owner's permissions as they are at each request, so a person who loses a role loses it for their tokens at once. Create one on the interface's API tokens page, or during a login with `POST /api/v1/tokens`, naming it and, optionally, its lifetime in days (`lifetime_days`, 1 to 90, 90 by default). The response holds the token, which starts with `patchcaster_` and is shown only that once: PatchCaster keeps only a hash of it. Changes made with a token name the token in the audit log, next to its owner.
 
-Only a login lists (`GET /api/v1/tokens`) and revokes (`DELETE /api/v1/tokens/{id}`) tokens, so a leaked token cannot create its successor. A revoked or expired token answers `401` on its next use.
+Only a login lists (`GET /api/v1/tokens`) and revokes (`DELETE /api/v1/tokens/{id}`) tokens, as the API tokens page does, so a leaked token cannot create its successor. A revoked or expired token answers `401` on its next use.
 
 To cut someone off at once, for example when they leave, an administrator calls `POST /api/v1/persons/{id}/revoke-access`. It revokes all their tokens and ends all their sessions. They can log in again unless the identity provider refuses them, so remove them there too.
 

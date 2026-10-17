@@ -1,0 +1,5 @@
+node_modules/
+.svelte-kit/
+# The bundle is built, never committed. dist/.gitkeep keeps the embed
+# pattern valid before the first build.
+/dist/app/

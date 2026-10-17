@@ -24,6 +24,11 @@ The binary must serve a web interface (UC-004, UC-005, UC-006). Its heaviest scr
 ## Decision
 
 - The interface is a SvelteKit application in single-page mode: `@sveltejs/adapter-static` with a fallback page, and server-side rendering switched off in the root layout. It has no server routes. The Go binary is its only backend.
+- It builds on SvelteKit 3, which changes the project's shape:
+  - The configuration, the adapter's among it, goes to the `sveltekit()` plugin in `vite.config.ts`. SvelteKit 3 no longer reads `svelte.config.js`.
+  - `tsconfig.json` extends `$app/tsconfig`, which SvelteKit generates.
+  - Modules import shared code through the subpath imports of `package.json`, as `#lib/...`. They replace SvelteKit's `$lib` alias, and the shadcn-svelte configuration uses them too.
+  - bits-ui depends on runed 0.35, which names SvelteKit 2 as an optional peer. Left alone, npm installs a second, older SvelteKit for it, with a known vulnerability in its cookie package. An override in `package.json` gives runed the project's own SvelteKit instead.
 - TypeScript runs in strict mode, and a failed type check fails the build.
 - Components come from shadcn-svelte, which adds their source to the repository and builds them on Bits UI. They are styled with Tailwind CSS, which shadcn-svelte requires.
 - Vite bundles the application, and the binary embeds the bundle. The layout:
@@ -32,12 +37,15 @@ The binary must serve a web interface (UC-004, UC-005, UC-006). Its heaviest scr
   - `web/dist/.gitkeep` is tracked, so the embed pattern matches before the first frontend build, and Go code compiles on a fresh clone.
   - adapter-static writes the bundle to `web/dist/app` (`pages: 'dist/app'`), which Git ignores. SvelteKit sets Vite's own output directory itself, so the adapter's setting is the one that counts. The adapter clears only its own directory before each build, so the placeholder survives.
   - `go.mod` lists `ignore ./web/node_modules`. npm packages may ship Go files, `flatted` among them, which would otherwise break `go vet ./...`.
-- The binary serves `dist/app` on the management listener with `http.FileServerFS`.
+- The binary serves `dist/app` on the management listener, through `http.ServeFileFS` and for `GET` and `HEAD` only.
   - Paths that name no file and do not start with `/api` get the fallback page.
   - Hashed files under `_app/immutable/` are served with `Cache-Control: public, max-age=31536000, immutable`, and the fallback page with `no-cache`.
   - Without a bundle, the binary serves a short page saying that the interface was not built.
 - Forms show the API's validation errors next to their fields, through the field paths of ADR-043.
 - The interface talks only to the management API. Its types and client are generated from the OpenAPI description (ADR-031). A changed contract then breaks the interface's type check, not its users.
+  - orval generates them (owner decision 2026-10-17): a client on the browser's `fetch`, whose answers are typed by their status, and zod schemas of the request bodies. The forms validate with these schemas through the zod adapters of sveltekit-superforms before they send anything. The owner first chose openapi-typescript with openapi-fetch, but openapi-typescript accepts only TypeScript 5, against the 6.0 that ADR-042 pins.
+  - The generated code is committed in `web/src/lib/api/generated`. `just web-api` regenerates it, and `just web-api-check` fails when it differs from what the description generates.
+  - A small adapter, `web/src/lib/api/fetch.ts`, sends every request with the session cookie and hands orval the status, headers and decoded body.
 - Login stays on the server (ADR-033). The session lives in an `HttpOnly` cookie on the interface's own origin, so the interface never handles a token.
 - `web/.npmrc` sets `min-release-age=7` (owner decision 2026-10-15). When dependencies are added or updated, npm then resolves only versions published more than seven days ago. A hijacked release thus has a week to be noticed and pulled before it can enter the lockfile, and `npm ci` installs the lockfile as reviewed.
   - npm supports the setting from 11.10.0 on. Older releases only warn about an unknown setting and install anyway, so the frontend recipes refuse to run with an npm older than 11.10.0.

@@ -13,6 +13,137 @@ func (s *ProblemStatusCode) Error() string {
 	return fmt.Sprintf("code %d: %+v", s.StatusCode, s.Response)
 }
 
+// Ref: #/components/schemas/AccessRevoked
+type AccessRevoked struct {
+	// How many working tokens were revoked.
+	RevokedTokens int `json:"revoked_tokens"`
+}
+
+// GetRevokedTokens returns the value of RevokedTokens.
+func (s *AccessRevoked) GetRevokedTokens() int {
+	return s.RevokedTokens
+}
+
+// SetRevokedTokens sets the value of RevokedTokens.
+func (s *AccessRevoked) SetRevokedTokens(val int) {
+	s.RevokedTokens = val
+}
+
+// Ref: #/components/schemas/ApiToken
+type ApiToken struct {
+	ID        int64     `json:"id"`
+	Name      string    `json:"name"`
+	CreatedAt time.Time `json:"created_at"`
+	ExpiresAt time.Time `json:"expires_at"`
+	// Absent while the token is not revoked.
+	RevokedAt OptDateTime `json:"revoked_at"`
+}
+
+// GetID returns the value of ID.
+func (s *ApiToken) GetID() int64 {
+	return s.ID
+}
+
+// GetName returns the value of Name.
+func (s *ApiToken) GetName() string {
+	return s.Name
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *ApiToken) GetCreatedAt() time.Time {
+	return s.CreatedAt
+}
+
+// GetExpiresAt returns the value of ExpiresAt.
+func (s *ApiToken) GetExpiresAt() time.Time {
+	return s.ExpiresAt
+}
+
+// GetRevokedAt returns the value of RevokedAt.
+func (s *ApiToken) GetRevokedAt() OptDateTime {
+	return s.RevokedAt
+}
+
+// SetID sets the value of ID.
+func (s *ApiToken) SetID(val int64) {
+	s.ID = val
+}
+
+// SetName sets the value of Name.
+func (s *ApiToken) SetName(val string) {
+	s.Name = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *ApiToken) SetCreatedAt(val time.Time) {
+	s.CreatedAt = val
+}
+
+// SetExpiresAt sets the value of ExpiresAt.
+func (s *ApiToken) SetExpiresAt(val time.Time) {
+	s.ExpiresAt = val
+}
+
+// SetRevokedAt sets the value of RevokedAt.
+func (s *ApiToken) SetRevokedAt(val OptDateTime) {
+	s.RevokedAt = val
+}
+
+// Ref: #/components/schemas/ApiTokenPage
+type ApiTokenPage struct {
+	Items []ApiToken `json:"items"`
+	// Absent on the last page.
+	NextCursor OptString `json:"next_cursor"`
+}
+
+// GetItems returns the value of Items.
+func (s *ApiTokenPage) GetItems() []ApiToken {
+	return s.Items
+}
+
+// GetNextCursor returns the value of NextCursor.
+func (s *ApiTokenPage) GetNextCursor() OptString {
+	return s.NextCursor
+}
+
+// SetItems sets the value of Items.
+func (s *ApiTokenPage) SetItems(val []ApiToken) {
+	s.Items = val
+}
+
+// SetNextCursor sets the value of NextCursor.
+func (s *ApiTokenPage) SetNextCursor(val OptString) {
+	s.NextCursor = val
+}
+
+// Ref: #/components/schemas/ApiTokenRequest
+type ApiTokenRequest struct {
+	// What the token is for, such as the job that uses it.
+	Name string `json:"name"`
+	// How many days the token works.
+	LifetimeDays OptInt `json:"lifetime_days"`
+}
+
+// GetName returns the value of Name.
+func (s *ApiTokenRequest) GetName() string {
+	return s.Name
+}
+
+// GetLifetimeDays returns the value of LifetimeDays.
+func (s *ApiTokenRequest) GetLifetimeDays() OptInt {
+	return s.LifetimeDays
+}
+
+// SetName sets the value of Name.
+func (s *ApiTokenRequest) SetName(val string) {
+	s.Name = val
+}
+
+// SetLifetimeDays sets the value of LifetimeDays.
+func (s *ApiTokenRequest) SetLifetimeDays(val OptInt) {
+	s.LifetimeDays = val
+}
+
 // Ref: #/components/schemas/AuditEntry
 type AuditEntry struct {
 	ID int64     `json:"id"`
@@ -20,9 +151,12 @@ type AuditEntry struct {
 	// Who acted, as their name was then.
 	Actor         string   `json:"actor"`
 	ActorPersonID OptInt64 `json:"actor_person_id"`
-	Action        string   `json:"action"`
-	TargetKind    string   `json:"target_kind"`
-	TargetID      string   `json:"target_id"`
+	// The token the actor used, by its name then. Absent for a login.
+	ActorToken   OptString `json:"actor_token"`
+	ActorTokenID OptInt64  `json:"actor_token_id"`
+	Action       string    `json:"action"`
+	TargetKind   string    `json:"target_kind"`
+	TargetID     string    `json:"target_id"`
 	// The target before the change, with secrets redacted.
 	Before jx.Raw `json:"before"`
 	// The target after the change, with secrets redacted.
@@ -47,6 +181,16 @@ func (s *AuditEntry) GetActor() string {
 // GetActorPersonID returns the value of ActorPersonID.
 func (s *AuditEntry) GetActorPersonID() OptInt64 {
 	return s.ActorPersonID
+}
+
+// GetActorToken returns the value of ActorToken.
+func (s *AuditEntry) GetActorToken() OptString {
+	return s.ActorToken
+}
+
+// GetActorTokenID returns the value of ActorTokenID.
+func (s *AuditEntry) GetActorTokenID() OptInt64 {
+	return s.ActorTokenID
 }
 
 // GetAction returns the value of Action.
@@ -92,6 +236,16 @@ func (s *AuditEntry) SetActor(val string) {
 // SetActorPersonID sets the value of ActorPersonID.
 func (s *AuditEntry) SetActorPersonID(val OptInt64) {
 	s.ActorPersonID = val
+}
+
+// SetActorToken sets the value of ActorToken.
+func (s *AuditEntry) SetActorToken(val OptString) {
+	s.ActorToken = val
+}
+
+// SetActorTokenID sets the value of ActorTokenID.
+func (s *AuditEntry) SetActorTokenID(val OptInt64) {
+	s.ActorTokenID = val
 }
 
 // SetAction sets the value of Action.
@@ -144,6 +298,33 @@ func (s *AuditPage) SetItems(val []AuditEntry) {
 // SetNextCursor sets the value of NextCursor.
 func (s *AuditPage) SetNextCursor(val OptString) {
 	s.NextCursor = val
+}
+
+// Ref: #/components/schemas/CreatedApiToken
+type CreatedApiToken struct {
+	Token ApiToken `json:"token"`
+	// The token to send as a bearer token. It is shown only once.
+	Secret string `json:"secret"`
+}
+
+// GetToken returns the value of Token.
+func (s *CreatedApiToken) GetToken() ApiToken {
+	return s.Token
+}
+
+// GetSecret returns the value of Secret.
+func (s *CreatedApiToken) GetSecret() string {
+	return s.Secret
+}
+
+// SetToken sets the value of Token.
+func (s *CreatedApiToken) SetToken(val ApiToken) {
+	s.Token = val
+}
+
+// SetSecret sets the value of Secret.
+func (s *CreatedApiToken) SetSecret(val string) {
+	s.Secret = val
 }
 
 // EndSessionNoContent is response for EndSession operation.
@@ -335,6 +516,52 @@ func (s *LoginSettingsUpdate) SetGroupsClaim(val string) {
 // SetAllowedGroups sets the value of AllowedGroups.
 func (s *LoginSettingsUpdate) SetAllowedGroups(val []string) {
 	s.AllowedGroups = val
+}
+
+// NewOptDateTime returns new OptDateTime with value set to v.
+func NewOptDateTime(v time.Time) OptDateTime {
+	return OptDateTime{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptDateTime is optional time.Time.
+type OptDateTime struct {
+	Value time.Time
+	Set   bool
+}
+
+// IsSet returns true if OptDateTime was set.
+func (o OptDateTime) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptDateTime) Reset() {
+	var v time.Time
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptDateTime) SetTo(v time.Time) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptDateTime) Get() (v time.Time, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptDateTime) Or(d time.Time) time.Time {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
 }
 
 // NewOptInt returns new OptInt with value set to v.
@@ -717,6 +944,9 @@ func (s *ProblemStatusCode) SetResponse(val Problem) {
 	s.Response = val
 }
 
+// RevokeTokenNoContent is response for RevokeToken operation.
+type RevokeTokenNoContent struct{}
+
 type Session struct {
 	APIKey string
 	Roles  []string
@@ -830,4 +1060,29 @@ func (s *SetupStarted) GetLoginURL() string {
 // SetLoginURL sets the value of LoginURL.
 func (s *SetupStarted) SetLoginURL(val string) {
 	s.LoginURL = val
+}
+
+type Token struct {
+	Token string
+	Roles []string
+}
+
+// GetToken returns the value of Token.
+func (s *Token) GetToken() string {
+	return s.Token
+}
+
+// GetRoles returns the value of Roles.
+func (s *Token) GetRoles() []string {
+	return s.Roles
+}
+
+// SetToken sets the value of Token.
+func (s *Token) SetToken(val string) {
+	s.Token = val
+}
+
+// SetRoles sets the value of Roles.
+func (s *Token) SetRoles(val []string) {
+	s.Roles = val
 }

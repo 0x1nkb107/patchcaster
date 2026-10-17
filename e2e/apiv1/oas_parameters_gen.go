@@ -18,10 +18,28 @@ type ListPersonsParams struct {
 	Limit OptInt `json:",omitempty,omitzero"`
 }
 
+// ListTokensParams is parameters of listTokens operation.
+type ListTokensParams struct {
+	// Where the page starts, from the previous page's next_cursor.
+	Cursor OptString `json:",omitempty,omitzero"`
+	// How many items the page holds at most.
+	Limit OptInt `json:",omitempty,omitzero"`
+}
+
 // PutLoginSettingsParams is parameters of putLoginSettings operation.
 type PutLoginSettingsParams struct {
 	// The ETag of the resource as last read. A change without it, or with an old one, is refused.
 	IfMatch string
+}
+
+// RevokeAccessParams is parameters of revokeAccess operation.
+type RevokeAccessParams struct {
+	ID int64
+}
+
+// RevokeTokenParams is parameters of revokeToken operation.
+type RevokeTokenParams struct {
+	ID int64
 }
 
 // UpdatePersonParams is parameters of updatePerson operation.

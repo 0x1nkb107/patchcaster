@@ -12,6 +12,19 @@ import (
 	"github.com/ogen-go/ogen/uri"
 )
 
+func encodeCreateTokenResponse(response *CreatedApiToken, w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(201)
+
+	e := new(jx.Encoder)
+	response.Encode(e)
+	if _, err := e.WriteTo(w); err != nil {
+		return errors.Wrap(err, "write")
+	}
+
+	return nil
+}
+
 func encodeEndSessionResponse(response *EndSessionNoContent, w http.ResponseWriter) error {
 	w.WriteHeader(204)
 
@@ -103,6 +116,19 @@ func encodeListPersonsResponse(response *PersonPage, w http.ResponseWriter) erro
 	return nil
 }
 
+func encodeListTokensResponse(response *ApiTokenPage, w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(200)
+
+	e := new(jx.Encoder)
+	response.Encode(e)
+	if _, err := e.WriteTo(w); err != nil {
+		return errors.Wrap(err, "write")
+	}
+
+	return nil
+}
+
 func encodePutLoginSettingsResponse(response *LoginSettingsHeaders, w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.Header().Set("Access-Control-Expose-Headers", "Etag")
@@ -132,6 +158,25 @@ func encodePutLoginSettingsResponse(response *LoginSettingsHeaders, w http.Respo
 	if _, err := e.WriteTo(w); err != nil {
 		return errors.Wrap(err, "write")
 	}
+
+	return nil
+}
+
+func encodeRevokeAccessResponse(response *AccessRevoked, w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(200)
+
+	e := new(jx.Encoder)
+	response.Encode(e)
+	if _, err := e.WriteTo(w); err != nil {
+		return errors.Wrap(err, "write")
+	}
+
+	return nil
+}
+
+func encodeRevokeTokenResponse(response *RevokeTokenNoContent, w http.ResponseWriter) error {
+	w.WriteHeader(204)
 
 	return nil
 }

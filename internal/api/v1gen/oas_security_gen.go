@@ -16,6 +16,9 @@ type SecurityHandler interface {
 	// HandleSession handles session security.
 	// The session cookie the login sets.
 	HandleSession(ctx context.Context, operationName OperationName, t Session) (context.Context, error)
+	// HandleToken handles token security.
+	// An API token, created by its owner during a login.
+	HandleToken(ctx context.Context, operationName OperationName, t Token) (context.Context, error)
 }
 
 func findAuthorization(h http.Header, prefix string) (string, bool) {
@@ -35,12 +38,16 @@ func findAuthorization(h http.Header, prefix string) (string, bool) {
 
 // operationRolesSession is a private map storing roles per operation.
 var operationRolesSession = map[string][]string{
+	CreateTokenOperation:      []string{},
 	EndSessionOperation:       []string{},
 	GetLoginSettingsOperation: []string{},
 	GetSessionOperation:       []string{},
 	ListAuditOperation:        []string{},
 	ListPersonsOperation:      []string{},
+	ListTokensOperation:       []string{},
 	PutLoginSettingsOperation: []string{},
+	RevokeAccessOperation:     []string{},
+	RevokeTokenOperation:      []string{},
 	UpdatePersonOperation:     []string{},
 }
 
@@ -65,6 +72,38 @@ func GetRolesForSession(operation string) []string {
 	return result
 }
 
+// operationRolesToken is a private map storing roles per operation.
+var operationRolesToken = map[string][]string{
+	GetLoginSettingsOperation: []string{},
+	GetSessionOperation:       []string{},
+	ListAuditOperation:        []string{},
+	ListPersonsOperation:      []string{},
+	PutLoginSettingsOperation: []string{},
+	RevokeAccessOperation:     []string{},
+	UpdatePersonOperation:     []string{},
+}
+
+// GetRolesForToken returns the required roles for the given operation.
+//
+// This is useful for authorization scenarios where you need to know which roles
+// are required for an operation.
+//
+// Example:
+//
+//	requiredRoles := GetRolesForToken(AddPetOperation)
+//
+// Returns nil if the operation has no role requirements or if the operation is unknown.
+func GetRolesForToken(operation string) []string {
+	roles, ok := operationRolesToken[operation]
+	if !ok {
+		return nil
+	}
+	// Return a copy to prevent external modification
+	result := make([]string, len(roles))
+	copy(result, roles)
+	return result
+}
+
 func (s *Server) securitySession(ctx context.Context, operationName OperationName, req *http.Request) (context.Context, bool, error) {
 	var t Session
 	const parameterName = "patchcaster_session"
@@ -80,6 +119,23 @@ func (s *Server) securitySession(ctx context.Context, operationName OperationNam
 	t.APIKey = value
 	t.Roles = operationRolesSession[operationName]
 	rctx, err := s.sec.HandleSession(ctx, operationName, t)
+	if errors.Is(err, ogenerrors.ErrSkipServerSecurity) {
+		return nil, false, nil
+	} else if err != nil {
+		return nil, false, err
+	}
+	return rctx, true, err
+}
+
+func (s *Server) securityToken(ctx context.Context, operationName OperationName, req *http.Request) (context.Context, bool, error) {
+	var t Token
+	token, ok := findAuthorization(req.Header, "Bearer")
+	if !ok {
+		return ctx, false, nil
+	}
+	t.Token = token
+	t.Roles = operationRolesToken[operationName]
+	rctx, err := s.sec.HandleToken(ctx, operationName, t)
 	if errors.Is(err, ogenerrors.ErrSkipServerSecurity) {
 		return nil, false, nil
 	} else if err != nil {

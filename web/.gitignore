@@ -3,3 +3,5 @@ node_modules/
 # The bundle is built, never committed. dist/.gitkeep keeps the embed
 # pattern valid before the first build.
 /dist/app/
+# The SBOM is built with the bundle. The release attaches it.
+/sbom/

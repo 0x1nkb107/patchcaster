@@ -36,4 +36,10 @@
 	<main class="mx-auto max-w-4xl px-4 py-8">
 		{@render children()}
 	</main>
+	<footer class="mx-auto max-w-4xl px-4 pb-8 text-sm text-muted-foreground">
+		<!-- The build writes the notices next to the bundle, outside the router. -->
+		<a href="/third-party-licences.txt" rel="external" class="hover:text-foreground">
+			Third-party licences
+		</a>
+	</footer>
 </div>

@@ -82,6 +82,28 @@ func TestOnlyReadsAreServed(t *testing.T) {
 	}
 }
 
+func TestEveryAnswerForbidsFraming(t *testing.T) {
+	tests := []struct {
+		name   string
+		bundle fstest.MapFS
+		target string
+		want   string
+	}{
+		{"the fallback page", bundle, "/tokens", "frame-ancestors 'none'"},
+		{"a file of the bundle", bundle, "/favicon.svg", "frame-ancestors 'none'"},
+		{"the page without the bundle", fstest.MapFS{}, "/", "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// act
+			rec := get(t, Handler(tc.bundle), http.MethodGet, tc.target)
+
+			// assert
+			assert.Equal(t, tc.want, rec.Header().Get("Content-Security-Policy"))
+		})
+	}
+}
+
 func TestABinaryWithoutTheBundleSaysSo(t *testing.T) {
 	// act
 	rec := get(t, Handler(fstest.MapFS{}), http.MethodGet, "/tokens")

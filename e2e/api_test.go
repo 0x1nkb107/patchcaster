@@ -83,22 +83,23 @@ func TestTheManagementListenerServesTheInterface(t *testing.T) {
 	// arrange
 	freshDatabase(t)
 	svc := startService(t, serviceConfig{})
-	read := func(path string) (int, string, string) {
+	read := func(path string) (int, http.Header, string) {
 		resp, err := http.Get(svc.managementURL + path)
 		require.NoError(t, err)
 		defer func() { _ = resp.Body.Close() }()
 		body, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
-		return resp.StatusCode, resp.Header.Get("Cache-Control"), string(body)
+		return resp.StatusCode, resp.Header, string(body)
 	}
 
 	// act
-	rootStatus, rootCache, root := read("/")
+	rootStatus, rootHeader, root := read("/")
 	deepStatus, _, deep := read("/tokens")
 
 	// assert
 	assert.Equal(t, http.StatusOK, rootStatus)
-	assert.Equal(t, "no-cache", rootCache, "the page names the release's files, so browsers check it every time")
+	assert.Equal(t, "no-cache", rootHeader.Get("Cache-Control"), "the page names the release's files, so browsers check it every time")
+	assert.Contains(t, rootHeader.Get("Content-Security-Policy"), "frame-ancestors 'none'", "no other site may frame the interface")
 	assert.Equal(t, http.StatusOK, deepStatus)
 	assert.Equal(t, root, deep, "a deep link gets the same page")
 	assert.Contains(t, root, "<title>PatchCaster</title>")

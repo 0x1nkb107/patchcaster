@@ -26,7 +26,27 @@ export default defineConfig({
 				fallback: 'index.html',
 				strict: true
 			}),
-			version: { name: commit }
+			version: { name: commit },
+			// The fallback page boots from an inline script. SvelteKit puts
+			// its hash into a policy in the page's meta tag. A meta tag
+			// cannot forbid framing, so the Go server sends that part as a
+			// header (ADR-032). Style attributes cannot run scripts, and
+			// SvelteKit's route announcer needs one, so they are allowed.
+			csp: {
+				mode: 'hash',
+				directives: {
+					'default-src': ['self'],
+					'script-src': ['self'],
+					'style-src': ['self'],
+					'style-src-attr': ['unsafe-inline'],
+					'img-src': ['self'],
+					'font-src': ['self'],
+					'connect-src': ['self'],
+					'object-src': ['none'],
+					'base-uri': ['none'],
+					'form-action': ['self']
+				}
+			}
 		}),
 		// Licence notices and an SBOM of the bundled packages (ADR-044).
 		thirdParty({

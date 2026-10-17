@@ -2,6 +2,10 @@ module github.com/patchcaster-app/patchcaster
 
 go 1.27.1
 
+// npm packages may ship Go files, flatted among them, which would break
+// go vet ./... (ADR-032).
+ignore ./web/node_modules
+
 require (
 	github.com/Oudwins/zog v0.23.0
 	github.com/alecthomas/kong v1.16.1

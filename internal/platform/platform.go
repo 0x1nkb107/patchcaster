@@ -89,10 +89,66 @@ func (Checker) Check(ctx context.Context, kind Kind, baseURL *url.URL, credentia
 		account, err := gitlab.New(baseURL, credential).CurrentUser(ctx)
 		return account, gitlabProblem(err)
 	case Mattermost:
-		account, err := mattermost.New(baseURL.String(), credential).Me(ctx)
-		return account, mattermostProblem(err)
+		bot, err := mattermost.New(baseURL.String(), credential).Me(ctx)
+		return bot.Username, mattermostProblem(err)
 	}
 	return "", fmt.Errorf("check connection: unknown platform %q", kind)
+}
+
+// UndeliverableError reports a channel or room the connection's bot cannot
+// post into, with the reason and what would fix it (SYSREQ-045).
+type UndeliverableError struct {
+	Platform Kind
+	Reason   string
+}
+
+func (e *UndeliverableError) Error() string {
+	return fmt.Sprintf("%s cannot deliver there: %s", e.Platform, e.Reason)
+}
+
+// CheckChannel makes sure that the bot of a chat connection can post into
+// the channel with channelID, and returns the channel's name. It returns an
+// *UndeliverableError with the reason when the bot cannot.
+func (Checker) CheckChannel(ctx context.Context, kind Kind, baseURL *url.URL, credential, channelID string) (string, error) {
+	switch kind {
+	case Mattermost:
+		return checkMattermostChannel(ctx, mattermost.New(baseURL.String(), credential), channelID)
+	}
+	return "", fmt.Errorf("check channel: %s has no channels", kind)
+}
+
+// checkMattermostChannel asks Mattermost whether the channel exists, is not
+// archived, and has the bot as a member: a member may post.
+func checkMattermostChannel(ctx context.Context, client *mattermost.Client, channelID string) (string, error) {
+	bot, err := client.Me(ctx)
+	if err != nil {
+		return "", mattermostProblem(err)
+	}
+	channel, err := client.Channel(ctx, channelID)
+	var answer *mattermost.APIError
+	if errors.As(err, &answer) && answer.Status == http.StatusNotFound {
+		return "", &UndeliverableError{Platform: Mattermost, Reason: "no channel has this id"}
+	}
+	if errors.As(err, &answer) && answer.Status == http.StatusForbidden {
+		return "", &UndeliverableError{Platform: Mattermost, Reason: "the bot may not see the channel: add it to the channel"}
+	}
+	if err != nil {
+		return "", mattermostProblem(err)
+	}
+	if channel.DeleteAt != 0 {
+		return "", &UndeliverableError{Platform: Mattermost, Reason: "the channel is archived"}
+	}
+	member, err := client.IsMember(ctx, channelID, bot.ID)
+	if err != nil {
+		return "", mattermostProblem(err)
+	}
+	if !member {
+		return "", &UndeliverableError{Platform: Mattermost, Reason: "the bot is not a member of the channel: add it to the channel"}
+	}
+	if channel.DisplayName != "" {
+		return channel.DisplayName, nil
+	}
+	return channel.Name, nil
 }
 
 func gitlabProblem(err error) error {

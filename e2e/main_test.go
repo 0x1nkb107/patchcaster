@@ -33,6 +33,10 @@ var binaryPath string
 // databaseURL points at the suite's own PostgreSQL container.
 var databaseURL string
 
+// databaseContainer is that container, for the tests that read the database
+// the way an operator's tools do.
+var databaseContainer *postgres.PostgresContainer
+
 func TestMain(m *testing.M) {
 	os.Exit(runSuite(m))
 }
@@ -47,6 +51,7 @@ func runSuite(m *testing.M) int {
 		return 1
 	}
 	defer func() { _ = testcontainers.TerminateContainer(database) }()
+	databaseContainer = database
 
 	databaseURL, err = database.ConnectionString(ctx, "sslmode=disable")
 	if err != nil {

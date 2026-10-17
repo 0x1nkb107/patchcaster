@@ -37,9 +37,18 @@ func TestServeIsTheDefaultCommand(t *testing.T) {
 	// act: no command name given
 	err := run(t, "--database-url=postgres://x", "--mattermost-url=https://mm",
 		"--mattermost-token=tok", "--signing-secret=s", "--routing-file="+missing,
-		"--encryption-key="+testKey)
+		"--encryption-key="+testKey, "--interface-url="+testInterfaceURL)
 
 	// assert
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "open routing file")
+}
+
+func TestBootstrapRefusesAMalformedInterfaceURL(t *testing.T) {
+	// act
+	_, err := parse(t, "bootstrap", "--database-url=postgres://x", "--interface-url=https://example.org/sub")
+
+	// assert
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--interface-url")
 }

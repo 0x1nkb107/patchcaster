@@ -13,6 +13,7 @@ import (
 	"github.com/lmittmann/tint"
 
 	"github.com/patchcaster-app/patchcaster/internal/api"
+	"github.com/patchcaster-app/patchcaster/internal/auth"
 	"github.com/patchcaster-app/patchcaster/internal/deliver"
 	"github.com/patchcaster-app/patchcaster/internal/graceful"
 	"github.com/patchcaster-app/patchcaster/internal/ingest"
@@ -28,6 +29,7 @@ type ServeCmd struct {
 	Addr            string        `flag:"" default:":8080" env:"PATCHCASTER_ADDR" help:"Public listener address (webhook endpoint)."`
 	InternalAddr    string        `flag:"" default:":9090" env:"PATCHCASTER_INTERNAL_ADDR" help:"Internal listener address (probes, metrics)."`
 	ManagementAddr  string        `flag:"" default:":8081" env:"PATCHCASTER_MANAGEMENT_ADDR" help:"Management listener address (API and web interface)."`
+	InterfaceURL    string        `flag:"" required:"" env:"PATCHCASTER_INTERFACE_URL" help:"External address of the web interface, such as https://patchcaster.example.org."`
 	DatabaseURL     string        `flag:"" required:"" env:"PATCHCASTER_DATABASE_URL" help:"PostgreSQL connection URL."`
 	MattermostURL   string        `flag:"" required:"" env:"PATCHCASTER_MATTERMOST_URL" help:"Mattermost site URL."`
 	MattermostToken string        `flag:"" required:"" env:"PATCHCASTER_MATTERMOST_TOKEN" help:"Bot account auth token."`
@@ -104,6 +106,11 @@ func (c *ServeCmd) Validate() error {
 	if err := c.Keys.validate(); err != nil {
 		errs = append(errs, err)
 	}
+	if c.InterfaceURL != "" {
+		if _, err := parseInterfaceURL(c.InterfaceURL); err != nil {
+			errs = append(errs, err)
+		}
+	}
 	return errors.Join(errs...)
 }
 
@@ -123,8 +130,14 @@ func flagName(path []string) string {
 // deployment's terminationGracePeriodSeconds must exceed --drain-timeout.
 func (c *ServeCmd) Run(ctx context.Context) error {
 	log := newLogger(c.LogLevel)
+	// The login's relying party logs through the default logger (ADR-033).
+	slog.SetDefault(log)
 
 	routes, err := routing.Load(c.RoutingFile)
+	if err != nil {
+		return err
+	}
+	interfaceURL, err := parseInterfaceURL(c.InterfaceURL)
 	if err != nil {
 		return err
 	}
@@ -186,9 +199,19 @@ func (c *ServeCmd) Run(ctx context.Context) error {
 		nil,
 	)
 
-	management, err := api.Mux(api.NewService(version, log))
+	sessions := auth.NewSessions(st.Sessions(), interfaceURL.Scheme == "https")
+	login := auth.NewLogin(st, box, sessions, interfaceURL, log)
+	svc := api.NewService(api.Config{
+		Version:  version,
+		Store:    st,
+		Box:      box,
+		Sessions: sessions,
+		Login:    login,
+		Log:      log,
+	})
+	management, err := managementHandler(svc, login, sessions, interfaceURL)
 	if err != nil {
-		return fmt.Errorf("build management API: %w", err)
+		return fmt.Errorf("build management listener: %w", err)
 	}
 
 	// Bind before announcing readiness: a port conflict must fail the start,
@@ -222,6 +245,7 @@ func (c *ServeCmd) Run(ctx context.Context) error {
 		worker: worker,
 		background: []func(context.Context) error{
 			func(ctx context.Context) error { return pruneLoop(ctx, st, c.SeenRetention, log) },
+			func(ctx context.Context) error { return expireSessionsLoop(ctx, st, log) },
 			wakeup.Run,
 		},
 		markReady:   probe.MarkReady,

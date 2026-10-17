@@ -6,5 +6,13 @@ package apiv1
 type OperationName = string
 
 const (
-	GetInstanceOperation OperationName = "GetInstance"
+	EndSessionOperation       OperationName = "EndSession"
+	GetInstanceOperation      OperationName = "GetInstance"
+	GetLoginSettingsOperation OperationName = "GetLoginSettings"
+	GetSessionOperation       OperationName = "GetSession"
+	ListAuditOperation        OperationName = "ListAudit"
+	ListPersonsOperation      OperationName = "ListPersons"
+	PutLoginSettingsOperation OperationName = "PutLoginSettings"
+	SetUpOperation            OperationName = "SetUp"
+	UpdatePersonOperation     OperationName = "UpdatePerson"
 )

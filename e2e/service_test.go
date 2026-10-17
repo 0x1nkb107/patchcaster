@@ -89,6 +89,7 @@ func launch(t *testing.T, cfg serviceConfig) *service {
 		"--addr", publicAddr,
 		"--internal-addr", internalAddr,
 		"--management-addr", managementAddr,
+		"--interface-url", "http://"+managementAddr,
 		"--database-url", databaseURL,
 		"--mattermost-url", cfg.mattermostURL,
 		"--mattermost-token", botToken,

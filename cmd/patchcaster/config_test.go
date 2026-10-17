@@ -25,8 +25,11 @@ func parse(t *testing.T, args ...string) (*CLI, error) {
 var minimalFlags = []string{
 	"--database-url=postgres://x", "--mattermost-url=https://mm",
 	"--mattermost-token=tok", "--signing-secret=s", "--routing-file=/dev/null",
-	"--encryption-key=" + testKey,
+	"--encryption-key=" + testKey, "--interface-url=" + testInterfaceURL,
 }
+
+// testInterfaceURL is a well-formed interface address.
+const testInterfaceURL = "https://patchcaster.example"
 
 // testKey is a well-formed instance key: 32 bytes of 'k', base64-encoded.
 const testKey = "a2tra2tra2tra2tra2tra2tra2tra2tra2tra2tra2s="
@@ -59,7 +62,8 @@ func TestEnvFillsUnsetFlags(t *testing.T) {
 
 	// act
 	cli := mustParse(t, "--database-url=postgres://x", "--mattermost-url=https://mm",
-		"--mattermost-token=tok", "--routing-file=/dev/null", "--encryption-key="+testKey)
+		"--mattermost-token=tok", "--routing-file=/dev/null", "--encryption-key="+testKey,
+		"--interface-url="+testInterfaceURL)
 
 	// assert
 	assert.Equal(t, ":7777", cli.Serve.Addr)
@@ -153,9 +157,53 @@ func TestValidateAcceptsRotationSecrets(t *testing.T) {
 	// act
 	cli, err := parse(t, "--database-url=postgres://x", "--mattermost-url=https://mm",
 		"--mattermost-token=tok", "--routing-file=/dev/null", "--encryption-key="+testKey,
-		"--signing-secret=a", "--signing-secret=b")
+		"--interface-url="+testInterfaceURL, "--signing-secret=a", "--signing-secret=b")
 
 	// assert
 	require.NoError(t, err)
 	assert.Equal(t, []string{"a", "b"}, cli.Serve.SigningSecrets)
+}
+
+func TestTheInterfaceURLIsAnOrigin(t *testing.T) {
+	tests := []struct {
+		name    string
+		raw     string
+		want    string
+		wantErr string
+	}{
+		{"an https origin", "https://patchcaster.example", "https://patchcaster.example", ""},
+		{"a trailing slash", "http://127.0.0.1:8081/", "http://127.0.0.1:8081", ""},
+		{"no scheme", "patchcaster.example", "", "must start with https:// or http://"},
+		{"another scheme", "ftp://patchcaster.example", "", "must start with https:// or http://"},
+		{"no host", "https://", "", "must name a host"},
+		{"a path", "https://example.org/patchcaster", "", "must name only a scheme, a host and a port"},
+		{"a query", "https://patchcaster.example?x=1", "", "must name only a scheme, a host and a port"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// act
+			u, err := parseInterfaceURL(tc.raw)
+
+			// assert
+			if tc.wantErr != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), "--interface-url")
+				assert.Contains(t, err.Error(), tc.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, u.String())
+		})
+	}
+}
+
+func TestAMalformedInterfaceURLIsReportedWithTheOthers(t *testing.T) {
+	// act
+	args := append([]string{}, minimalFlags...)
+	_, err := parse(t, append(args, "--interface-url=example.org", "--log-level=loud")...)
+
+	// assert
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--interface-url")
+	assert.Contains(t, err.Error(), "--log-level")
 }

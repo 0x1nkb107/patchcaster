@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/patchcaster-app/patchcaster/internal/auth"
 	"github.com/patchcaster-app/patchcaster/internal/seal"
+	"github.com/patchcaster-app/patchcaster/internal/store"
 )
 
 // KeyFlags carry the instance encryption key that seals every stored secret
@@ -113,9 +115,32 @@ func openKeyCheck(box *seal.Box, sealed []byte) error {
 	return nil
 }
 
+// resealStore is the persistence a reseal needs: the key check and every
+// stored secret.
+type resealStore interface {
+	keyCheckStore
+	LoginSettings(ctx context.Context) (*store.LoginSettings, error)
+	ReplaceLoginClientSecret(ctx context.Context, sealed, resealed []byte) (bool, error)
+}
+
 // resealSecrets seals every stored secret again with the active key and
 // returns how many it moved. Secrets already sealed by the active key stay.
-func resealSecrets(ctx context.Context, st keyCheckStore, box *seal.Box, now time.Time) (int, error) {
+func resealSecrets(ctx context.Context, st resealStore, box *seal.Box, now time.Time) (int, error) {
+	keyCheck, err := resealKeyCheck(ctx, st, box, now)
+	if err != nil {
+		return 0, err
+	}
+	clientSecret, err := resealClientSecret(ctx, st, box)
+	if err != nil {
+		return keyCheck, err
+	}
+	return keyCheck + clientSecret, nil
+}
+
+// resealKeyCheck seals the key check again when a previous key sealed it. It
+// refuses keys that do not open it, so that a reseal never runs with a
+// wrong key.
+func resealKeyCheck(ctx context.Context, st keyCheckStore, box *seal.Box, now time.Time) (int, error) {
 	sealed, err := st.KeyCheck(ctx)
 	if err != nil {
 		return 0, err
@@ -135,6 +160,35 @@ func resealSecrets(ctx context.Context, st keyCheckStore, box *seal.Box, now tim
 		return 0, fmt.Errorf("seal key check: %w", err)
 	}
 	if err := st.ReplaceKeyCheck(ctx, fresh, now); err != nil {
+		return 0, err
+	}
+	return 1, nil
+}
+
+// resealClientSecret seals the identity provider's client secret again when
+// a previous key sealed it. Before the setup there is none.
+func resealClientSecret(ctx context.Context, st resealStore, box *seal.Box) (int, error) {
+	settings, err := st.LoginSettings(ctx)
+	if errors.Is(err, store.ErrNotFound) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	stale, err := box.Stale(settings.ClientSecret)
+	if err != nil || !stale {
+		return 0, err
+	}
+	secret, err := box.Open(settings.ClientSecret, auth.ClientSecretBinding)
+	if err != nil {
+		return 0, fmt.Errorf("open client secret: %w", err)
+	}
+	resealed, err := box.Seal(secret, auth.ClientSecretBinding)
+	if err != nil {
+		return 0, fmt.Errorf("seal client secret: %w", err)
+	}
+	replaced, err := st.ReplaceLoginClientSecret(ctx, settings.ClientSecret, resealed)
+	if err != nil || !replaced {
 		return 0, err
 	}
 	return 1, nil

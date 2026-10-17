@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"strings"
@@ -10,19 +11,22 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/patchcaster-app/patchcaster/internal/auth"
 	"github.com/patchcaster-app/patchcaster/internal/seal"
+	"github.com/patchcaster-app/patchcaster/internal/store"
 )
 
-// memoryKeyCheck is an in-memory key check store.
-type memoryKeyCheck struct {
-	sealed   []byte
-	racedBy  []byte // stored by "another instance" just before the first init
-	replaced int
+// memorySecrets keeps the key check and the client secret in memory.
+type memorySecrets struct {
+	sealed       []byte
+	racedBy      []byte // stored by "another instance" just before the first init
+	replaced     int
+	clientSecret []byte // nil before the setup
 }
 
-func (m *memoryKeyCheck) KeyCheck(context.Context) ([]byte, error) { return m.sealed, nil }
+func (m *memorySecrets) KeyCheck(context.Context) ([]byte, error) { return m.sealed, nil }
 
-func (m *memoryKeyCheck) InitKeyCheck(_ context.Context, sealed []byte, _ time.Time) error {
+func (m *memorySecrets) InitKeyCheck(_ context.Context, sealed []byte, _ time.Time) error {
 	if m.racedBy != nil {
 		m.sealed, m.racedBy = m.racedBy, nil
 		return nil
@@ -33,10 +37,25 @@ func (m *memoryKeyCheck) InitKeyCheck(_ context.Context, sealed []byte, _ time.T
 	return nil
 }
 
-func (m *memoryKeyCheck) ReplaceKeyCheck(_ context.Context, sealed []byte, _ time.Time) error {
+func (m *memorySecrets) ReplaceKeyCheck(_ context.Context, sealed []byte, _ time.Time) error {
 	m.sealed = sealed
 	m.replaced++
 	return nil
+}
+
+func (m *memorySecrets) LoginSettings(context.Context) (*store.LoginSettings, error) {
+	if m.clientSecret == nil {
+		return nil, store.ErrNotFound
+	}
+	return &store.LoginSettings{ClientSecret: m.clientSecret}, nil
+}
+
+func (m *memorySecrets) ReplaceLoginClientSecret(_ context.Context, sealed, resealed []byte) (bool, error) {
+	if !bytes.Equal(m.clientSecret, sealed) {
+		return false, nil
+	}
+	m.clientSecret = resealed
+	return true, nil
 }
 
 func encodedKey(b byte) string {
@@ -75,7 +94,7 @@ func TestKeyFlagErrorsNameTheFlagNotTheKey(t *testing.T) {
 
 func TestTheFirstStartStoresTheKeyCheck(t *testing.T) {
 	// arrange
-	st := &memoryKeyCheck{}
+	st := &memorySecrets{}
 
 	// act
 	stale, err := verifyInstanceKey(context.Background(), st, boxOf(t, encodedKey('a')), time.Now())
@@ -88,7 +107,7 @@ func TestTheFirstStartStoresTheKeyCheck(t *testing.T) {
 
 func TestAnotherKeyIsRefused(t *testing.T) {
 	// arrange
-	st := &memoryKeyCheck{}
+	st := &memorySecrets{}
 	ctx := context.Background()
 	_, err := verifyInstanceKey(ctx, st, boxOf(t, encodedKey('a')), time.Now())
 	require.NoError(t, err)
@@ -102,7 +121,7 @@ func TestAnotherKeyIsRefused(t *testing.T) {
 
 func TestAPreviousKeyOpensButAsksForAReseal(t *testing.T) {
 	// arrange
-	st := &memoryKeyCheck{}
+	st := &memorySecrets{}
 	ctx := context.Background()
 	_, err := verifyInstanceKey(ctx, st, boxOf(t, encodedKey('a')), time.Now())
 	require.NoError(t, err)
@@ -123,7 +142,7 @@ func TestAPreviousKeyOpensButAsksForAReseal(t *testing.T) {
 
 func TestAResealWithNothingStaleChangesNothing(t *testing.T) {
 	// arrange
-	st := &memoryKeyCheck{}
+	st := &memorySecrets{}
 	ctx := context.Background()
 	box := boxOf(t, encodedKey('a'))
 	_, err := verifyInstanceKey(ctx, st, box, time.Now())
@@ -138,11 +157,32 @@ func TestAResealWithNothingStaleChangesNothing(t *testing.T) {
 	assert.Zero(t, st.replaced)
 }
 
+func TestAResealMovesTheClientSecret(t *testing.T) {
+	// arrange
+	ctx := context.Background()
+	old := boxOf(t, encodedKey('a'))
+	st := &memorySecrets{}
+	_, err := verifyInstanceKey(ctx, st, old, time.Now())
+	require.NoError(t, err)
+	st.clientSecret, err = old.Seal([]byte("hunter2"), auth.ClientSecretBinding)
+	require.NoError(t, err)
+
+	// act
+	resealed, resealErr := resealSecrets(ctx, st, boxOf(t, encodedKey('b'), encodedKey('a')), time.Now())
+	secret, openErr := boxOf(t, encodedKey('b')).Open(st.clientSecret, auth.ClientSecretBinding)
+
+	// assert
+	require.NoError(t, resealErr)
+	require.NoError(t, openErr)
+	assert.Equal(t, 2, resealed, "the key check and the client secret")
+	assert.Equal(t, "hunter2", string(secret))
+}
+
 func TestARaceAtTheFirstStartKeepsTheWinner(t *testing.T) {
 	// arrange: another instance with another key stored its check first.
 	winner, err := boxOf(t, encodedKey('w')).Seal([]byte(keyCheckPlaintext), keyCheckBinding)
 	require.NoError(t, err)
-	st := &memoryKeyCheck{racedBy: winner}
+	st := &memorySecrets{racedBy: winner}
 
 	// act
 	_, err = verifyInstanceKey(context.Background(), st, boxOf(t, encodedKey('a')), time.Now())

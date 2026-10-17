@@ -8,12 +8,62 @@ import (
 
 // Handler handles operations described by OpenAPI v3 specification.
 type Handler interface {
+	// EndSession implements endSession operation.
+	//
+	// Log out.
+	//
+	// DELETE /api/v1/session
+	EndSession(ctx context.Context) error
 	// GetInstance implements getInstance operation.
 	//
 	// Describe this instance.
 	//
 	// GET /api/v1/instance
 	GetInstance(ctx context.Context) (*Instance, error)
+	// GetLoginSettings implements getLoginSettings operation.
+	//
+	// Read the identity provider settings, for administrators.
+	//
+	// GET /api/v1/settings/login
+	GetLoginSettings(ctx context.Context) (*LoginSettingsHeaders, error)
+	// GetSession implements getSession operation.
+	//
+	// Describe the person this session belongs to.
+	//
+	// GET /api/v1/session
+	GetSession(ctx context.Context) (*Person, error)
+	// ListAudit implements listAudit operation.
+	//
+	// Read the audit log, newest first, for administrators.
+	//
+	// GET /api/v1/audit
+	ListAudit(ctx context.Context, params ListAuditParams) (*AuditPage, error)
+	// ListPersons implements listPersons operation.
+	//
+	// List people, for administrators.
+	//
+	// GET /api/v1/persons
+	ListPersons(ctx context.Context, params ListPersonsParams) (*PersonPage, error)
+	// PutLoginSettings implements putLoginSettings operation.
+	//
+	// Change the identity provider settings, for administrators.
+	//
+	// PUT /api/v1/settings/login
+	PutLoginSettings(ctx context.Context, req *LoginSettingsUpdate, params PutLoginSettingsParams) (*LoginSettingsHeaders, error)
+	// SetUp implements setUp operation.
+	//
+	// Takes the setup link's token from the bootstrap command, checks that the provider answers, and
+	// stores it. The response names the login that makes the person logging in the first administrator.
+	// Fails once an administrator exists.
+	//
+	// POST /api/v1/setup
+	SetUp(ctx context.Context, req *SetupRequest) (*SetupStarted, error)
+	// UpdatePerson implements updatePerson operation.
+	//
+	// Change a person's role, for administrators.
+	//
+	// PATCH /api/v1/persons/{id}
+	UpdatePerson(ctx context.Context, req *PersonUpdate, params UpdatePersonParams) (*PersonHeaders, error)
 	// NewError creates *ProblemStatusCode from error returned by handler.
 	//
 	// Used for common default response.
@@ -23,18 +73,20 @@ type Handler interface {
 // Server implements http server based on OpenAPI v3 specification and
 // calls Handler to handle requests.
 type Server struct {
-	h Handler
+	h   Handler
+	sec SecurityHandler
 	baseServer
 }
 
 // NewServer creates new Server.
-func NewServer(h Handler, opts ...ServerOption) (*Server, error) {
+func NewServer(h Handler, sec SecurityHandler, opts ...ServerOption) (*Server, error) {
 	s, err := newServerConfig(opts...).baseServer()
 	if err != nil {
 		return nil, err
 	}
 	return &Server{
 		h:          h,
+		sec:        sec,
 		baseServer: s,
 	}, nil
 }

@@ -10,6 +10,18 @@ import (
 	"github.com/ogen-go/ogen/uri"
 )
 
+var (
+	rn11AllowedHeaders = map[string]string{
+		"PATCH": "Content-Type,If-Match",
+	}
+	rn5AllowedHeaders = map[string]string{
+		"PUT": "Content-Type,If-Match",
+	}
+	rn9AllowedHeaders = map[string]string{
+		"POST": "Content-Type",
+	}
+)
+
 func (s *Server) cutPrefix(path string) (string, bool) {
 	prefix := s.cfg.Prefix
 	if prefix == "" {
@@ -40,6 +52,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s.notFound(w, r)
 		return
 	}
+	args := [1]string{}
 
 	// Static code generated router with unwrapped path search.
 	switch {
@@ -48,29 +61,237 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		switch elem[0] {
-		case '/': // Prefix: "/api/v1/instance"
+		case '/': // Prefix: "/api/v1/"
 
-			if l := len("/api/v1/instance"); len(elem) >= l && elem[0:l] == "/api/v1/instance" {
+			if l := len("/api/v1/"); len(elem) >= l && elem[0:l] == "/api/v1/" {
 				elem = elem[l:]
 			} else {
 				break
 			}
 
 			if len(elem) == 0 {
-				// Leaf node.
-				switch r.Method {
-				case "GET":
-					s.handleGetInstanceRequest([0]string{}, elemIsEscaped, w, r)
-				default:
-					s.notAllowed(w, r, notAllowedParams{
-						allowedMethods: "GET",
-						allowedHeaders: nil,
-						acceptPost:     "",
-						acceptPatch:    "",
-					})
+				break
+			}
+			switch elem[0] {
+			case 'a': // Prefix: "audit"
+
+				if l := len("audit"); len(elem) >= l && elem[0:l] == "audit" {
+					elem = elem[l:]
+				} else {
+					break
 				}
 
-				return
+				if len(elem) == 0 {
+					// Leaf node.
+					switch r.Method {
+					case "GET":
+						s.handleListAuditRequest([0]string{}, elemIsEscaped, w, r)
+					default:
+						s.notAllowed(w, r, notAllowedParams{
+							allowedMethods: "GET",
+							allowedHeaders: nil,
+							acceptPost:     "",
+							acceptPatch:    "",
+						})
+					}
+
+					return
+				}
+
+			case 'i': // Prefix: "instance"
+
+				if l := len("instance"); len(elem) >= l && elem[0:l] == "instance" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					// Leaf node.
+					switch r.Method {
+					case "GET":
+						s.handleGetInstanceRequest([0]string{}, elemIsEscaped, w, r)
+					default:
+						s.notAllowed(w, r, notAllowedParams{
+							allowedMethods: "GET",
+							allowedHeaders: nil,
+							acceptPost:     "",
+							acceptPatch:    "",
+						})
+					}
+
+					return
+				}
+
+			case 'p': // Prefix: "persons"
+
+				if l := len("persons"); len(elem) >= l && elem[0:l] == "persons" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					switch r.Method {
+					case "GET":
+						s.handleListPersonsRequest([0]string{}, elemIsEscaped, w, r)
+					default:
+						s.notAllowed(w, r, notAllowedParams{
+							allowedMethods: "GET",
+							allowedHeaders: nil,
+							acceptPost:     "",
+							acceptPatch:    "",
+						})
+					}
+
+					return
+				}
+				switch elem[0] {
+				case '/': // Prefix: "/"
+
+					if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					// Param: "id"
+					// Leaf parameter, slashes are prohibited
+					idx := strings.IndexByte(elem, '/')
+					if idx >= 0 {
+						break
+					}
+					args[0] = elem
+					elem = ""
+
+					if len(elem) == 0 {
+						// Leaf node.
+						switch r.Method {
+						case "PATCH":
+							s.handleUpdatePersonRequest([1]string{
+								args[0],
+							}, elemIsEscaped, w, r)
+						default:
+							s.notAllowed(w, r, notAllowedParams{
+								allowedMethods: "PATCH",
+								allowedHeaders: rn11AllowedHeaders,
+								acceptPost:     "",
+								acceptPatch:    "application/json",
+							})
+						}
+
+						return
+					}
+
+				}
+
+			case 's': // Prefix: "se"
+
+				if l := len("se"); len(elem) >= l && elem[0:l] == "se" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					break
+				}
+				switch elem[0] {
+				case 's': // Prefix: "ssion"
+
+					if l := len("ssion"); len(elem) >= l && elem[0:l] == "ssion" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					if len(elem) == 0 {
+						// Leaf node.
+						switch r.Method {
+						case "DELETE":
+							s.handleEndSessionRequest([0]string{}, elemIsEscaped, w, r)
+						case "GET":
+							s.handleGetSessionRequest([0]string{}, elemIsEscaped, w, r)
+						default:
+							s.notAllowed(w, r, notAllowedParams{
+								allowedMethods: "DELETE,GET",
+								allowedHeaders: nil,
+								acceptPost:     "",
+								acceptPatch:    "",
+							})
+						}
+
+						return
+					}
+
+				case 't': // Prefix: "t"
+
+					if l := len("t"); len(elem) >= l && elem[0:l] == "t" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					if len(elem) == 0 {
+						break
+					}
+					switch elem[0] {
+					case 't': // Prefix: "tings/login"
+
+						if l := len("tings/login"); len(elem) >= l && elem[0:l] == "tings/login" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch r.Method {
+							case "GET":
+								s.handleGetLoginSettingsRequest([0]string{}, elemIsEscaped, w, r)
+							case "PUT":
+								s.handlePutLoginSettingsRequest([0]string{}, elemIsEscaped, w, r)
+							default:
+								s.notAllowed(w, r, notAllowedParams{
+									allowedMethods: "GET,PUT",
+									allowedHeaders: rn5AllowedHeaders,
+									acceptPost:     "",
+									acceptPatch:    "",
+								})
+							}
+
+							return
+						}
+
+					case 'u': // Prefix: "up"
+
+						if l := len("up"); len(elem) >= l && elem[0:l] == "up" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch r.Method {
+							case "POST":
+								s.handleSetUpRequest([0]string{}, elemIsEscaped, w, r)
+							default:
+								s.notAllowed(w, r, notAllowedParams{
+									allowedMethods: "POST",
+									allowedHeaders: rn9AllowedHeaders,
+									acceptPost:     "application/json",
+									acceptPatch:    "",
+								})
+							}
+
+							return
+						}
+
+					}
+
+				}
+
 			}
 
 		}
@@ -86,7 +307,7 @@ type Route struct {
 	operationGroup string
 	pathPattern    string
 	count          int
-	args           [0]string
+	args           [1]string
 }
 
 // Name returns ogen operation name.
@@ -159,29 +380,249 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 			break
 		}
 		switch elem[0] {
-		case '/': // Prefix: "/api/v1/instance"
+		case '/': // Prefix: "/api/v1/"
 
-			if l := len("/api/v1/instance"); len(elem) >= l && elem[0:l] == "/api/v1/instance" {
+			if l := len("/api/v1/"); len(elem) >= l && elem[0:l] == "/api/v1/" {
 				elem = elem[l:]
 			} else {
 				break
 			}
 
 			if len(elem) == 0 {
-				// Leaf node.
-				switch method {
-				case "GET":
-					r.name = GetInstanceOperation
-					r.summary = "Describe this instance."
-					r.operationID = "getInstance"
-					r.operationGroup = ""
-					r.pathPattern = "/api/v1/instance"
-					r.args = args
-					r.count = 0
-					return r, true
-				default:
-					return
+				break
+			}
+			switch elem[0] {
+			case 'a': // Prefix: "audit"
+
+				if l := len("audit"); len(elem) >= l && elem[0:l] == "audit" {
+					elem = elem[l:]
+				} else {
+					break
 				}
+
+				if len(elem) == 0 {
+					// Leaf node.
+					switch method {
+					case "GET":
+						r.name = ListAuditOperation
+						r.summary = "Read the audit log, newest first, for administrators."
+						r.operationID = "listAudit"
+						r.operationGroup = ""
+						r.pathPattern = "/api/v1/audit"
+						r.args = args
+						r.count = 0
+						return r, true
+					default:
+						return
+					}
+				}
+
+			case 'i': // Prefix: "instance"
+
+				if l := len("instance"); len(elem) >= l && elem[0:l] == "instance" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					// Leaf node.
+					switch method {
+					case "GET":
+						r.name = GetInstanceOperation
+						r.summary = "Describe this instance."
+						r.operationID = "getInstance"
+						r.operationGroup = ""
+						r.pathPattern = "/api/v1/instance"
+						r.args = args
+						r.count = 0
+						return r, true
+					default:
+						return
+					}
+				}
+
+			case 'p': // Prefix: "persons"
+
+				if l := len("persons"); len(elem) >= l && elem[0:l] == "persons" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					switch method {
+					case "GET":
+						r.name = ListPersonsOperation
+						r.summary = "List people, for administrators."
+						r.operationID = "listPersons"
+						r.operationGroup = ""
+						r.pathPattern = "/api/v1/persons"
+						r.args = args
+						r.count = 0
+						return r, true
+					default:
+						return
+					}
+				}
+				switch elem[0] {
+				case '/': // Prefix: "/"
+
+					if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					// Param: "id"
+					// Leaf parameter, slashes are prohibited
+					idx := strings.IndexByte(elem, '/')
+					if idx >= 0 {
+						break
+					}
+					args[0] = elem
+					elem = ""
+
+					if len(elem) == 0 {
+						// Leaf node.
+						switch method {
+						case "PATCH":
+							r.name = UpdatePersonOperation
+							r.summary = "Change a person's role, for administrators."
+							r.operationID = "updatePerson"
+							r.operationGroup = ""
+							r.pathPattern = "/api/v1/persons/{id}"
+							r.args = args
+							r.count = 1
+							return r, true
+						default:
+							return
+						}
+					}
+
+				}
+
+			case 's': // Prefix: "se"
+
+				if l := len("se"); len(elem) >= l && elem[0:l] == "se" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					break
+				}
+				switch elem[0] {
+				case 's': // Prefix: "ssion"
+
+					if l := len("ssion"); len(elem) >= l && elem[0:l] == "ssion" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					if len(elem) == 0 {
+						// Leaf node.
+						switch method {
+						case "DELETE":
+							r.name = EndSessionOperation
+							r.summary = "Log out."
+							r.operationID = "endSession"
+							r.operationGroup = ""
+							r.pathPattern = "/api/v1/session"
+							r.args = args
+							r.count = 0
+							return r, true
+						case "GET":
+							r.name = GetSessionOperation
+							r.summary = "Describe the person this session belongs to."
+							r.operationID = "getSession"
+							r.operationGroup = ""
+							r.pathPattern = "/api/v1/session"
+							r.args = args
+							r.count = 0
+							return r, true
+						default:
+							return
+						}
+					}
+
+				case 't': // Prefix: "t"
+
+					if l := len("t"); len(elem) >= l && elem[0:l] == "t" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					if len(elem) == 0 {
+						break
+					}
+					switch elem[0] {
+					case 't': // Prefix: "tings/login"
+
+						if l := len("tings/login"); len(elem) >= l && elem[0:l] == "tings/login" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch method {
+							case "GET":
+								r.name = GetLoginSettingsOperation
+								r.summary = "Read the identity provider settings, for administrators."
+								r.operationID = "getLoginSettings"
+								r.operationGroup = ""
+								r.pathPattern = "/api/v1/settings/login"
+								r.args = args
+								r.count = 0
+								return r, true
+							case "PUT":
+								r.name = PutLoginSettingsOperation
+								r.summary = "Change the identity provider settings, for administrators."
+								r.operationID = "putLoginSettings"
+								r.operationGroup = ""
+								r.pathPattern = "/api/v1/settings/login"
+								r.args = args
+								r.count = 0
+								return r, true
+							default:
+								return
+							}
+						}
+
+					case 'u': // Prefix: "up"
+
+						if l := len("up"); len(elem) >= l && elem[0:l] == "up" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch method {
+							case "POST":
+								r.name = SetUpOperation
+								r.summary = "Configure the identity provider during the first setup."
+								r.operationID = "setUp"
+								r.operationGroup = ""
+								r.pathPattern = "/api/v1/setup"
+								r.args = args
+								r.count = 0
+								return r, true
+							default:
+								return
+							}
+						}
+
+					}
+
+				}
+
 			}
 
 		}

@@ -228,7 +228,7 @@ func (p *Postgres) UpdateConnection(ctx context.Context, actor Actor, c Connecti
 }
 
 // DeleteConnection removes a connection at the version the caller read,
-// with its signing tokens.
+// with its signing tokens. A connection that sources or sinks use cannot go.
 func (p *Postgres) DeleteConnection(ctx context.Context, actor Actor, id, version int64, now time.Time) error {
 	return p.inTx(ctx, func(q *sqlcgen.Queries) error {
 		before, err := readConnection(ctx, q, id)
@@ -237,7 +237,7 @@ func (p *Postgres) DeleteConnection(ctx context.Context, actor Actor, id, versio
 		}
 		n, err := q.ConnectionDelete(ctx, sqlcgen.ConnectionDeleteParams{ID: id, Version: version})
 		if err != nil {
-			return fmt.Errorf("delete connection %d: %w", id, err)
+			return referenceProblem(fmt.Errorf("delete connection %d: %w", id, err), nil)
 		}
 		if n == 0 {
 			return ErrVersionMismatch

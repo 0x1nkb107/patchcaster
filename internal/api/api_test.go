@@ -181,10 +181,93 @@ func (f *fakeStore) RemoveSigningToken(context.Context, store.Actor, int64, int6
 	return errNotInTest
 }
 
+// The routing configuration is tested end to end against PostgreSQL, so
+// the fake has none of it.
+
+func (f *fakeStore) CreateTeam(context.Context, store.Actor, string, time.Time) (*store.Team, error) {
+	return nil, errNotInTest
+}
+
+func (f *fakeStore) Team(context.Context, int64) (*store.Team, error) { return nil, errNotInTest }
+
+func (f *fakeStore) Teams(context.Context, int64, int64, int) ([]store.Team, error) {
+	return nil, errNotInTest
+}
+
+func (f *fakeStore) UpdateTeam(context.Context, store.Actor, store.Team, time.Time) (*store.Team, error) {
+	return nil, errNotInTest
+}
+
+func (f *fakeStore) DeleteTeam(context.Context, store.Actor, int64, int64, time.Time) error {
+	return errNotInTest
+}
+
+func (f *fakeStore) OperatesTeam(context.Context, int64, int64) (bool, error) {
+	return false, errNotInTest
+}
+
+func (f *fakeStore) CreateSource(context.Context, store.Actor, store.Source, time.Time) (*store.Source, error) {
+	return nil, errNotInTest
+}
+
+func (f *fakeStore) Source(context.Context, int64) (*store.Source, error) { return nil, errNotInTest }
+
+func (f *fakeStore) Sources(context.Context, int64, int64, int) ([]store.Source, error) {
+	return nil, errNotInTest
+}
+
+func (f *fakeStore) UpdateSource(context.Context, store.Actor, store.Source, time.Time) (*store.Source, error) {
+	return nil, errNotInTest
+}
+
+func (f *fakeStore) DeleteSource(context.Context, store.Actor, int64, int64, time.Time) error {
+	return errNotInTest
+}
+
+func (f *fakeStore) CreateSink(context.Context, store.Actor, store.Sink, time.Time) (*store.Sink, error) {
+	return nil, errNotInTest
+}
+
+func (f *fakeStore) Sink(context.Context, int64) (*store.Sink, error) { return nil, errNotInTest }
+
+func (f *fakeStore) Sinks(context.Context, int64, int64, int) ([]store.Sink, error) {
+	return nil, errNotInTest
+}
+
+func (f *fakeStore) UpdateSink(context.Context, store.Actor, store.Sink, time.Time) (*store.Sink, error) {
+	return nil, errNotInTest
+}
+
+func (f *fakeStore) DeleteSink(context.Context, store.Actor, int64, int64, time.Time) error {
+	return errNotInTest
+}
+
+func (f *fakeStore) CreateRoute(context.Context, store.Actor, store.Route, time.Time) (*store.Route, error) {
+	return nil, errNotInTest
+}
+
+func (f *fakeStore) Route(context.Context, int64) (*store.Route, error) { return nil, errNotInTest }
+
+func (f *fakeStore) Routes(context.Context, int64, int64, int64, int) ([]store.Route, error) {
+	return nil, errNotInTest
+}
+
+func (f *fakeStore) UpdateRoute(context.Context, store.Actor, store.Route, time.Time) (*store.Route, error) {
+	return nil, errNotInTest
+}
+
+func (f *fakeStore) DeleteRoute(context.Context, store.Actor, int64, int64, time.Time) error {
+	return errNotInTest
+}
+
 // fakePlatforms answers every check with err, or with the account "bot".
 type fakePlatforms struct {
 	err     error
 	checked []string // the credentials it was asked about
+}
+
+func (f *fakePlatforms) CheckChannel(context.Context, platform.Kind, *url.URL, string, string) (string, error) {
+	return "", errNotInTest
 }
 
 func (f *fakePlatforms) Check(_ context.Context, _ platform.Kind, _ *url.URL, credential string) (string, error) {

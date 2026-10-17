@@ -33,6 +33,25 @@ func fakePlatform(t *testing.T, kind Kind) *url.URL {
 			}
 			_, _ = w.Write([]byte(`{"id":"u1","username":"patchcaster","is_bot":true}`))
 		})
+		mux.HandleFunc("GET /api/v4/channels/{channel_id}", func(w http.ResponseWriter, r *http.Request) {
+			switch r.PathValue("channel_id") {
+			case "town", "lobby":
+				_, _ = w.Write([]byte(`{"id":"` + r.PathValue("channel_id") + `","name":"town-square","display_name":"Town Square","delete_at":0}`))
+			case "old":
+				_, _ = w.Write([]byte(`{"id":"old","name":"old","display_name":"Old","delete_at":1700000000000}`))
+			case "secret":
+				http.Error(w, `{"message":"You do not have the appropriate permissions."}`, http.StatusForbidden)
+			default:
+				http.Error(w, `{"message":"Unable to find the existing channel."}`, http.StatusNotFound)
+			}
+		})
+		mux.HandleFunc("GET /api/v4/channels/{channel_id}/members/{user_id}", func(w http.ResponseWriter, r *http.Request) {
+			if r.PathValue("channel_id") != "town" || r.PathValue("user_id") != "u1" {
+				http.Error(w, `{"message":"Unable to find the channel member."}`, http.StatusNotFound)
+				return
+			}
+			_, _ = w.Write([]byte(`{"channel_id":"town","user_id":"u1"}`))
+		})
 	}
 	server := httptest.NewServer(mux)
 	t.Cleanup(server.Close)
@@ -133,4 +152,45 @@ func TestParseBaseURL(t *testing.T) {
 			assert.Equal(t, tc.want, u.String())
 		})
 	}
+}
+
+func TestCheckChannelNamesADeliverableChannel(t *testing.T) {
+	// act
+	name, err := Checker{}.CheckChannel(context.Background(), Mattermost, fakePlatform(t, Mattermost), "good", "town")
+
+	// assert
+	require.NoError(t, err)
+	assert.Equal(t, "Town Square", name)
+}
+
+func TestCheckChannelNamesWhyItCannotDeliver(t *testing.T) {
+	tests := []struct {
+		channel string
+		reason  string
+	}{
+		{"nowhere", "no channel has this id"},
+		{"secret", "the bot may not see the channel: add it to the channel"},
+		{"old", "the channel is archived"},
+		{"lobby", "the bot is not a member of the channel: add it to the channel"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.channel, func(t *testing.T) {
+			// act
+			_, err := Checker{}.CheckChannel(context.Background(), Mattermost, fakePlatform(t, Mattermost), "good", tc.channel)
+
+			// assert
+			var undeliverable *UndeliverableError
+			require.ErrorAs(t, err, &undeliverable)
+			assert.Equal(t, tc.reason, undeliverable.Reason)
+		})
+	}
+}
+
+func TestCheckChannelPassesOnARefusedCredential(t *testing.T) {
+	// act
+	_, err := Checker{}.CheckChannel(context.Background(), Mattermost, fakePlatform(t, Mattermost), "bad", "town")
+
+	// assert
+	var refused *RefusedError
+	assert.ErrorAs(t, err, &refused)
 }

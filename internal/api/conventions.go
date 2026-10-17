@@ -73,7 +73,13 @@ func pageOf[T any](items []T, limit int, idOf func(T) int64) ([]T, v1gen.OptStri
 // storeProblem maps the store's errors to problems and passes any other
 // error on.
 func storeProblem(err error) error {
+	var field *store.FieldError
+	if errors.As(err, &field) {
+		return storeFieldProblem(field)
+	}
 	switch {
+	case errors.Is(err, store.ErrInUse):
+		return newProblem(http.StatusConflict, "the item is in use: remove what uses it first")
 	case errors.Is(err, store.ErrNotFound):
 		return newProblem(http.StatusNotFound, "")
 	case errors.Is(err, store.ErrVersionMismatch):
@@ -88,4 +94,22 @@ func storeProblem(err error) error {
 		return newProblem(http.StatusForbidden, "the setup link is used, expired or unknown: run the bootstrap command for a new one")
 	}
 	return err
+}
+
+// storeFieldProblem maps a store error about one field of a change to a
+// problem that names the field.
+func storeFieldProblem(field *store.FieldError) error {
+	switch {
+	case errors.Is(field.Err, store.ErrNameTaken):
+		return fieldProblem(http.StatusConflict, "another item has this name", field.Field, "is taken")
+	case errors.Is(field.Err, store.ErrDuplicate):
+		return fieldProblem(http.StatusConflict, "another item is the same", field.Field, "repeats another item")
+	case errors.Is(field.Err, store.ErrInUse):
+		return fieldProblem(http.StatusConflict, "a route still uses what the change would remove", field.Field, "is used by a route")
+	case errors.Is(field.Err, store.ErrUnknownReference):
+		return fieldProblem(http.StatusUnprocessableEntity, "an id names no item", field.Field, "names no item")
+	case errors.Is(field.Err, store.ErrNotTheTeams):
+		return fieldProblem(http.StatusForbidden, "a route connects only the team's own sources and sinks", field.Field, "is not the team's")
+	}
+	return field
 }

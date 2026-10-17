@@ -8,9 +8,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 )
@@ -58,33 +60,80 @@ func (e *APIError) Error() string {
 	return fmt.Sprintf("mattermost rejected the request: http %d: %s", e.Status, e.Body)
 }
 
-// Me returns the username of the account the token acts as.
-func (c *Client) Me(ctx context.Context) (string, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.BaseURL+"/api/v4/users/me", nil)
+// User is a Mattermost account.
+type User struct {
+	ID       string `json:"id"`
+	Username string `json:"username"`
+}
+
+// Me returns the account the token acts as.
+func (c *Client) Me(ctx context.Context) (User, error) {
+	var me User
+	if err := c.get(ctx, "/api/v4/users/me", &me); err != nil {
+		return User{}, err
+	}
+	if me.ID == "" || me.Username == "" {
+		return User{}, &APIError{Status: http.StatusOK, Body: "response named no user"}
+	}
+	return me, nil
+}
+
+// Channel is a Mattermost channel as a sink check sees it. DeleteAt is
+// nonzero once the channel is archived.
+type Channel struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	DisplayName string `json:"display_name"`
+	DeleteAt    int64  `json:"delete_at"`
+}
+
+// Channel reads a channel the bot can see.
+func (c *Client) Channel(ctx context.Context, channelID string) (Channel, error) {
+	var channel Channel
+	err := c.get(ctx, "/api/v4/channels/"+url.PathEscape(channelID), &channel)
+	return channel, err
+}
+
+// IsMember reports whether the user belongs to the channel.
+func (c *Client) IsMember(ctx context.Context, channelID, userID string) (bool, error) {
+	var member struct {
+		UserID string `json:"user_id"`
+	}
+	err := c.get(ctx, "/api/v4/channels/"+url.PathEscape(channelID)+"/members/"+url.PathEscape(userID), &member)
+	var apiErr *APIError
+	if errors.As(err, &apiErr) && apiErr.Status == http.StatusNotFound {
+		return false, nil
+	}
 	if err != nil {
-		return "", fmt.Errorf("build GET request: %w", err)
+		return false, err
+	}
+	return member.UserID == userID, nil
+}
+
+// get reads one resource of the REST API into out.
+func (c *Client) get(ctx context.Context, path string, out any) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.BaseURL+path, nil)
+	if err != nil {
+		return fmt.Errorf("build GET request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+c.Token)
 
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
-		return "", &TransportError{Err: err}
+		return &TransportError{Err: err}
 	}
 	defer func() { _ = resp.Body.Close() }()
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 64<<10))
 	if err != nil {
-		return "", &TransportError{Err: fmt.Errorf("read response body: %w", err)}
+		return &TransportError{Err: fmt.Errorf("read response body: %w", err)}
 	}
 	if resp.StatusCode != http.StatusOK {
-		return "", &APIError{Status: resp.StatusCode, Body: messageOf(body)}
+		return &APIError{Status: resp.StatusCode, Body: messageOf(body)}
 	}
-	var me struct {
-		Username string `json:"username"`
+	if err := json.Unmarshal(body, out); err != nil {
+		return &APIError{Status: resp.StatusCode, Body: "response is not the JSON Mattermost sends"}
 	}
-	if err := json.Unmarshal(body, &me); err != nil || me.Username == "" {
-		return "", &APIError{Status: resp.StatusCode, Body: "response named no user"}
-	}
-	return me.Username, nil
+	return nil
 }
 
 // messageOf reads the message of a Mattermost error response, and falls back

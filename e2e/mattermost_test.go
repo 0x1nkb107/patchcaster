@@ -57,6 +57,8 @@ func newFakeMattermost(t *testing.T) *fakeMattermost {
 	mux.HandleFunc("POST /api/v4/posts", m.createPost)
 	mux.HandleFunc("PUT /api/v4/posts/{id}", m.updatePost)
 	mux.HandleFunc("GET /api/v4/users/me", m.me)
+	mux.HandleFunc("GET /api/v4/channels/{channel_id}", m.channel)
+	mux.HandleFunc("GET /api/v4/channels/{channel_id}/members/{user_id}", m.channelMember)
 	m.server = httptest.NewServer(m.enforceAPI(api, requireBotToken(mux)))
 	t.Cleanup(func() {
 		// Close waits for every request, so held posts must go first.
@@ -98,13 +100,54 @@ func requireBotToken(next http.Handler) http.Handler {
 
 func (m *fakeMattermost) url() string { return m.server.URL }
 
-// botUsername is the bot account's name, as the fake reports it.
-const botUsername = "patchcaster-bot"
+// The bot account as the fake reports it.
+const (
+	botUserID   = "bot1"
+	botUsername = "patchcaster-bot"
+)
+
+// The fake's channels besides the suite's own: another one the bot may
+// post into, one it was never added to, and an archived one.
+const (
+	otherChannelID    = "chan-other"
+	lobbyChannelID    = "chan-lobby"
+	archivedChannelID = "chan-archived"
+)
 
 // me answers who the bot token belongs to.
 func (m *fakeMattermost) me(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write([]byte(`{"id":"bot1","username":"` + botUsername + `","is_bot":true}`))
+	_, _ = w.Write([]byte(`{"id":"` + botUserID + `","username":"` + botUsername + `","is_bot":true}`))
+}
+
+// channel answers the fake's channels and 404 for any other id, as
+// Mattermost does.
+func (m *fakeMattermost) channel(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("channel_id")
+	deleteAt := 0
+	switch id {
+	case channelID, otherChannelID, lobbyChannelID:
+	case archivedChannelID:
+		deleteAt = 1700000000000
+	default:
+		http.Error(w, `{"message":"Unable to find the existing channel."}`, http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_, _ = fmt.Fprintf(w, `{"id":%q,"name":%q,"display_name":%q,"delete_at":%d}`, id, id, "Channel "+id, deleteAt)
+}
+
+// channelMember answers that the bot is a member of every channel but the
+// lobby.
+func (m *fakeMattermost) channelMember(w http.ResponseWriter, r *http.Request) {
+	id, user := r.PathValue("channel_id"), r.PathValue("user_id")
+	member := user == botUserID && (id == channelID || id == otherChannelID || id == archivedChannelID)
+	if !member {
+		http.Error(w, `{"message":"Unable to find the channel member."}`, http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_, _ = fmt.Fprintf(w, `{"channel_id":%q,"user_id":%q}`, id, user)
 }
 
 func (m *fakeMattermost) createPost(w http.ResponseWriter, r *http.Request) {

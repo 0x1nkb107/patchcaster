@@ -125,6 +125,17 @@ type Person struct {
 	SessionEpoch    int64
 }
 
+type Route struct {
+	ID           int64
+	TeamID       int64
+	SourceID     int64
+	SinkID       int64
+	MutedReplies json.RawMessage
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	Version      int64
+}
+
 type SeenWebhook struct {
 	WebhookID string
 	Outcome   string
@@ -150,4 +161,49 @@ type SigningToken struct {
 	Label        string
 	Token        []byte
 	CreatedAt    time.Time
+}
+
+type Sink struct {
+	ID           int64
+	ConnectionID int64
+	Name         string
+	ChannelID    string
+	ChannelName  string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	Version      int64
+}
+
+type Source struct {
+	ID           int64
+	ConnectionID int64
+	Name         string
+	ScopeKind    string
+	ScopePath    string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	Version      int64
+}
+
+type Team struct {
+	ID        int64
+	Name      string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	Version   int64
+}
+
+type TeamOperator struct {
+	TeamID   int64
+	PersonID int64
+}
+
+type TeamSink struct {
+	TeamID int64
+	SinkID int64
+}
+
+type TeamSource struct {
+	TeamID   int64
+	SourceID int64
 }

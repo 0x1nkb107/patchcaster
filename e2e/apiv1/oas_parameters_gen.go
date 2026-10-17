@@ -14,8 +14,56 @@ type DeleteConnectionParams struct {
 	IfMatch string
 }
 
+// DeleteRouteParams is parameters of deleteRoute operation.
+type DeleteRouteParams struct {
+	ID int64
+	// The ETag of the resource as last read. A change without it, or with an old one, is refused.
+	IfMatch string
+}
+
+// DeleteSinkParams is parameters of deleteSink operation.
+type DeleteSinkParams struct {
+	ID int64
+	// The ETag of the resource as last read. A change without it, or with an old one, is refused.
+	IfMatch string
+}
+
+// DeleteSourceParams is parameters of deleteSource operation.
+type DeleteSourceParams struct {
+	ID int64
+	// The ETag of the resource as last read. A change without it, or with an old one, is refused.
+	IfMatch string
+}
+
+// DeleteTeamParams is parameters of deleteTeam operation.
+type DeleteTeamParams struct {
+	ID int64
+	// The ETag of the resource as last read. A change without it, or with an old one, is refused.
+	IfMatch string
+}
+
 // GetConnectionParams is parameters of getConnection operation.
 type GetConnectionParams struct {
+	ID int64
+}
+
+// GetRouteParams is parameters of getRoute operation.
+type GetRouteParams struct {
+	ID int64
+}
+
+// GetSinkParams is parameters of getSink operation.
+type GetSinkParams struct {
+	ID int64
+}
+
+// GetSourceParams is parameters of getSource operation.
+type GetSourceParams struct {
+	ID int64
+}
+
+// GetTeamParams is parameters of getTeam operation.
+type GetTeamParams struct {
 	ID int64
 }
 
@@ -43,9 +91,43 @@ type ListPersonsParams struct {
 	Limit OptInt `json:",omitempty,omitzero"`
 }
 
+// ListRoutesParams is parameters of listRoutes operation.
+type ListRoutesParams struct {
+	// Only the routes of this team.
+	TeamID OptInt64 `json:",omitempty,omitzero"`
+	// Where the page starts, from the previous page's next_cursor.
+	Cursor OptString `json:",omitempty,omitzero"`
+	// How many items the page holds at most.
+	Limit OptInt `json:",omitempty,omitzero"`
+}
+
 // ListSigningTokensParams is parameters of listSigningTokens operation.
 type ListSigningTokensParams struct {
 	ID int64
+	// Where the page starts, from the previous page's next_cursor.
+	Cursor OptString `json:",omitempty,omitzero"`
+	// How many items the page holds at most.
+	Limit OptInt `json:",omitempty,omitzero"`
+}
+
+// ListSinksParams is parameters of listSinks operation.
+type ListSinksParams struct {
+	// Where the page starts, from the previous page's next_cursor.
+	Cursor OptString `json:",omitempty,omitzero"`
+	// How many items the page holds at most.
+	Limit OptInt `json:",omitempty,omitzero"`
+}
+
+// ListSourcesParams is parameters of listSources operation.
+type ListSourcesParams struct {
+	// Where the page starts, from the previous page's next_cursor.
+	Cursor OptString `json:",omitempty,omitzero"`
+	// How many items the page holds at most.
+	Limit OptInt `json:",omitempty,omitzero"`
+}
+
+// ListTeamsParams is parameters of listTeams operation.
+type ListTeamsParams struct {
 	// Where the page starts, from the previous page's next_cursor.
 	Cursor OptString `json:",omitempty,omitzero"`
 	// How many items the page holds at most.
@@ -91,6 +173,34 @@ type UpdateConnectionParams struct {
 
 // UpdatePersonParams is parameters of updatePerson operation.
 type UpdatePersonParams struct {
+	ID int64
+	// The ETag of the resource as last read. A change without it, or with an old one, is refused.
+	IfMatch string
+}
+
+// UpdateRouteParams is parameters of updateRoute operation.
+type UpdateRouteParams struct {
+	ID int64
+	// The ETag of the resource as last read. A change without it, or with an old one, is refused.
+	IfMatch string
+}
+
+// UpdateSinkParams is parameters of updateSink operation.
+type UpdateSinkParams struct {
+	ID int64
+	// The ETag of the resource as last read. A change without it, or with an old one, is refused.
+	IfMatch string
+}
+
+// UpdateSourceParams is parameters of updateSource operation.
+type UpdateSourceParams struct {
+	ID int64
+	// The ETag of the resource as last read. A change without it, or with an old one, is refused.
+	IfMatch string
+}
+
+// UpdateTeamParams is parameters of updateTeam operation.
+type UpdateTeamParams struct {
 	ID int64
 	// The ETag of the resource as last read. A change without it, or with an old one, is refused.
 	IfMatch string

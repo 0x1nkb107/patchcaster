@@ -1,0 +1,3 @@
+kind: Added
+body: Connect GitLab and Mattermost through the management API. PatchCaster checks each credential against its platform, shows the account it acts as, and stores it encrypted. GitLab connections hold several webhook signing tokens for rotation.
+time: 2026-10-17T11:43:06.583412664+02:00

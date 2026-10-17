@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/go-faster/errors"
 	"github.com/go-faster/jx"
 )
 
@@ -300,6 +301,285 @@ func (s *AuditPage) SetNextCursor(val OptString) {
 	s.NextCursor = val
 }
 
+// Ref: #/components/schemas/Connection
+type Connection struct {
+	ID      int64          `json:"id"`
+	Kind    ConnectionKind `json:"kind"`
+	Name    string         `json:"name"`
+	BaseURL string         `json:"base_url"`
+	// Whom the credential acted as when it was last checked. Empty without one.
+	Account       string `json:"account"`
+	HasCredential bool   `json:"has_credential"`
+	// Where a forge sends this connection's webhooks. Absent for a chat connection.
+	WebhookURL OptString `json:"webhook_url"`
+	// The connection's current version, for If-Match on a change.
+	Etag string `json:"etag"`
+}
+
+// GetID returns the value of ID.
+func (s *Connection) GetID() int64 {
+	return s.ID
+}
+
+// GetKind returns the value of Kind.
+func (s *Connection) GetKind() ConnectionKind {
+	return s.Kind
+}
+
+// GetName returns the value of Name.
+func (s *Connection) GetName() string {
+	return s.Name
+}
+
+// GetBaseURL returns the value of BaseURL.
+func (s *Connection) GetBaseURL() string {
+	return s.BaseURL
+}
+
+// GetAccount returns the value of Account.
+func (s *Connection) GetAccount() string {
+	return s.Account
+}
+
+// GetHasCredential returns the value of HasCredential.
+func (s *Connection) GetHasCredential() bool {
+	return s.HasCredential
+}
+
+// GetWebhookURL returns the value of WebhookURL.
+func (s *Connection) GetWebhookURL() OptString {
+	return s.WebhookURL
+}
+
+// GetEtag returns the value of Etag.
+func (s *Connection) GetEtag() string {
+	return s.Etag
+}
+
+// SetID sets the value of ID.
+func (s *Connection) SetID(val int64) {
+	s.ID = val
+}
+
+// SetKind sets the value of Kind.
+func (s *Connection) SetKind(val ConnectionKind) {
+	s.Kind = val
+}
+
+// SetName sets the value of Name.
+func (s *Connection) SetName(val string) {
+	s.Name = val
+}
+
+// SetBaseURL sets the value of BaseURL.
+func (s *Connection) SetBaseURL(val string) {
+	s.BaseURL = val
+}
+
+// SetAccount sets the value of Account.
+func (s *Connection) SetAccount(val string) {
+	s.Account = val
+}
+
+// SetHasCredential sets the value of HasCredential.
+func (s *Connection) SetHasCredential(val bool) {
+	s.HasCredential = val
+}
+
+// SetWebhookURL sets the value of WebhookURL.
+func (s *Connection) SetWebhookURL(val OptString) {
+	s.WebhookURL = val
+}
+
+// SetEtag sets the value of Etag.
+func (s *Connection) SetEtag(val string) {
+	s.Etag = val
+}
+
+// ConnectionHeaders wraps Connection with response headers.
+type ConnectionHeaders struct {
+	ETag     OptString
+	Response Connection
+}
+
+// GetETag returns the value of ETag.
+func (s *ConnectionHeaders) GetETag() OptString {
+	return s.ETag
+}
+
+// GetResponse returns the value of Response.
+func (s *ConnectionHeaders) GetResponse() Connection {
+	return s.Response
+}
+
+// SetETag sets the value of ETag.
+func (s *ConnectionHeaders) SetETag(val OptString) {
+	s.ETag = val
+}
+
+// SetResponse sets the value of Response.
+func (s *ConnectionHeaders) SetResponse(val Connection) {
+	s.Response = val
+}
+
+// The platform. GitLab is a forge, Mattermost a chat platform.
+// Ref: #/components/schemas/ConnectionKind
+type ConnectionKind string
+
+const (
+	ConnectionKindGitlab     ConnectionKind = "gitlab"
+	ConnectionKindMattermost ConnectionKind = "mattermost"
+)
+
+// AllValues returns all ConnectionKind values.
+func (ConnectionKind) AllValues() []ConnectionKind {
+	return []ConnectionKind{
+		ConnectionKindGitlab,
+		ConnectionKindMattermost,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ConnectionKind) MarshalText() ([]byte, error) {
+	switch s {
+	case ConnectionKindGitlab:
+		return []byte(s), nil
+	case ConnectionKindMattermost:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ConnectionKind) UnmarshalText(data []byte) error {
+	switch ConnectionKind(data) {
+	case ConnectionKindGitlab:
+		*s = ConnectionKindGitlab
+		return nil
+	case ConnectionKindMattermost:
+		*s = ConnectionKindMattermost
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/ConnectionPage
+type ConnectionPage struct {
+	Items []Connection `json:"items"`
+	// Absent on the last page.
+	NextCursor OptString `json:"next_cursor"`
+}
+
+// GetItems returns the value of Items.
+func (s *ConnectionPage) GetItems() []Connection {
+	return s.Items
+}
+
+// GetNextCursor returns the value of NextCursor.
+func (s *ConnectionPage) GetNextCursor() OptString {
+	return s.NextCursor
+}
+
+// SetItems sets the value of Items.
+func (s *ConnectionPage) SetItems(val []Connection) {
+	s.Items = val
+}
+
+// SetNextCursor sets the value of NextCursor.
+func (s *ConnectionPage) SetNextCursor(val OptString) {
+	s.NextCursor = val
+}
+
+// Ref: #/components/schemas/ConnectionRequest
+type ConnectionRequest struct {
+	Kind ConnectionKind `json:"kind"`
+	Name string         `json:"name"`
+	// The platform's address, such as https://gitlab.example.org.
+	BaseURL string `json:"base_url"`
+	// The token PatchCaster acts with: an access token for GitLab, the bot account's token for Mattermost.
+	Credential OptString `json:"credential"`
+}
+
+// GetKind returns the value of Kind.
+func (s *ConnectionRequest) GetKind() ConnectionKind {
+	return s.Kind
+}
+
+// GetName returns the value of Name.
+func (s *ConnectionRequest) GetName() string {
+	return s.Name
+}
+
+// GetBaseURL returns the value of BaseURL.
+func (s *ConnectionRequest) GetBaseURL() string {
+	return s.BaseURL
+}
+
+// GetCredential returns the value of Credential.
+func (s *ConnectionRequest) GetCredential() OptString {
+	return s.Credential
+}
+
+// SetKind sets the value of Kind.
+func (s *ConnectionRequest) SetKind(val ConnectionKind) {
+	s.Kind = val
+}
+
+// SetName sets the value of Name.
+func (s *ConnectionRequest) SetName(val string) {
+	s.Name = val
+}
+
+// SetBaseURL sets the value of BaseURL.
+func (s *ConnectionRequest) SetBaseURL(val string) {
+	s.BaseURL = val
+}
+
+// SetCredential sets the value of Credential.
+func (s *ConnectionRequest) SetCredential(val OptString) {
+	s.Credential = val
+}
+
+// Ref: #/components/schemas/ConnectionUpdate
+type ConnectionUpdate struct {
+	Name    string `json:"name"`
+	BaseURL string `json:"base_url"`
+	// A new credential. Absent keeps the current one.
+	Credential OptString `json:"credential"`
+}
+
+// GetName returns the value of Name.
+func (s *ConnectionUpdate) GetName() string {
+	return s.Name
+}
+
+// GetBaseURL returns the value of BaseURL.
+func (s *ConnectionUpdate) GetBaseURL() string {
+	return s.BaseURL
+}
+
+// GetCredential returns the value of Credential.
+func (s *ConnectionUpdate) GetCredential() OptString {
+	return s.Credential
+}
+
+// SetName sets the value of Name.
+func (s *ConnectionUpdate) SetName(val string) {
+	s.Name = val
+}
+
+// SetBaseURL sets the value of BaseURL.
+func (s *ConnectionUpdate) SetBaseURL(val string) {
+	s.BaseURL = val
+}
+
+// SetCredential sets the value of Credential.
+func (s *ConnectionUpdate) SetCredential(val OptString) {
+	s.Credential = val
+}
+
 // Ref: #/components/schemas/CreatedApiToken
 type CreatedApiToken struct {
 	Token ApiToken `json:"token"`
@@ -326,6 +606,9 @@ func (s *CreatedApiToken) SetToken(val ApiToken) {
 func (s *CreatedApiToken) SetSecret(val string) {
 	s.Secret = val
 }
+
+// DeleteConnectionNoContent is response for DeleteConnection operation.
+type DeleteConnectionNoContent struct{}
 
 // EndSessionNoContent is response for EndSession operation.
 type EndSessionNoContent struct{}
@@ -944,6 +1227,9 @@ func (s *ProblemStatusCode) SetResponse(val Problem) {
 	s.Response = val
 }
 
+// RemoveSigningTokenNoContent is response for RemoveSigningToken operation.
+type RemoveSigningTokenNoContent struct{}
+
 // RevokeTokenNoContent is response for RevokeToken operation.
 type RevokeTokenNoContent struct{}
 
@@ -1060,6 +1346,98 @@ func (s *SetupStarted) GetLoginURL() string {
 // SetLoginURL sets the value of LoginURL.
 func (s *SetupStarted) SetLoginURL(val string) {
 	s.LoginURL = val
+}
+
+// Ref: #/components/schemas/SigningToken
+type SigningToken struct {
+	ID        int64     `json:"id"`
+	Label     string    `json:"label"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// GetID returns the value of ID.
+func (s *SigningToken) GetID() int64 {
+	return s.ID
+}
+
+// GetLabel returns the value of Label.
+func (s *SigningToken) GetLabel() string {
+	return s.Label
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *SigningToken) GetCreatedAt() time.Time {
+	return s.CreatedAt
+}
+
+// SetID sets the value of ID.
+func (s *SigningToken) SetID(val int64) {
+	s.ID = val
+}
+
+// SetLabel sets the value of Label.
+func (s *SigningToken) SetLabel(val string) {
+	s.Label = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *SigningToken) SetCreatedAt(val time.Time) {
+	s.CreatedAt = val
+}
+
+// Ref: #/components/schemas/SigningTokenPage
+type SigningTokenPage struct {
+	Items []SigningToken `json:"items"`
+	// Absent on the last page.
+	NextCursor OptString `json:"next_cursor"`
+}
+
+// GetItems returns the value of Items.
+func (s *SigningTokenPage) GetItems() []SigningToken {
+	return s.Items
+}
+
+// GetNextCursor returns the value of NextCursor.
+func (s *SigningTokenPage) GetNextCursor() OptString {
+	return s.NextCursor
+}
+
+// SetItems sets the value of Items.
+func (s *SigningTokenPage) SetItems(val []SigningToken) {
+	s.Items = val
+}
+
+// SetNextCursor sets the value of NextCursor.
+func (s *SigningTokenPage) SetNextCursor(val OptString) {
+	s.NextCursor = val
+}
+
+// Ref: #/components/schemas/SigningTokenRequest
+type SigningTokenRequest struct {
+	// Which hook signs with it, such as "group payments".
+	Label string `json:"label"`
+	// The signing token exactly as the forge shows it, such as GitLab's whsec_ form.
+	Token string `json:"token"`
+}
+
+// GetLabel returns the value of Label.
+func (s *SigningTokenRequest) GetLabel() string {
+	return s.Label
+}
+
+// GetToken returns the value of Token.
+func (s *SigningTokenRequest) GetToken() string {
+	return s.Token
+}
+
+// SetLabel sets the value of Label.
+func (s *SigningTokenRequest) SetLabel(val string) {
+	s.Label = val
+}
+
+// SetToken sets the value of Token.
+func (s *SigningTokenRequest) SetToken(val string) {
+	s.Token = val
 }
 
 type Token struct {

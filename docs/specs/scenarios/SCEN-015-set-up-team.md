@@ -37,7 +37,7 @@ The administrator creates the team "Payments".
 
 ## Exceptions & Edge Cases
 
-- Without API access, registering the hook is the administrator's manual step, with the endpoint and secret the connection showed when it was created.
+- Without API access, registering the hook is the administrator's manual step, at the connection's endpoint. They then add the signing secret the forge generated for the hook to the connection.
 - A source whose scope lies inside an already registered scope, such as one repository of the `payments` organization, needs no hook of its own. The organization hook already delivers its events.
 - A sink such as a release channel may be assigned to several teams. Each team's operators can then route into it.
 - Removing a source removes its webhook through the forge API when the connection has API access.

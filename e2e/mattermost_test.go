@@ -56,6 +56,7 @@ func newFakeMattermost(t *testing.T) *fakeMattermost {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/v4/posts", m.createPost)
 	mux.HandleFunc("PUT /api/v4/posts/{id}", m.updatePost)
+	mux.HandleFunc("GET /api/v4/users/me", m.me)
 	m.server = httptest.NewServer(m.enforceAPI(api, requireBotToken(mux)))
 	t.Cleanup(func() {
 		// Close waits for every request, so held posts must go first.
@@ -96,6 +97,15 @@ func requireBotToken(next http.Handler) http.Handler {
 }
 
 func (m *fakeMattermost) url() string { return m.server.URL }
+
+// botUsername is the bot account's name, as the fake reports it.
+const botUsername = "patchcaster-bot"
+
+// me answers who the bot token belongs to.
+func (m *fakeMattermost) me(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	_, _ = w.Write([]byte(`{"id":"bot1","username":"` + botUsername + `","is_bot":true}`))
+}
 
 func (m *fakeMattermost) createPost(w http.ResponseWriter, r *http.Request) {
 	var p post

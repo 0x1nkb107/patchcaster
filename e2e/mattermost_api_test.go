@@ -18,11 +18,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// mattermostAPISpec describes the posts endpoints of a pinned Mattermost
-// release. testdata/refresh-mattermost-api.sh assembles it from Mattermost's
-// own sources (ADR-027).
+// mattermostAPISpec describes the posts, users and channels endpoints of a
+// pinned Mattermost release. testdata/refresh-mattermost-api.sh assembles it
+// from Mattermost's own sources (ADR-027).
 //
-//go:embed testdata/mattermost-openapi-v4-posts.yaml
+//go:embed testdata/mattermost-openapi-v4.yaml
 var mattermostAPISpec []byte
 
 // mattermostAPI checks requests against the published description of
@@ -92,6 +92,7 @@ func TestMattermostAPICheck(t *testing.T) {
 		{"create with a message of the wrong type", http.MethodPost, "/api/v4/posts", `{"channel_id":"c1","message":42}`, false},
 		{"update a post", http.MethodPut, "/api/v4/posts/p1", `{"id":"p1","message":"edited"}`, true},
 		{"update without the post id", http.MethodPut, "/api/v4/posts/p1", `{"message":"edited"}`, false},
+		{"read the bot's own account", http.MethodGet, "/api/v4/users/me", ``, true},
 		{"call an undocumented endpoint", http.MethodPost, "/api/v4/postings", `{}`, false},
 	}
 	for _, tc := range tests {

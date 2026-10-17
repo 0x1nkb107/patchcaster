@@ -38,17 +38,25 @@ func findAuthorization(h http.Header, prefix string) (string, bool) {
 
 // operationRolesSession is a private map storing roles per operation.
 var operationRolesSession = map[string][]string{
-	CreateTokenOperation:      []string{},
-	EndSessionOperation:       []string{},
-	GetLoginSettingsOperation: []string{},
-	GetSessionOperation:       []string{},
-	ListAuditOperation:        []string{},
-	ListPersonsOperation:      []string{},
-	ListTokensOperation:       []string{},
-	PutLoginSettingsOperation: []string{},
-	RevokeAccessOperation:     []string{},
-	RevokeTokenOperation:      []string{},
-	UpdatePersonOperation:     []string{},
+	AddSigningTokenOperation:    []string{},
+	CreateConnectionOperation:   []string{},
+	CreateTokenOperation:        []string{},
+	DeleteConnectionOperation:   []string{},
+	EndSessionOperation:         []string{},
+	GetConnectionOperation:      []string{},
+	GetLoginSettingsOperation:   []string{},
+	GetSessionOperation:         []string{},
+	ListAuditOperation:          []string{},
+	ListConnectionsOperation:    []string{},
+	ListPersonsOperation:        []string{},
+	ListSigningTokensOperation:  []string{},
+	ListTokensOperation:         []string{},
+	PutLoginSettingsOperation:   []string{},
+	RemoveSigningTokenOperation: []string{},
+	RevokeAccessOperation:       []string{},
+	RevokeTokenOperation:        []string{},
+	UpdateConnectionOperation:   []string{},
+	UpdatePersonOperation:       []string{},
 }
 
 // GetRolesForSession returns the required roles for the given operation.
@@ -74,13 +82,21 @@ func GetRolesForSession(operation string) []string {
 
 // operationRolesToken is a private map storing roles per operation.
 var operationRolesToken = map[string][]string{
-	GetLoginSettingsOperation: []string{},
-	GetSessionOperation:       []string{},
-	ListAuditOperation:        []string{},
-	ListPersonsOperation:      []string{},
-	PutLoginSettingsOperation: []string{},
-	RevokeAccessOperation:     []string{},
-	UpdatePersonOperation:     []string{},
+	AddSigningTokenOperation:    []string{},
+	CreateConnectionOperation:   []string{},
+	DeleteConnectionOperation:   []string{},
+	GetConnectionOperation:      []string{},
+	GetLoginSettingsOperation:   []string{},
+	GetSessionOperation:         []string{},
+	ListAuditOperation:          []string{},
+	ListConnectionsOperation:    []string{},
+	ListPersonsOperation:        []string{},
+	ListSigningTokensOperation:  []string{},
+	PutLoginSettingsOperation:   []string{},
+	RemoveSigningTokenOperation: []string{},
+	RevokeAccessOperation:       []string{},
+	UpdateConnectionOperation:   []string{},
+	UpdatePersonOperation:       []string{},
 }
 
 // GetRolesForToken returns the required roles for the given operation.

@@ -1,6 +1,7 @@
 // Package mattermost is the bot-account HTTP client for posting and updating
-// messages (SYSARCH-003). Only POST and PUT on /api/v4/posts are used; the
-// error taxonomy here is the contract the delivery worker schedules against.
+// messages (SYSARCH-003). Deliveries use only POST and PUT on /api/v4/posts;
+// the error taxonomy here is the contract the delivery worker schedules
+// against. A connection check reads the bot's own account.
 package mattermost
 
 import (
@@ -54,7 +55,48 @@ type APIError struct {
 }
 
 func (e *APIError) Error() string {
-	return fmt.Sprintf("mattermost post rejected: http %d: %s", e.Status, e.Body)
+	return fmt.Sprintf("mattermost rejected the request: http %d: %s", e.Status, e.Body)
+}
+
+// Me returns the username of the account the token acts as.
+func (c *Client) Me(ctx context.Context) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.BaseURL+"/api/v4/users/me", nil)
+	if err != nil {
+		return "", fmt.Errorf("build GET request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+c.Token)
+
+	resp, err := c.HTTP.Do(req)
+	if err != nil {
+		return "", &TransportError{Err: err}
+	}
+	defer func() { _ = resp.Body.Close() }()
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 64<<10))
+	if err != nil {
+		return "", &TransportError{Err: fmt.Errorf("read response body: %w", err)}
+	}
+	if resp.StatusCode != http.StatusOK {
+		return "", &APIError{Status: resp.StatusCode, Body: messageOf(body)}
+	}
+	var me struct {
+		Username string `json:"username"`
+	}
+	if err := json.Unmarshal(body, &me); err != nil || me.Username == "" {
+		return "", &APIError{Status: resp.StatusCode, Body: "response named no user"}
+	}
+	return me.Username, nil
+}
+
+// messageOf reads the message of a Mattermost error response, and falls back
+// to the start of the body.
+func messageOf(body []byte) string {
+	var answer struct {
+		Message string `json:"message"`
+	}
+	if json.Unmarshal(body, &answer) == nil && answer.Message != "" {
+		return answer.Message
+	}
+	return truncate(string(body), 200)
 }
 
 type postRequest struct {

@@ -46,6 +46,7 @@ podman run -d --name patchcaster \
   -e PATCHCASTER_SIGNING_SECRETS=… \
   -e PATCHCASTER_ENCRYPTION_KEY=… \
   -e PATCHCASTER_INTERFACE_URL=https://patchcaster.example.com \
+  -e PATCHCASTER_PUBLIC_URL=https://hooks.patchcaster.example.com \
   ghcr.io/patchcaster-app/patchcaster:vX.Y.Z
 ```
 

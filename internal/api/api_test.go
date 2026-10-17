@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -19,6 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/patchcaster-app/patchcaster/internal/auth"
+	"github.com/patchcaster-app/patchcaster/internal/platform"
 	"github.com/patchcaster-app/patchcaster/internal/seal"
 	"github.com/patchcaster-app/patchcaster/internal/store"
 )
@@ -35,6 +37,9 @@ type fakeStore struct {
 	setupLinkValid bool
 	setupSettings  *store.LoginSettings
 	tokens         map[string]*store.APIToken // by hash
+	connections    map[int64]*store.Connection
+	signingTokens  map[int64]store.NewSigningToken
+	nextID         int64
 }
 
 func (f *fakeStore) AdministratorCount(context.Context) (int, error) {
@@ -117,6 +122,79 @@ func (f *fakeStore) RevokeAccess(context.Context, store.Actor, int64, time.Time)
 	return 0, errNotInTest
 }
 
+func (f *fakeStore) reserve() int64 {
+	f.nextID++
+	return f.nextID
+}
+
+func (f *fakeStore) ReserveConnectionID(context.Context) (int64, error) {
+	return f.reserve(), nil
+}
+
+func (f *fakeStore) CreateConnection(_ context.Context, _ store.Actor, c store.Connection, _ time.Time) (*store.Connection, error) {
+	c.Version = 1
+	f.connections[c.ID] = &c
+	return &c, nil
+}
+
+func (f *fakeStore) Connection(_ context.Context, id int64) (*store.Connection, error) {
+	c, ok := f.connections[id]
+	if !ok {
+		return nil, store.ErrNotFound
+	}
+	return c, nil
+}
+
+func (f *fakeStore) Connections(context.Context, int64, int) ([]store.Connection, error) {
+	return nil, errNotInTest
+}
+
+func (f *fakeStore) UpdateConnection(_ context.Context, _ store.Actor, c store.Connection, _ time.Time) (*store.Connection, error) {
+	current := f.connections[c.ID]
+	if c.Credential == nil {
+		c.Credential = current.Credential
+	}
+	c.Kind = current.Kind
+	c.Version = current.Version + 1
+	f.connections[c.ID] = &c
+	return &c, nil
+}
+
+func (f *fakeStore) DeleteConnection(context.Context, store.Actor, int64, int64, time.Time) error {
+	return errNotInTest
+}
+
+func (f *fakeStore) ReserveSigningTokenID(context.Context) (int64, error) {
+	return f.reserve(), nil
+}
+
+func (f *fakeStore) AddSigningToken(_ context.Context, _ store.Actor, t store.NewSigningToken, now time.Time) (*store.SigningToken, error) {
+	f.signingTokens[t.ID] = t
+	return &store.SigningToken{ID: t.ID, ConnectionID: t.ConnectionID, Label: t.Label, CreatedAt: now}, nil
+}
+
+func (f *fakeStore) SigningTokens(context.Context, int64, int64, int) ([]store.SigningToken, error) {
+	return nil, errNotInTest
+}
+
+func (f *fakeStore) RemoveSigningToken(context.Context, store.Actor, int64, int64, time.Time) error {
+	return errNotInTest
+}
+
+// fakePlatforms answers every check with err, or with the account "bot".
+type fakePlatforms struct {
+	err     error
+	checked []string // the credentials it was asked about
+}
+
+func (f *fakePlatforms) Check(_ context.Context, _ platform.Kind, _ *url.URL, credential string) (string, error) {
+	f.checked = append(f.checked, credential)
+	if f.err != nil {
+		return "", f.err
+	}
+	return "bot", nil
+}
+
 // fakeLogin answers the provider check with checkErr.
 type fakeLogin struct{ checkErr error }
 
@@ -126,12 +204,13 @@ func (f *fakeLogin) URL() string { return "http://interface.example/auth/login" 
 
 // fixture is the API over fakes, behind the session middleware as served.
 type fixture struct {
-	store    *fakeStore
-	login    *fakeLogin
-	box      *seal.Box
-	sessions *scs.SessionManager
-	svc      *Service
-	handler  http.Handler
+	store     *fakeStore
+	login     *fakeLogin
+	platforms *fakePlatforms
+	box       *seal.Box
+	sessions  *scs.SessionManager
+	svc       *Service
+	handler   http.Handler
 }
 
 // The people of the tests. Each fixture keeps copies, which tests may
@@ -147,21 +226,26 @@ func newFixture(t *testing.T) *fixture {
 	require.NoError(t, err)
 	f := &fixture{
 		store: &fakeStore{
-			admins:  1,
-			persons: map[int64]*store.Person{ada.ID: new(ada), bob.ID: new(bob)},
-			tokens:  map[string]*store.APIToken{},
+			admins:        1,
+			persons:       map[int64]*store.Person{ada.ID: new(ada), bob.ID: new(bob)},
+			tokens:        map[string]*store.APIToken{},
+			connections:   map[int64]*store.Connection{},
+			signingTokens: map[int64]store.NewSigningToken{},
 		},
-		login:    &fakeLogin{},
-		box:      seal.NewBox(key),
-		sessions: auth.NewSessions(memstore.New(), false),
+		login:     &fakeLogin{},
+		platforms: &fakePlatforms{},
+		box:       seal.NewBox(key),
+		sessions:  auth.NewSessions(memstore.New(), false),
 	}
 	f.svc = NewService(Config{
-		Version:  "1.2.3",
-		Store:    f.store,
-		Box:      f.box,
-		Sessions: f.sessions,
-		Login:    f.login,
-		Log:      slog.New(slog.DiscardHandler),
+		Version:   "1.2.3",
+		Store:     f.store,
+		Box:       f.box,
+		Sessions:  f.sessions,
+		Login:     f.login,
+		Platforms: f.platforms,
+		PublicURL: &url.URL{Scheme: "https", Host: "hooks.example.org"},
+		Log:       slog.New(slog.DiscardHandler),
 	})
 	mux := http.NewServeMux()
 	require.NoError(t, Routes(mux, f.svc))

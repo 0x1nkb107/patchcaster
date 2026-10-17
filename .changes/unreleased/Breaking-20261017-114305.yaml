@@ -1,0 +1,3 @@
+kind: Breaking
+body: Name the address at which the forges reach the webhook listener in PATCHCASTER_PUBLIC_URL. Forge connections build their webhook endpoints from it.
+time: 2026-10-17T11:43:05.575713582+02:00

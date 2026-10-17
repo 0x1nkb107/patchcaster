@@ -28,6 +28,7 @@ var minimalFlags = []string{
 	"--database-url=postgres://x", "--mattermost-url=https://mm",
 	"--mattermost-token=tok", "--signing-secret=" + testSigningToken, "--routing-file=/dev/null",
 	"--encryption-key=" + testKey, "--interface-url=" + testInterfaceURL,
+	"--public-url=" + testPublicURL,
 }
 
 // Well-formed signing tokens, as GitLab shows them. They are built at run
@@ -42,8 +43,11 @@ func signingTokenOf(letter byte) string {
 	return "whsec_" + base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{letter}, 32))
 }
 
-// testInterfaceURL is a well-formed interface address.
-const testInterfaceURL = "https://patchcaster.example"
+// Well-formed addresses of the interface and the webhook listener.
+const (
+	testInterfaceURL = "https://patchcaster.example"
+	testPublicURL    = "https://hooks.patchcaster.example"
+)
 
 // testKey is a well-formed instance key: 32 bytes of 'k', base64-encoded.
 const testKey = "a2tra2tra2tra2tra2tra2tra2tra2tra2tra2tra2s="
@@ -77,7 +81,7 @@ func TestEnvFillsUnsetFlags(t *testing.T) {
 	// act
 	cli := mustParse(t, "--database-url=postgres://x", "--mattermost-url=https://mm",
 		"--mattermost-token=tok", "--routing-file=/dev/null", "--encryption-key="+testKey,
-		"--interface-url="+testInterfaceURL)
+		"--interface-url="+testInterfaceURL, "--public-url="+testPublicURL)
 
 	// assert
 	assert.Equal(t, ":7777", cli.Serve.Addr)
@@ -173,7 +177,8 @@ func TestValidateAcceptsRotationSecrets(t *testing.T) {
 	// act
 	cli, err := parse(t, "--database-url=postgres://x", "--mattermost-url=https://mm",
 		"--mattermost-token=tok", "--routing-file=/dev/null", "--encryption-key="+testKey,
-		"--interface-url="+testInterfaceURL, "--signing-secret="+testSigningToken, "--signing-secret="+otherSigningToken)
+		"--interface-url="+testInterfaceURL, "--public-url="+testPublicURL,
+		"--signing-secret="+testSigningToken, "--signing-secret="+otherSigningToken)
 
 	// assert
 	require.NoError(t, err)
@@ -222,4 +227,32 @@ func TestAMalformedInterfaceURLIsReportedWithTheOthers(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "--interface-url")
 	assert.Contains(t, err.Error(), "--log-level")
+}
+
+func TestThePublicURLMayHaveAPath(t *testing.T) {
+	tests := []struct {
+		raw     string
+		want    string
+		wantErr bool
+	}{
+		{"https://hooks.example.org", "https://hooks.example.org", false},
+		{"https://example.org/patchcaster/", "https://example.org/patchcaster", false},
+		{"example.org", "", true},
+		{"https://example.org/?x=1", "", true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.raw, func(t *testing.T) {
+			// act
+			u, err := parsePublicURL(tc.raw)
+
+			// assert
+			if tc.wantErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), "--public-url")
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, u.String())
+		})
+	}
 }

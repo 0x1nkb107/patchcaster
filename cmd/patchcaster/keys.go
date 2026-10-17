@@ -121,25 +121,37 @@ type resealStore interface {
 	keyCheckStore
 	LoginSettings(ctx context.Context) (*store.LoginSettings, error)
 	ReplaceLoginClientSecret(ctx context.Context, sealed, resealed []byte) (bool, error)
+	ConnectionCredentials(ctx context.Context) ([]store.SealedValue, error)
+	ReplaceConnectionCredential(ctx context.Context, id int64, sealed, resealed []byte) (bool, error)
+	SealedSigningTokens(ctx context.Context) ([]store.SealedValue, error)
+	ReplaceSigningToken(ctx context.Context, id int64, sealed, resealed []byte) (bool, error)
 }
 
 // resealSecrets seals every stored secret again with the active key and
 // returns how many it moved. Secrets already sealed by the active key stay.
+// The key check goes first, so that a reseal never runs with a wrong key.
 func resealSecrets(ctx context.Context, st resealStore, box *seal.Box, now time.Time) (int, error) {
-	keyCheck, err := resealKeyCheck(ctx, st, box, now)
+	moved, err := resealKeyCheck(ctx, st, box, now)
 	if err != nil {
 		return 0, err
 	}
 	clientSecret, err := resealClientSecret(ctx, st, box)
+	moved += clientSecret
 	if err != nil {
-		return keyCheck, err
+		return moved, err
 	}
-	return keyCheck + clientSecret, nil
+	for _, rows := range sealedTables(st) {
+		resealed, err := resealRows(ctx, rows, box)
+		moved += resealed
+		if err != nil {
+			return moved, err
+		}
+	}
+	return moved, nil
 }
 
 // resealKeyCheck seals the key check again when a previous key sealed it. It
-// refuses keys that do not open it, so that a reseal never runs with a
-// wrong key.
+// refuses keys that do not open it.
 func resealKeyCheck(ctx context.Context, st keyCheckStore, box *seal.Box, now time.Time) (int, error) {
 	sealed, err := st.KeyCheck(ctx)
 	if err != nil {
@@ -175,21 +187,84 @@ func resealClientSecret(ctx context.Context, st resealStore, box *seal.Box) (int
 	if err != nil {
 		return 0, err
 	}
-	stale, err := box.Stale(settings.ClientSecret)
+	resealed, stale, err := resealValue(box, settings.ClientSecret, auth.ClientSecretBinding)
 	if err != nil || !stale {
 		return 0, err
-	}
-	secret, err := box.Open(settings.ClientSecret, auth.ClientSecretBinding)
-	if err != nil {
-		return 0, fmt.Errorf("open client secret: %w", err)
-	}
-	resealed, err := box.Seal(secret, auth.ClientSecretBinding)
-	if err != nil {
-		return 0, fmt.Errorf("seal client secret: %w", err)
 	}
 	replaced, err := st.ReplaceLoginClientSecret(ctx, settings.ClientSecret, resealed)
 	if err != nil || !replaced {
 		return 0, err
 	}
 	return 1, nil
+}
+
+// sealedRows is one table of stored secrets as a reseal walks it: how to
+// list them, what each is sealed for, and how to replace one that is still
+// as listed.
+type sealedRows struct {
+	list    func(ctx context.Context) ([]store.SealedValue, error)
+	binding func(id int64) string
+	replace func(ctx context.Context, id int64, sealed, resealed []byte) (bool, error)
+}
+
+// sealedTables lists the tables that hold a sealed secret per row.
+func sealedTables(st resealStore) []sealedRows {
+	return []sealedRows{
+		{
+			list:    st.ConnectionCredentials,
+			binding: store.ConnectionCredentialBinding,
+			replace: st.ReplaceConnectionCredential,
+		},
+		{
+			list:    st.SealedSigningTokens,
+			binding: store.SigningTokenBinding,
+			replace: st.ReplaceSigningToken,
+		},
+	}
+}
+
+// resealRows seals the stale secrets of one table again and returns how
+// many it moved. A secret replaced meanwhile was sealed with the active key
+// anyway, so it is left as it is.
+func resealRows(ctx context.Context, rows sealedRows, box *seal.Box) (int, error) {
+	values, err := rows.list(ctx)
+	if err != nil {
+		return 0, err
+	}
+	moved := 0
+	for _, value := range values {
+		resealed, stale, err := resealValue(box, value.Sealed, rows.binding(value.ID))
+		if err != nil {
+			return moved, err
+		}
+		if !stale {
+			continue
+		}
+		replaced, err := rows.replace(ctx, value.ID, value.Sealed, resealed)
+		if err != nil {
+			return moved, err
+		}
+		if replaced {
+			moved++
+		}
+	}
+	return moved, nil
+}
+
+// resealValue seals one stored secret again with the active key. It reports
+// false, and returns nothing, when the active key sealed it already.
+func resealValue(box *seal.Box, sealed []byte, binding string) ([]byte, bool, error) {
+	stale, err := box.Stale(sealed)
+	if err != nil || !stale {
+		return nil, false, err
+	}
+	plaintext, err := box.Open(sealed, binding)
+	if err != nil {
+		return nil, false, fmt.Errorf("open %s: %w", binding, err)
+	}
+	resealed, err := box.Seal(plaintext, binding)
+	if err != nil {
+		return nil, false, fmt.Errorf("seal %s: %w", binding, err)
+	}
+	return resealed, true, nil
 }

@@ -126,7 +126,8 @@ run:
 	  --database-url "{{database_url}}" \
 	  --routing-file ./contrib/routing.example.yaml \
 	  --encryption-key "{{dev_encryption_key}}" \
-	  --interface-url http://127.0.0.1:8081
+	  --interface-url http://127.0.0.1:8081 \
+	  --public-url http://127.0.0.1:8080
 
 # Issue a setup link for the dev instance that `just run` serves.
 [group('dev')]

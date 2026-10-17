@@ -207,6 +207,192 @@ paths:
           description: The token is revoked.
         default:
           $ref: "#/components/responses/Problem"
+  /api/v1/connections:
+    get:
+      operationId: listConnections
+      summary: List the forge and chat connections, for administrators.
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: One page of connections, in the order they were created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectionPage"
+        default:
+          $ref: "#/components/responses/Problem"
+    post:
+      operationId: createConnection
+      summary: Connect a forge or a chat platform, for administrators.
+      description: >-
+        A credential is checked against the platform before it is stored, and
+        the account it acts as is shown. A chat connection needs its bot's
+        token. A forge connection without one receives webhooks, but cannot
+        register them.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConnectionRequest"
+      responses:
+        "201":
+          description: The new connection.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Connection"
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/connections/{id}:
+    get:
+      operationId: getConnection
+      summary: Read a connection, without its credential, for administrators.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: The connection.
+          headers:
+            ETag:
+              $ref: "#/components/headers/ETag"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Connection"
+        default:
+          $ref: "#/components/responses/Problem"
+    put:
+      operationId: updateConnection
+      summary: Change a connection, for administrators.
+      description: >-
+        Its kind stays. A new credential, or a new base URL with the stored
+        credential, is checked against the platform first.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConnectionUpdate"
+      responses:
+        "200":
+          description: The changed connection.
+          headers:
+            ETag:
+              $ref: "#/components/headers/ETag"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Connection"
+        default:
+          $ref: "#/components/responses/Problem"
+    delete:
+      operationId: deleteConnection
+      summary: Remove a connection and its signing tokens, for administrators.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/IfMatch"
+      responses:
+        "204":
+          description: The connection is gone.
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/connections/{id}/signing-tokens:
+    get:
+      operationId: listSigningTokens
+      summary: List a forge connection's webhook signing tokens, without their values.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: One page of signing tokens, in the order they were added.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SigningTokenPage"
+        default:
+          $ref: "#/components/responses/Problem"
+    post:
+      operationId: addSigningToken
+      summary: Add a webhook signing token to a forge connection, for administrators.
+      description: >-
+        Any of a connection's signing tokens may sign a delivery, so a token
+        rotates without downtime: add the new one, switch the hook over, then
+        remove the old one.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SigningTokenRequest"
+      responses:
+        "201":
+          description: The token is added.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SigningToken"
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/connections/{id}/signing-tokens/{token_id}:
+    delete:
+      operationId: removeSigningToken
+      summary: Remove a webhook signing token, for administrators.
+      description: >-
+        Deliveries signed with it are refused from then on. Like a revocation,
+        it needs no If-Match.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: token_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "204":
+          description: The token is removed.
+        default:
+          $ref: "#/components/responses/Problem"
   /api/v1/settings/login:
     get:
       operationId: getLoginSettings
@@ -508,6 +694,119 @@ components:
         revoked_tokens:
           type: integer
           description: How many working tokens were revoked.
+    ConnectionKind:
+      type: string
+      enum: [gitlab, mattermost]
+      description: The platform. GitLab is a forge, Mattermost a chat platform.
+    Connection:
+      type: object
+      required: [id, kind, name, base_url, account, has_credential, etag]
+      properties:
+        id:
+          type: integer
+          format: int64
+        kind:
+          $ref: "#/components/schemas/ConnectionKind"
+        name:
+          type: string
+        base_url:
+          type: string
+        account:
+          type: string
+          description: Whom the credential acted as when it was last checked. Empty without one.
+        has_credential:
+          type: boolean
+        webhook_url:
+          type: string
+          description: Where a forge sends this connection's webhooks. Absent for a chat connection.
+        etag:
+          type: string
+          description: The connection's current version, for If-Match on a change.
+    ConnectionPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Connection"
+        next_cursor:
+          type: string
+          description: Absent on the last page.
+    ConnectionRequest:
+      type: object
+      required: [kind, name, base_url]
+      properties:
+        kind:
+          $ref: "#/components/schemas/ConnectionKind"
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        base_url:
+          type: string
+          minLength: 1
+          description: The platform's address, such as https://gitlab.example.org.
+        credential:
+          type: string
+          minLength: 1
+          writeOnly: true
+          description: >-
+            The token PatchCaster acts with: an access token for GitLab, the bot
+            account's token for Mattermost.
+    ConnectionUpdate:
+      type: object
+      required: [name, base_url]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        base_url:
+          type: string
+          minLength: 1
+        credential:
+          type: string
+          minLength: 1
+          writeOnly: true
+          description: A new credential. Absent keeps the current one.
+    SigningToken:
+      type: object
+      required: [id, label, created_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+        label:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    SigningTokenPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SigningToken"
+        next_cursor:
+          type: string
+          description: Absent on the last page.
+    SigningTokenRequest:
+      type: object
+      required: [label, token]
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Which hook signs with it, such as "group payments".
+        token:
+          type: string
+          minLength: 1
+          writeOnly: true
+          description: The signing token exactly as the forge shows it, such as GitLab's whsec_ form.
     AuditPage:
       type: object
       required: [items]

@@ -11,29 +11,45 @@ import (
 )
 
 var (
+	rn11AllowedHeaders = map[string]string{
+		"GET": "Authorization",
+	}
+	rn4AllowedHeaders = map[string]string{
+		"GET":  "Authorization",
+		"POST": "Authorization,Content-Type",
+	}
+	rn2AllowedHeaders = map[string]string{
+		"DELETE": "Authorization,If-Match",
+		"GET":    "Authorization",
+		"PUT":    "Authorization,Content-Type,If-Match",
+	}
+	rn3AllowedHeaders = map[string]string{
+		"GET":  "Authorization",
+		"POST": "Authorization,Content-Type",
+	}
+	rn14AllowedHeaders = map[string]string{
+		"DELETE": "Authorization",
+	}
+	rn12AllowedHeaders = map[string]string{
+		"GET": "Authorization",
+	}
+	rn16AllowedHeaders = map[string]string{
+		"PATCH": "Authorization,Content-Type,If-Match",
+	}
+	rn17AllowedHeaders = map[string]string{
+		"POST": "Authorization",
+	}
 	rn7AllowedHeaders = map[string]string{
 		"GET": "Authorization",
 	}
-	rn8AllowedHeaders = map[string]string{
-		"GET": "Authorization",
-	}
 	rn10AllowedHeaders = map[string]string{
-		"PATCH": "Authorization,Content-Type,If-Match",
-	}
-	rn11AllowedHeaders = map[string]string{
-		"POST": "Authorization",
-	}
-	rn3AllowedHeaders = map[string]string{
-		"GET": "Authorization",
-	}
-	rn6AllowedHeaders = map[string]string{
 		"GET": "Authorization",
 		"PUT": "Authorization,Content-Type,If-Match",
 	}
-	rn15AllowedHeaders = map[string]string{
+	rn21AllowedHeaders = map[string]string{
 		"POST": "Content-Type",
 	}
-	rn1AllowedHeaders = map[string]string{
+	rn6AllowedHeaders = map[string]string{
 		"POST": "Content-Type",
 	}
 )
@@ -68,7 +84,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s.notFound(w, r)
 		return
 	}
-	args := [1]string{}
+	args := [2]string{}
 
 	// Static code generated router with unwrapped path search.
 	switch {
@@ -105,13 +121,155 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					default:
 						s.notAllowed(w, r, notAllowedParams{
 							allowedMethods: "GET",
-							allowedHeaders: rn7AllowedHeaders,
+							allowedHeaders: rn11AllowedHeaders,
 							acceptPost:     "",
 							acceptPatch:    "",
 						})
 					}
 
 					return
+				}
+
+			case 'c': // Prefix: "connections"
+
+				if l := len("connections"); len(elem) >= l && elem[0:l] == "connections" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					switch r.Method {
+					case "GET":
+						s.handleListConnectionsRequest([0]string{}, elemIsEscaped, w, r)
+					case "POST":
+						s.handleCreateConnectionRequest([0]string{}, elemIsEscaped, w, r)
+					default:
+						s.notAllowed(w, r, notAllowedParams{
+							allowedMethods: "GET,POST",
+							allowedHeaders: rn4AllowedHeaders,
+							acceptPost:     "application/json",
+							acceptPatch:    "",
+						})
+					}
+
+					return
+				}
+				switch elem[0] {
+				case '/': // Prefix: "/"
+
+					if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					// Param: "id"
+					// Match until "/"
+					idx := strings.IndexByte(elem, '/')
+					if idx < 0 {
+						idx = len(elem)
+					}
+					args[0] = elem[:idx]
+					elem = elem[idx:]
+
+					if len(elem) == 0 {
+						switch r.Method {
+						case "DELETE":
+							s.handleDeleteConnectionRequest([1]string{
+								args[0],
+							}, elemIsEscaped, w, r)
+						case "GET":
+							s.handleGetConnectionRequest([1]string{
+								args[0],
+							}, elemIsEscaped, w, r)
+						case "PUT":
+							s.handleUpdateConnectionRequest([1]string{
+								args[0],
+							}, elemIsEscaped, w, r)
+						default:
+							s.notAllowed(w, r, notAllowedParams{
+								allowedMethods: "DELETE,GET,PUT",
+								allowedHeaders: rn2AllowedHeaders,
+								acceptPost:     "",
+								acceptPatch:    "",
+							})
+						}
+
+						return
+					}
+					switch elem[0] {
+					case '/': // Prefix: "/signing-tokens"
+
+						if l := len("/signing-tokens"); len(elem) >= l && elem[0:l] == "/signing-tokens" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							switch r.Method {
+							case "GET":
+								s.handleListSigningTokensRequest([1]string{
+									args[0],
+								}, elemIsEscaped, w, r)
+							case "POST":
+								s.handleAddSigningTokenRequest([1]string{
+									args[0],
+								}, elemIsEscaped, w, r)
+							default:
+								s.notAllowed(w, r, notAllowedParams{
+									allowedMethods: "GET,POST",
+									allowedHeaders: rn3AllowedHeaders,
+									acceptPost:     "application/json",
+									acceptPatch:    "",
+								})
+							}
+
+							return
+						}
+						switch elem[0] {
+						case '/': // Prefix: "/"
+
+							if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							// Param: "token_id"
+							// Leaf parameter, slashes are prohibited
+							idx := strings.IndexByte(elem, '/')
+							if idx >= 0 {
+								break
+							}
+							args[1] = elem
+							elem = ""
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch r.Method {
+								case "DELETE":
+									s.handleRemoveSigningTokenRequest([2]string{
+										args[0],
+										args[1],
+									}, elemIsEscaped, w, r)
+								default:
+									s.notAllowed(w, r, notAllowedParams{
+										allowedMethods: "DELETE",
+										allowedHeaders: rn14AllowedHeaders,
+										acceptPost:     "",
+										acceptPatch:    "",
+									})
+								}
+
+								return
+							}
+
+						}
+
+					}
+
 				}
 
 			case 'i': // Prefix: "instance"
@@ -154,7 +312,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					default:
 						s.notAllowed(w, r, notAllowedParams{
 							allowedMethods: "GET",
-							allowedHeaders: rn8AllowedHeaders,
+							allowedHeaders: rn12AllowedHeaders,
 							acceptPost:     "",
 							acceptPatch:    "",
 						})
@@ -189,7 +347,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 						default:
 							s.notAllowed(w, r, notAllowedParams{
 								allowedMethods: "PATCH",
-								allowedHeaders: rn10AllowedHeaders,
+								allowedHeaders: rn16AllowedHeaders,
 								acceptPost:     "",
 								acceptPatch:    "application/json",
 							})
@@ -216,7 +374,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 							default:
 								s.notAllowed(w, r, notAllowedParams{
 									allowedMethods: "POST",
-									allowedHeaders: rn11AllowedHeaders,
+									allowedHeaders: rn17AllowedHeaders,
 									acceptPost:     "",
 									acceptPatch:    "",
 								})
@@ -259,7 +417,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 						default:
 							s.notAllowed(w, r, notAllowedParams{
 								allowedMethods: "DELETE,GET",
-								allowedHeaders: rn3AllowedHeaders,
+								allowedHeaders: rn7AllowedHeaders,
 								acceptPost:     "",
 								acceptPatch:    "",
 							})
@@ -298,7 +456,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 							default:
 								s.notAllowed(w, r, notAllowedParams{
 									allowedMethods: "GET,PUT",
-									allowedHeaders: rn6AllowedHeaders,
+									allowedHeaders: rn10AllowedHeaders,
 									acceptPost:     "",
 									acceptPatch:    "",
 								})
@@ -323,7 +481,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 							default:
 								s.notAllowed(w, r, notAllowedParams{
 									allowedMethods: "POST",
-									allowedHeaders: rn15AllowedHeaders,
+									allowedHeaders: rn21AllowedHeaders,
 									acceptPost:     "application/json",
 									acceptPatch:    "",
 								})
@@ -353,7 +511,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					default:
 						s.notAllowed(w, r, notAllowedParams{
 							allowedMethods: "GET,POST",
-							allowedHeaders: rn1AllowedHeaders,
+							allowedHeaders: rn6AllowedHeaders,
 							acceptPost:     "application/json",
 							acceptPatch:    "",
 						})
@@ -415,7 +573,7 @@ type Route struct {
 	operationGroup string
 	pathPattern    string
 	count          int
-	args           [1]string
+	args           [2]string
 }
 
 // Name returns ogen operation name.
@@ -523,6 +681,163 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 					default:
 						return
 					}
+				}
+
+			case 'c': // Prefix: "connections"
+
+				if l := len("connections"); len(elem) >= l && elem[0:l] == "connections" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					switch method {
+					case "GET":
+						r.name = ListConnectionsOperation
+						r.summary = "List the forge and chat connections, for administrators."
+						r.operationID = "listConnections"
+						r.operationGroup = ""
+						r.pathPattern = "/api/v1/connections"
+						r.args = args
+						r.count = 0
+						return r, true
+					case "POST":
+						r.name = CreateConnectionOperation
+						r.summary = "Connect a forge or a chat platform, for administrators."
+						r.operationID = "createConnection"
+						r.operationGroup = ""
+						r.pathPattern = "/api/v1/connections"
+						r.args = args
+						r.count = 0
+						return r, true
+					default:
+						return
+					}
+				}
+				switch elem[0] {
+				case '/': // Prefix: "/"
+
+					if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					// Param: "id"
+					// Match until "/"
+					idx := strings.IndexByte(elem, '/')
+					if idx < 0 {
+						idx = len(elem)
+					}
+					args[0] = elem[:idx]
+					elem = elem[idx:]
+
+					if len(elem) == 0 {
+						switch method {
+						case "DELETE":
+							r.name = DeleteConnectionOperation
+							r.summary = "Remove a connection and its signing tokens, for administrators."
+							r.operationID = "deleteConnection"
+							r.operationGroup = ""
+							r.pathPattern = "/api/v1/connections/{id}"
+							r.args = args
+							r.count = 1
+							return r, true
+						case "GET":
+							r.name = GetConnectionOperation
+							r.summary = "Read a connection, without its credential, for administrators."
+							r.operationID = "getConnection"
+							r.operationGroup = ""
+							r.pathPattern = "/api/v1/connections/{id}"
+							r.args = args
+							r.count = 1
+							return r, true
+						case "PUT":
+							r.name = UpdateConnectionOperation
+							r.summary = "Change a connection, for administrators."
+							r.operationID = "updateConnection"
+							r.operationGroup = ""
+							r.pathPattern = "/api/v1/connections/{id}"
+							r.args = args
+							r.count = 1
+							return r, true
+						default:
+							return
+						}
+					}
+					switch elem[0] {
+					case '/': // Prefix: "/signing-tokens"
+
+						if l := len("/signing-tokens"); len(elem) >= l && elem[0:l] == "/signing-tokens" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							switch method {
+							case "GET":
+								r.name = ListSigningTokensOperation
+								r.summary = "List a forge connection's webhook signing tokens, without their values."
+								r.operationID = "listSigningTokens"
+								r.operationGroup = ""
+								r.pathPattern = "/api/v1/connections/{id}/signing-tokens"
+								r.args = args
+								r.count = 1
+								return r, true
+							case "POST":
+								r.name = AddSigningTokenOperation
+								r.summary = "Add a webhook signing token to a forge connection, for administrators."
+								r.operationID = "addSigningToken"
+								r.operationGroup = ""
+								r.pathPattern = "/api/v1/connections/{id}/signing-tokens"
+								r.args = args
+								r.count = 1
+								return r, true
+							default:
+								return
+							}
+						}
+						switch elem[0] {
+						case '/': // Prefix: "/"
+
+							if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							// Param: "token_id"
+							// Leaf parameter, slashes are prohibited
+							idx := strings.IndexByte(elem, '/')
+							if idx >= 0 {
+								break
+							}
+							args[1] = elem
+							elem = ""
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch method {
+								case "DELETE":
+									r.name = RemoveSigningTokenOperation
+									r.summary = "Remove a webhook signing token, for administrators."
+									r.operationID = "removeSigningToken"
+									r.operationGroup = ""
+									r.pathPattern = "/api/v1/connections/{id}/signing-tokens/{token_id}"
+									r.args = args
+									r.count = 2
+									return r, true
+								default:
+									return
+								}
+							}
+
+						}
+
+					}
+
 				}
 
 			case 'i': // Prefix: "instance"

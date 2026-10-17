@@ -8,18 +8,45 @@ import (
 
 // Handler handles operations described by OpenAPI v3 specification.
 type Handler interface {
+	// AddSigningToken implements addSigningToken operation.
+	//
+	// Any of a connection's signing tokens may sign a delivery, so a token rotates without downtime: add
+	// the new one, switch the hook over, then remove the old one.
+	//
+	// POST /api/v1/connections/{id}/signing-tokens
+	AddSigningToken(ctx context.Context, req *SigningTokenRequest, params AddSigningTokenParams) (*SigningToken, error)
+	// CreateConnection implements createConnection operation.
+	//
+	// A credential is checked against the platform before it is stored, and the account it acts as is
+	// shown. A chat connection needs its bot's token. A forge connection without one receives webhooks,
+	// but cannot register them.
+	//
+	// POST /api/v1/connections
+	CreateConnection(ctx context.Context, req *ConnectionRequest) (*Connection, error)
 	// CreateToken implements createToken operation.
 	//
 	// The response holds the token itself, which is shown only this once.
 	//
 	// POST /api/v1/tokens
 	CreateToken(ctx context.Context, req *ApiTokenRequest) (*CreatedApiToken, error)
+	// DeleteConnection implements deleteConnection operation.
+	//
+	// Remove a connection and its signing tokens, for administrators.
+	//
+	// DELETE /api/v1/connections/{id}
+	DeleteConnection(ctx context.Context, params DeleteConnectionParams) error
 	// EndSession implements endSession operation.
 	//
 	// Log out.
 	//
 	// DELETE /api/v1/session
 	EndSession(ctx context.Context) error
+	// GetConnection implements getConnection operation.
+	//
+	// Read a connection, without its credential, for administrators.
+	//
+	// GET /api/v1/connections/{id}
+	GetConnection(ctx context.Context, params GetConnectionParams) (*ConnectionHeaders, error)
 	// GetInstance implements getInstance operation.
 	//
 	// Describe this instance.
@@ -44,12 +71,24 @@ type Handler interface {
 	//
 	// GET /api/v1/audit
 	ListAudit(ctx context.Context, params ListAuditParams) (*AuditPage, error)
+	// ListConnections implements listConnections operation.
+	//
+	// List the forge and chat connections, for administrators.
+	//
+	// GET /api/v1/connections
+	ListConnections(ctx context.Context, params ListConnectionsParams) (*ConnectionPage, error)
 	// ListPersons implements listPersons operation.
 	//
 	// List people, for administrators.
 	//
 	// GET /api/v1/persons
 	ListPersons(ctx context.Context, params ListPersonsParams) (*PersonPage, error)
+	// ListSigningTokens implements listSigningTokens operation.
+	//
+	// List a forge connection's webhook signing tokens, without their values.
+	//
+	// GET /api/v1/connections/{id}/signing-tokens
+	ListSigningTokens(ctx context.Context, params ListSigningTokensParams) (*SigningTokenPage, error)
 	// ListTokens implements listTokens operation.
 	//
 	// List your own API tokens, including revoked and expired ones.
@@ -62,6 +101,12 @@ type Handler interface {
 	//
 	// PUT /api/v1/settings/login
 	PutLoginSettings(ctx context.Context, req *LoginSettingsUpdate, params PutLoginSettingsParams) (*LoginSettingsHeaders, error)
+	// RemoveSigningToken implements removeSigningToken operation.
+	//
+	// Deliveries signed with it are refused from then on. Like a revocation, it needs no If-Match.
+	//
+	// DELETE /api/v1/connections/{id}/signing-tokens/{token_id}
+	RemoveSigningToken(ctx context.Context, params RemoveSigningTokenParams) error
 	// RevokeAccess implements revokeAccess operation.
 	//
 	// Takes effect at once. The person can log in again, unless the identity provider refuses them.
@@ -82,6 +127,13 @@ type Handler interface {
 	//
 	// POST /api/v1/setup
 	SetUp(ctx context.Context, req *SetupRequest) (*SetupStarted, error)
+	// UpdateConnection implements updateConnection operation.
+	//
+	// Its kind stays. A new credential, or a new base URL with the stored credential, is checked against
+	// the platform first.
+	//
+	// PUT /api/v1/connections/{id}
+	UpdateConnection(ctx context.Context, req *ConnectionUpdate, params UpdateConnectionParams) (*ConnectionHeaders, error)
 	// UpdatePerson implements updatePerson operation.
 	//
 	// Change a person's role, for administrators.

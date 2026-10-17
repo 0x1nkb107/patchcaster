@@ -5,12 +5,14 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/alexedwards/scs/v2"
 
 	"github.com/patchcaster-app/patchcaster/internal/api/v1gen"
 	"github.com/patchcaster-app/patchcaster/internal/auth"
+	"github.com/patchcaster-app/patchcaster/internal/platform"
 	"github.com/patchcaster-app/patchcaster/internal/seal"
 	"github.com/patchcaster-app/patchcaster/internal/store"
 )
@@ -31,6 +33,16 @@ type Store interface {
 	Tokens(ctx context.Context, personID, afterID int64, limit int) ([]store.APIToken, error)
 	RevokeToken(ctx context.Context, actor store.Actor, personID, tokenID int64, now time.Time) error
 	RevokeAccess(ctx context.Context, actor store.Actor, personID int64, now time.Time) (int, error)
+	ReserveConnectionID(ctx context.Context) (int64, error)
+	CreateConnection(ctx context.Context, actor store.Actor, c store.Connection, now time.Time) (*store.Connection, error)
+	Connection(ctx context.Context, id int64) (*store.Connection, error)
+	Connections(ctx context.Context, afterID int64, limit int) ([]store.Connection, error)
+	UpdateConnection(ctx context.Context, actor store.Actor, c store.Connection, now time.Time) (*store.Connection, error)
+	DeleteConnection(ctx context.Context, actor store.Actor, id, version int64, now time.Time) error
+	ReserveSigningTokenID(ctx context.Context) (int64, error)
+	AddSigningToken(ctx context.Context, actor store.Actor, t store.NewSigningToken, now time.Time) (*store.SigningToken, error)
+	SigningTokens(ctx context.Context, connectionID, afterID int64, limit int) ([]store.SigningToken, error)
+	RemoveSigningToken(ctx context.Context, actor store.Actor, connectionID, tokenID int64, now time.Time) error
 }
 
 // Login is what the v1 operations need from the login flow.
@@ -39,26 +51,36 @@ type Login interface {
 	URL() string
 }
 
-// Config wires the v1 operations. Now defaults to the wall clock.
+// Platforms checks connection credentials against their platforms.
+type Platforms interface {
+	Check(ctx context.Context, kind platform.Kind, baseURL *url.URL, credential string) (string, error)
+}
+
+// Config wires the v1 operations. PublicURL is the webhook listener's
+// external address. Now defaults to the wall clock.
 type Config struct {
-	Version  string
-	Store    Store
-	Box      *seal.Box
-	Sessions *scs.SessionManager
-	Login    Login
-	Log      *slog.Logger
-	Now      func() time.Time
+	Version   string
+	Store     Store
+	Box       *seal.Box
+	Sessions  *scs.SessionManager
+	Login     Login
+	Platforms Platforms
+	PublicURL *url.URL
+	Log       *slog.Logger
+	Now       func() time.Time
 }
 
 // Service implements the v1 operations.
 type Service struct {
-	version  string
-	store    Store
-	box      *seal.Box
-	sessions *scs.SessionManager
-	login    Login
-	log      *slog.Logger
-	now      func() time.Time
+	version   string
+	store     Store
+	box       *seal.Box
+	sessions  *scs.SessionManager
+	login     Login
+	platforms Platforms
+	publicURL *url.URL
+	log       *slog.Logger
+	now       func() time.Time
 }
 
 var _ v1gen.Handler = (*Service)(nil)
@@ -70,13 +92,15 @@ func NewService(cfg Config) *Service {
 		now = time.Now
 	}
 	return &Service{
-		version:  cfg.Version,
-		store:    cfg.Store,
-		box:      cfg.Box,
-		sessions: cfg.Sessions,
-		login:    cfg.Login,
-		log:      cfg.Log,
-		now:      now,
+		version:   cfg.Version,
+		store:     cfg.Store,
+		box:       cfg.Box,
+		sessions:  cfg.Sessions,
+		login:     cfg.Login,
+		platforms: cfg.Platforms,
+		publicURL: cfg.PublicURL,
+		log:       cfg.Log,
+		now:       now,
 	}
 }
 

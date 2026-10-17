@@ -20,6 +20,7 @@ import (
 	"github.com/patchcaster-app/patchcaster/internal/mattermost"
 	"github.com/patchcaster-app/patchcaster/internal/metrics"
 	"github.com/patchcaster-app/patchcaster/internal/ops"
+	"github.com/patchcaster-app/patchcaster/internal/platform"
 	"github.com/patchcaster-app/patchcaster/internal/routing"
 	"github.com/patchcaster-app/patchcaster/internal/store"
 )
@@ -30,6 +31,7 @@ type ServeCmd struct {
 	InternalAddr    string        `flag:"" default:":9090" env:"PATCHCASTER_INTERNAL_ADDR" help:"Internal listener address (probes, metrics)."`
 	ManagementAddr  string        `flag:"" default:":8081" env:"PATCHCASTER_MANAGEMENT_ADDR" help:"Management listener address (API and web interface)."`
 	InterfaceURL    string        `flag:"" required:"" env:"PATCHCASTER_INTERFACE_URL" help:"External address of the web interface, such as https://patchcaster.example.org."`
+	PublicURL       string        `flag:"" required:"" env:"PATCHCASTER_PUBLIC_URL" help:"External address of the webhook listener, from which the forges' webhook endpoints are built."`
 	DatabaseURL     string        `flag:"" required:"" env:"PATCHCASTER_DATABASE_URL" help:"PostgreSQL connection URL."`
 	MattermostURL   string        `flag:"" required:"" env:"PATCHCASTER_MATTERMOST_URL" help:"Mattermost site URL."`
 	MattermostToken string        `flag:"" required:"" env:"PATCHCASTER_MATTERMOST_TOKEN" help:"Bot account auth token."`
@@ -114,6 +116,11 @@ func (c *ServeCmd) Validate() error {
 			errs = append(errs, err)
 		}
 	}
+	if c.PublicURL != "" {
+		if _, err := parsePublicURL(c.PublicURL); err != nil {
+			errs = append(errs, err)
+		}
+	}
 	return errors.Join(errs...)
 }
 
@@ -159,6 +166,10 @@ func (c *ServeCmd) Run(ctx context.Context) error {
 		return err
 	}
 	interfaceURL, err := parseInterfaceURL(c.InterfaceURL)
+	if err != nil {
+		return err
+	}
+	publicURL, err := parsePublicURL(c.PublicURL)
 	if err != nil {
 		return err
 	}
@@ -223,12 +234,14 @@ func (c *ServeCmd) Run(ctx context.Context) error {
 	sessions := auth.NewSessions(st.Sessions(), interfaceURL.Scheme == "https")
 	login := auth.NewLogin(st, box, sessions, interfaceURL, log)
 	svc := api.NewService(api.Config{
-		Version:  version,
-		Store:    st,
-		Box:      box,
-		Sessions: sessions,
-		Login:    login,
-		Log:      log,
+		Version:   version,
+		Store:     st,
+		Box:       box,
+		Sessions:  sessions,
+		Login:     login,
+		Platforms: platform.Checker{},
+		PublicURL: publicURL,
+		Log:       log,
 	})
 	management, err := managementHandler(svc, login, sessions, interfaceURL)
 	if err != nil {

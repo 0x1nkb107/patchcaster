@@ -2,6 +2,23 @@
 
 package apiv1
 
+// AddSigningTokenParams is parameters of addSigningToken operation.
+type AddSigningTokenParams struct {
+	ID int64
+}
+
+// DeleteConnectionParams is parameters of deleteConnection operation.
+type DeleteConnectionParams struct {
+	ID int64
+	// The ETag of the resource as last read. A change without it, or with an old one, is refused.
+	IfMatch string
+}
+
+// GetConnectionParams is parameters of getConnection operation.
+type GetConnectionParams struct {
+	ID int64
+}
+
 // ListAuditParams is parameters of listAudit operation.
 type ListAuditParams struct {
 	// Where the page starts, from the previous page's next_cursor.
@@ -10,8 +27,25 @@ type ListAuditParams struct {
 	Limit OptInt `json:",omitempty,omitzero"`
 }
 
+// ListConnectionsParams is parameters of listConnections operation.
+type ListConnectionsParams struct {
+	// Where the page starts, from the previous page's next_cursor.
+	Cursor OptString `json:",omitempty,omitzero"`
+	// How many items the page holds at most.
+	Limit OptInt `json:",omitempty,omitzero"`
+}
+
 // ListPersonsParams is parameters of listPersons operation.
 type ListPersonsParams struct {
+	// Where the page starts, from the previous page's next_cursor.
+	Cursor OptString `json:",omitempty,omitzero"`
+	// How many items the page holds at most.
+	Limit OptInt `json:",omitempty,omitzero"`
+}
+
+// ListSigningTokensParams is parameters of listSigningTokens operation.
+type ListSigningTokensParams struct {
+	ID int64
 	// Where the page starts, from the previous page's next_cursor.
 	Cursor OptString `json:",omitempty,omitzero"`
 	// How many items the page holds at most.
@@ -32,6 +66,12 @@ type PutLoginSettingsParams struct {
 	IfMatch string
 }
 
+// RemoveSigningTokenParams is parameters of removeSigningToken operation.
+type RemoveSigningTokenParams struct {
+	ID      int64
+	TokenID int64
+}
+
 // RevokeAccessParams is parameters of revokeAccess operation.
 type RevokeAccessParams struct {
 	ID int64
@@ -40,6 +80,13 @@ type RevokeAccessParams struct {
 // RevokeTokenParams is parameters of revokeToken operation.
 type RevokeTokenParams struct {
 	ID int64
+}
+
+// UpdateConnectionParams is parameters of updateConnection operation.
+type UpdateConnectionParams struct {
+	ID int64
+	// The ETag of the resource as last read. A change without it, or with an old one, is refused.
+	IfMatch string
 }
 
 // UpdatePersonParams is parameters of updatePerson operation.

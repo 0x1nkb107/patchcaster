@@ -21,7 +21,9 @@ type memorySecrets struct {
 	sealed       []byte
 	racedBy      []byte // stored by "another instance" just before the first init
 	replaced     int
-	clientSecret []byte // nil before the setup
+	clientSecret []byte           // nil before the setup
+	credentials  map[int64][]byte // sealed connection credentials by id
+	tokens       map[int64][]byte // sealed signing tokens by id
 }
 
 func (m *memorySecrets) KeyCheck(context.Context) ([]byte, error) { return m.sealed, nil }
@@ -56,6 +58,38 @@ func (m *memorySecrets) ReplaceLoginClientSecret(_ context.Context, sealed, rese
 	}
 	m.clientSecret = resealed
 	return true, nil
+}
+
+func (m *memorySecrets) ConnectionCredentials(context.Context) ([]store.SealedValue, error) {
+	return sealedValues(m.credentials), nil
+}
+
+func (m *memorySecrets) ReplaceConnectionCredential(_ context.Context, id int64, sealed, resealed []byte) (bool, error) {
+	return replaceSealed(m.credentials, id, sealed, resealed), nil
+}
+
+func (m *memorySecrets) SealedSigningTokens(context.Context) ([]store.SealedValue, error) {
+	return sealedValues(m.tokens), nil
+}
+
+func (m *memorySecrets) ReplaceSigningToken(_ context.Context, id int64, sealed, resealed []byte) (bool, error) {
+	return replaceSealed(m.tokens, id, sealed, resealed), nil
+}
+
+func sealedValues(byID map[int64][]byte) []store.SealedValue {
+	values := make([]store.SealedValue, 0, len(byID))
+	for id, sealed := range byID {
+		values = append(values, store.SealedValue{ID: id, Sealed: sealed})
+	}
+	return values
+}
+
+func replaceSealed(byID map[int64][]byte, id int64, sealed, resealed []byte) bool {
+	if !bytes.Equal(byID[id], sealed) {
+		return false
+	}
+	byID[id] = resealed
+	return true
 }
 
 func encodedKey(b byte) string {
@@ -176,6 +210,33 @@ func TestAResealMovesTheClientSecret(t *testing.T) {
 	require.NoError(t, openErr)
 	assert.Equal(t, 2, resealed, "the key check and the client secret")
 	assert.Equal(t, "hunter2", string(secret))
+}
+
+func TestAResealMovesEveryConnectionSecret(t *testing.T) {
+	// arrange
+	ctx := context.Background()
+	old := boxOf(t, encodedKey('a'))
+	st := &memorySecrets{credentials: map[int64][]byte{}, tokens: map[int64][]byte{}}
+	_, err := verifyInstanceKey(ctx, st, old, time.Now())
+	require.NoError(t, err)
+	st.credentials[7], err = old.Seal([]byte("bot-token"), store.ConnectionCredentialBinding(7))
+	require.NoError(t, err)
+	st.tokens[3], err = old.Seal([]byte("signing-token"), store.SigningTokenBinding(3))
+	require.NoError(t, err)
+
+	// act
+	resealed, resealErr := resealSecrets(ctx, st, boxOf(t, encodedKey('b'), encodedKey('a')), time.Now())
+	fresh := boxOf(t, encodedKey('b'))
+	credential, credentialErr := fresh.Open(st.credentials[7], store.ConnectionCredentialBinding(7))
+	token, tokenErr := fresh.Open(st.tokens[3], store.SigningTokenBinding(3))
+
+	// assert
+	require.NoError(t, resealErr)
+	assert.Equal(t, 3, resealed, "the key check, the credential and the signing token")
+	require.NoError(t, credentialErr)
+	assert.Equal(t, "bot-token", string(credential))
+	require.NoError(t, tokenErr)
+	assert.Equal(t, "signing-token", string(token))
 }
 
 func TestARaceAtTheFirstStartKeepsTheWinner(t *testing.T) {

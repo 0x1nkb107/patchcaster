@@ -35,6 +35,27 @@ func parseInterfaceURL(raw string) (*url.URL, error) {
 	return u, nil
 }
 
+// parsePublicURL reads the webhook listener's external address, from which
+// the forges' webhook endpoints are built. It must be an http or https URL.
+// It may have a path, when a proxy forwards a prefix to the listener.
+func parsePublicURL(raw string) (*url.URL, error) {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return nil, fmt.Errorf("--public-url: %w", err)
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return nil, errors.New("--public-url: must start with https:// or http://")
+	}
+	if u.Host == "" {
+		return nil, errors.New("--public-url: must name a host")
+	}
+	if u.RawQuery != "" || u.Fragment != "" || u.User != nil {
+		return nil, errors.New("--public-url: must name no query, fragment or user")
+	}
+	u.Path = strings.TrimSuffix(u.Path, "/")
+	return u, nil
+}
+
 // BootstrapCmd issues the single-use setup link that creates the first
 // administrator (SYSREQ-038).
 type BootstrapCmd struct {

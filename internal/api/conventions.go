@@ -82,6 +82,8 @@ func storeProblem(err error) error {
 		return newProblem(http.StatusConflict, "the instance needs at least one administrator")
 	case errors.Is(err, store.ErrAdministratorExists):
 		return newProblem(http.StatusConflict, "the setup is complete: an administrator exists")
+	case errors.Is(err, store.ErrNameTaken):
+		return fieldProblem(http.StatusConflict, "another item has this name", "name", "is taken")
 	case errors.Is(err, store.ErrSetupLinkSpent):
 		return newProblem(http.StatusForbidden, "the setup link is used, expired or unknown: run the bootstrap command for a new one")
 	}

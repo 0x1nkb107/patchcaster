@@ -13,7 +13,8 @@ env:
   GOTOOLCHAIN: local
 
 jobs:
-  # Static gates: formatting, CGO-free build, vet, pinned golangci-lint.
+  # Static gates: formatting, CGO-free build, vet, pinned golangci-lint, and
+  # the web interface's lint, build and audit (ADR-032, ADR-042).
   quality:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -33,12 +34,29 @@ jobs:
             tools/ogen/go.sum
             tools/goreleaser/go.sum
 
+      # Recent Node 24 releases bundle npm 11.10.0 or later, which honours
+      # the release age in web/.npmrc. The web recipes refuse an older npm.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
       - uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
         with:
           just-version: '1.58.0'
 
+      - name: Install web interface packages
+        run: just web-install
+
       - name: Quality gate
         run: just quality
+
+      - name: Build web interface
+        run: just web-build
+
+      - name: Audit web interface packages
+        run: just web-audit
 
       # The release rehearsal runs only on main (ADR-023). Validating the
       # config here keeps a broken one from merging.

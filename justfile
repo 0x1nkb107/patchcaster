@@ -61,9 +61,10 @@ test-integration:
 test-e2e +args="":
 	go test -count=1 {{args}} ./...
 
+# Needs the web interface's packages: run `just web-install` once.
 # CI quality gate: formatting, the CGO-free build, generated code, vet and lint.
 [group('check')]
-quality: fmt-check build sqlc-check api-check lint
+quality: fmt-check build sqlc-check api-check lint web-lint web-api-check
 
 # -modfile resolves the tool from the pinned tools/golangci module while the
 # working directory stays at the service module root.
@@ -113,6 +114,74 @@ api-check:
 ogen server client:
 	go tool -modfile tools/ogen/go.mod ogen -loglevel error -clean -config internal/api/ogen-server.yaml -package v1gen -target {{server}} internal/api/openapi-v1.yaml
 	go tool -modfile tools/ogen/go.mod ogen -loglevel error -clean -config e2e/ogen-client.yaml -package apiv1 -target {{client}} internal/api/openapi-v1.yaml
+
+# The web interface (ADR-032). Its recipes run npm in web/, whose .npmrc
+# resolves only releases older than seven days. npm honours that only from
+# 11.10.0 on and merely warns before, so the recipes refuse an older npm.
+[private]
+[working-directory: 'web']
+web-npm:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	version="$(npm --version)"
+	if ! printf '11.10.0\n%s\n' "${version}" | sort -V -C; then
+		echo "npm ${version} ignores min-release-age in web/.npmrc; use npm 11.10.0 or later" >&2
+		exit 1
+	fi
+
+# Install the web interface's packages exactly as the lockfile pins them.
+[group('dev')]
+[working-directory: 'web']
+web-install: web-npm
+	npm ci
+
+# Bundle the web interface into web/dist/app, which the binary embeds.
+[group('dev')]
+[working-directory: 'web']
+web-build: web-npm
+	npm run build
+
+# Type-check, lint and check the formatting of the web interface (ADR-042).
+[group('check')]
+[working-directory: 'web']
+web-lint: web-npm
+	npm run check
+	npm run lint
+
+# Format the web interface in place.
+[group('dev')]
+[working-directory: 'web']
+web-fmt: web-npm
+	npm run format
+
+# Run after editing internal/api/openapi-v1.yaml.
+# Regenerate the web interface's API client.
+[group('dev')]
+[working-directory: 'web']
+web-api: web-npm
+	npm run api
+
+# A stale client is left regenerated.
+# Fail when the committed web API client differs from what orval generates.
+[group('check')]
+[working-directory: 'web']
+web-api-check: web-npm
+	#!/usr/bin/env bash
+	set -euo pipefail
+	scratch="$(mktemp -d)"
+	trap 'rm -rf "${scratch}"' EXIT
+	cp -r src/lib/api/generated "${scratch}/committed"
+	npm run --silent api >/dev/null
+	if ! diff -r "${scratch}/committed" src/lib/api/generated; then
+		echo "the web interface's API client is stale: commit what just web-api generated" >&2
+		exit 1
+	fi
+
+# Fail on known vulnerabilities in the web interface's packages.
+[group('check')]
+[working-directory: 'web']
+web-audit: web-npm
+	npm audit --audit-level=low
 
 # Apply migrations from the embedded set against the target database.
 [group('dev')]

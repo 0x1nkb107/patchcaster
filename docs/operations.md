@@ -20,6 +20,15 @@ A new instance has no identity provider and no administrator yet:
 
 Everyone who logs in later starts with the role User. To admit only some of the people the provider knows, name the ID token claim that lists a person's groups (`groups_claim`) and the groups that may log in (`allowed_groups`), at setup or later through `PUT /api/v1/settings/login`. A refused login tells the person why.
 
+## Connections
+
+A connection holds what PatchCaster acts with on one platform: GitLab as a forge, Mattermost as a chat platform. Administrators manage them at `/api/v1/connections`. A connection's credential is checked against its platform before it is stored, and the connection shows the account the credential acts as. A token the platform refuses is not stored, and the answer names the platform's reason. The credential is stored encrypted and is never shown again: send a new one to replace it.
+
+- A **Mattermost** connection needs the bot account's token.
+- A **GitLab** connection needs an access token only for what PatchCaster does through the GitLab API. Without one, register the hooks by hand at the connection's `webhook_url`. Then generate a signing token in each hook's form and add it to the connection under `/api/v1/connections/{id}/signing-tokens`, exactly as GitLab shows it. A connection holds several signing tokens at once, so a token rotates without downtime: add the new one, switch the hook over, then remove the old one.
+
+Connections are stored and checked, but webhooks and deliveries still follow the [startup settings](configuration.md#patchcaster-serve) and the routing table for now.
+
 ## API tokens
 
 Automation authenticates with a personal API token, sent as `Authorization: Bearer <token>`. A token acts with its owner's permissions as they are at each request, so a person who loses a role loses it for their tokens at once. Create one during a login with `POST /api/v1/tokens`, naming it and, optionally, its lifetime in days (`lifetime_days`, 1 to 90, 90 by default). The response holds the token, which starts with `patchcaster_` and is shown only that once: PatchCaster keeps only a hash of it. Changes made with a token name the token in the audit log, next to its owner.
@@ -91,7 +100,7 @@ The [encryption key](configuration.md#encryption-key) rotates without downtime:
 
 1. Generate a new key with `openssl rand -base64 32`.
 2. Restart PatchCaster with the new key in `PATCHCASTER_ENCRYPTION_KEY` and the old one in `PATCHCASTER_PREVIOUS_ENCRYPTION_KEYS`. It starts, and warns that stored secrets are still sealed with a previous key.
-3. Run `patchcaster secrets reseal` with the same two settings and the database URL. It seals the identity provider's client secret again too.
+3. Run `patchcaster secrets reseal` with the same two settings and the database URL. It seals every stored secret again: the identity provider's client secret, the connections' credentials and their signing tokens.
 4. Restart with the new key alone, and discard the old one.
 
 Before the reseal, a start with only the new key fails. After it, a start with only the old key fails.

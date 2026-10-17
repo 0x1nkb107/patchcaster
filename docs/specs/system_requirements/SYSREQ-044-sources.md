@@ -25,7 +25,7 @@ The endpoint and secret belong to the connection, and sources only select reposi
 - Scopes are an instance, an organization or group, or a single repository.
 - An event whose repository lies in no source's scope is acknowledged without effect, as in SYSREQ-010.
 - Registering a broader scope removes the narrower hooks it now covers. Removing it re-registers the narrower ones still needed.
-- Without API access, the connection shows its endpoint and secret once, when it is created, for manual registration.
+- Without API access, the connection shows its endpoint for manual registration, and an administrator adds the signing secret the forge generated for each hook registered by hand.
 - A connection may hold several secrets at once, so a secret can rotate without downtime.
 
 ## Verification Plan

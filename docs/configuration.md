@@ -14,6 +14,7 @@ non-zero before anything listens, naming every offending option at once.
 | `--internal-addr` | `PATCHCASTER_INTERNAL_ADDR` | `:9090` |
 | `--management-addr` | `PATCHCASTER_MANAGEMENT_ADDR` | `:8081` |
 | `--interface-url` | `PATCHCASTER_INTERFACE_URL` | *required* (see [interface URL](#interface-url)) |
+| `--public-url` | `PATCHCASTER_PUBLIC_URL` | *required* (see [public URL](#public-url)) |
 | `--database-url` | `PATCHCASTER_DATABASE_URL` | *required* |
 | `--mattermost-url` | `PATCHCASTER_MATTERMOST_URL` | *required* |
 | `--mattermost-token` | `PATCHCASTER_MATTERMOST_TOKEN` | *required* (bot account token) |
@@ -45,6 +46,10 @@ Each signing secret is a GitLab webhook signing token, exactly as GitLab shows i
 ## Interface URL
 
 `--interface-url` is the address at which people reach the management listener, such as `https://patchcaster.example.org`. PatchCaster builds the identity provider's redirect address and the setup link from it, so it must be the address browsers use, also behind a reverse proxy. It names only a scheme, a host and an optional port: the interface answers at the root of its listener. With `https`, the session cookie is marked `Secure`. Use plain `http` only for a local instance.
+
+## Public URL
+
+`--public-url` is the address at which the forges reach the webhook listener, such as `https://hooks.patchcaster.example.org`. PatchCaster builds each forge connection's webhook endpoint from it, so it must be the address the forges use, also behind a reverse proxy. It may carry a path, when the proxy forwards a prefix to the listener.
 
 ## Encryption key
 

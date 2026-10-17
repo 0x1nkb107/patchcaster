@@ -84,3 +84,53 @@ func TestVerify_TamperedBodyFails(t *testing.T) {
 	// assert
 	assert.False(t, ok)
 }
+
+// The signing token, delivery and signature of the Standard Webhooks
+// reference implementations. openssl(1) reproduces the signature from the
+// decoded key, so the test pins how GitLab's tokens turn into keys. The
+// token is assembled from its parts, so that secret scanners do not mistake
+// the public test value for a live secret.
+const (
+	refKey   = "MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw"
+	refToken = signingTokenPrefix + refKey
+	refID    = "msg_p5jXN8AQM9LWM0D4loKWxJek"
+	refTS    = "1614265330"
+	refBody  = `{"test": 2432232314}`
+	refSig   = "v1,g0hM9SsE+OTPJTGt/tmIKtSyZlE3uFJELVlNIOLJ1OE="
+)
+
+func TestASigningTokenVerifiesWithTheKeyItCarries(t *testing.T) {
+	// act
+	key, err := ParseSigningToken(refToken)
+	withKey := Verify([][]byte{key}, refID, refTS, []byte(refBody), refSig)
+	withText := Verify([][]byte{[]byte(refToken)}, refID, refTS, []byte(refBody), refSig)
+
+	// assert
+	require.NoError(t, err)
+	assert.True(t, withKey, "the decoded key verifies the reference signature")
+	assert.False(t, withText, "the token's text is not the key")
+}
+
+func TestMalformedSigningTokensAreRefused(t *testing.T) {
+	tests := []struct {
+		name  string
+		token string
+		want  string
+	}{
+		{"no prefix", refKey, "must start with whsec_"},
+		{"not base64", "whsec_not base64!", "followed by base64"},
+		{"a key too short", "whsec_" + base64.StdEncoding.EncodeToString([]byte("short")), "not 5"},
+		{"a key too long", "whsec_" + base64.StdEncoding.EncodeToString(make([]byte, 65)), "not 65"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// act
+			_, err := ParseSigningToken(tc.token)
+
+			// assert
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tc.want)
+			assert.NotContains(t, err.Error(), tc.token, "the error never repeats the token")
+		})
+	}
+}

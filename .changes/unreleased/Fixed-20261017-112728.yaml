@@ -1,0 +1,3 @@
+kind: Fixed
+body: Verify GitLab's webhook signatures with the key that the signing token carries, as GitLab does. v0.1.0 used the token's text as the key and refused every genuine delivery. Signing secrets must now be the whsec_ tokens exactly as GitLab shows them.
+time: 2026-10-17T11:27:28.136150664+02:00

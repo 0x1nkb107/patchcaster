@@ -14,7 +14,9 @@
 set -euo pipefail
 
 URL="${URL:-http://127.0.0.1:8080/webhook}"
-SIGNING_SECRET="${SIGNING_SECRET:-demo-sec}"
+# The demo signing token carries a key of 32 bytes of 'd'. It is built here,
+# so that secret scanners do not mistake it for a live secret.
+SIGNING_SECRET="${SIGNING_SECRET:-whsec_$(printf 'd%.0s' $(seq 32) | base64 -w0)}"
 PROJECT="${PROJECT:-group/application}"
 GITLAB_URL="${GITLAB_URL:-http://gitlab.example}"
 MR_ID="${MR_ID:-101}"
@@ -31,6 +33,12 @@ N_COMMITS="${N_COMMITS:-3}"
 now() { date -u +%Y-%m-%dT%H:%M:%S.000Z; }
 MR_URL_BASE="${GITLAB_URL}/${PROJECT}/-/merge_requests/${MR_IID}"
 
+# signing_key prints the HMAC key that the whsec_ signing token carries, in
+# hex, the way GitLab decodes it: strip the prefix, base64-decode the rest.
+signing_key() {
+	printf '%s' "${SIGNING_SECRET#whsec_}" | base64 -d | od -An -tx1 | tr -d ' \n'
+}
+
 # send <label>: reads one JSON payload on stdin, signs it per Standard
 # Webhooks (v1,{base64 hmac-sha256 over "{id}.{timestamp}.{body}"}) and posts.
 send() {
@@ -39,7 +47,7 @@ send() {
 	id="$(cat /proc/sys/kernel/random/uuid)"
 	ts="$(date +%s)"
 	sig="$(printf '%s.%s.%s' "$id" "$ts" "$body" \
-		| openssl dgst -sha256 -hmac "$SIGNING_SECRET" -binary | base64 -w0)"
+		| openssl dgst -sha256 -mac HMAC -macopt "hexkey:$(signing_key)" -binary | base64 -w0)"
 	code="$(curl -sS -o /dev/null -w '%{http_code}' -X POST "$URL" \
 		-H 'Content-Type: application/json' \
 		-H "Webhook-Id: $id" -H "Webhook-Timestamp: $ts" \
@@ -48,6 +56,10 @@ send() {
 }
 
 case "${1:-}" in
+token)
+	# The signing token to start the service with, so both sides agree.
+	printf '%s\n' "$SIGNING_SECRET"
+	;;
 open)
 	cat <<-EOF | send open
 	{"object_kind":"merge_request","event_name":"merge_request",
@@ -173,6 +185,7 @@ usage: ./demo/evmock/evmock.sh <kind>
   push              📝 N new commits (Push Hook + MR update, like GitLab)
   merge             🎉 merged notice; thread closes
   close             thread closes
+  token             print the signing token to start the service with
 
 Env knobs: URL, SIGNING_SECRET, PROJECT, GITLAB_URL, MR_ID, MR_IID,
 MR_TITLE, SOURCE_BRANCH, TARGET_BRANCH, AUTHOR, REVIEWER, REVIEWER_ID,

@@ -86,7 +86,7 @@ remaining required settings come from the environment; the
 just devdb     # once
 PATCHCASTER_MATTERMOST_URL=https://mattermost.example.com \
 PATCHCASTER_MATTERMOST_TOKEN=<bot account token> \
-PATCHCASTER_SIGNING_SECRETS=<webhook signing token> \
+PATCHCASTER_SIGNING_SECRETS=<webhook signing token, whsec_...> \
 just run
 ```
 

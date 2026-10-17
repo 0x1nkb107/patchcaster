@@ -33,7 +33,7 @@ type ServeCmd struct {
 	DatabaseURL     string        `flag:"" required:"" env:"PATCHCASTER_DATABASE_URL" help:"PostgreSQL connection URL."`
 	MattermostURL   string        `flag:"" required:"" env:"PATCHCASTER_MATTERMOST_URL" help:"Mattermost site URL."`
 	MattermostToken string        `flag:"" required:"" env:"PATCHCASTER_MATTERMOST_TOKEN" help:"Bot account auth token."`
-	SigningSecrets  []string      `flag:"" name:"signing-secret" sep:"," env:"PATCHCASTER_SIGNING_SECRETS" required:"" help:"GitLab Standard Webhooks signing secret; repeat or comma-separate for rotation."`
+	SigningSecrets  []string      `flag:"" name:"signing-secret" sep:"," env:"PATCHCASTER_SIGNING_SECRETS" required:"" help:"GitLab webhook signing token (whsec_...), exactly as GitLab shows it; repeat or comma-separate for rotation."`
 	RoutingFile     string        `flag:"" required:"" env:"PATCHCASTER_ROUTING_FILE" help:"Routing table YAML."`
 	DrainTimeout    time.Duration `flag:"" default:"30s" env:"PATCHCASTER_DRAIN_TIMEOUT" help:"In-flight budget after SIGTERM; the deployment grace period must exceed it."`
 	EventMaxAge     time.Duration `flag:"" default:"4h" env:"PATCHCASTER_EVENT_MAX_AGE" help:"Freshness cap; older verified events are discarded."`
@@ -103,6 +103,9 @@ func (c *ServeCmd) Validate() error {
 	for _, issue := range issues {
 		errs = append(errs, fmt.Errorf("%s: %s", flagName(issue.Path), issue.Message))
 	}
+	if _, err := c.signingKeys(); err != nil {
+		errs = append(errs, err)
+	}
 	if err := c.Keys.validate(); err != nil {
 		errs = append(errs, err)
 	}
@@ -112,6 +115,24 @@ func (c *ServeCmd) Validate() error {
 		}
 	}
 	return errors.Join(errs...)
+}
+
+// signingKeys decodes the signing tokens into the keys GitLab signs with.
+// Empty entries are left to the schema, which reports them. The errors name
+// the flag and the entry, never the token.
+func (c *ServeCmd) signingKeys() ([][]byte, error) {
+	keys := make([][]byte, 0, len(c.SigningSecrets))
+	for i, token := range c.SigningSecrets {
+		if token == "" {
+			continue
+		}
+		key, err := ingest.ParseSigningToken(token)
+		if err != nil {
+			return nil, fmt.Errorf("--signing-secret %d: %w", i+1, err)
+		}
+		keys = append(keys, key)
+	}
+	return keys, nil
 }
 
 func flagName(path []string) string {
@@ -173,9 +194,9 @@ func (c *ServeCmd) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	secrets := make([][]byte, len(c.SigningSecrets))
-	for i, s := range c.SigningSecrets {
-		secrets[i] = []byte(s)
+	secrets, err := c.signingKeys()
+	if err != nil {
+		return err
 	}
 	handler := &ingest.Handler{
 		Secrets: secrets,

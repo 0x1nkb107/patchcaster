@@ -40,9 +40,7 @@ unavailable (see [database connection](operations.md#database-connection)).
 Durations use Go syntax (`90s`, `15m`, `4h`) and must be positive.
 `--log-level` is one of `debug`, `info`, `warn` or `error`.
 
-Any one of the signing secrets may sign a delivery, which is how the GitLab
-signing token rotates without downtime: add the new secret, switch the hook
-over to it, then drop the old one.
+Each signing secret is a GitLab webhook signing token, exactly as GitLab shows it: `whsec_` followed by the base64 of its key. PatchCaster refuses to start with any other value. Any one of the signing secrets may sign a delivery, which is how the GitLab signing token rotates without downtime: add the new secret, switch the hook over to it, then drop the old one.
 
 ## Interface URL
 

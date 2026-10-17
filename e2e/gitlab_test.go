@@ -10,19 +10,23 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 )
 
-// The service is started with this secret and routes this project to this
-// channel.
+// The service routes this project to this channel.
 const (
-	signingSecret = "e2e-signing-secret"
-	projectPath   = "group/application"
-	channelID     = "chan-e2e"
+	projectPath = "group/application"
+	channelID   = "chan-e2e"
 )
+
+// signingSecret is the signing token the service is started with, in the
+// form GitLab shows it, with a key of 32 bytes of 's'. It is built at run
+// time, so that secret scanners do not mistake it for a live secret.
+var signingSecret = "whsec_" + base64.StdEncoding.EncodeToString(bytes.Repeat([]byte("s"), 32))
 
 // mergeRequest identifies a merge request in the payloads.
 type mergeRequest struct {
@@ -52,7 +56,8 @@ func (g gitlab) deliverAs(t *testing.T, id string, body []byte) int {
 	return g.deliverSigned(t, id, body, signingSecret)
 }
 
-// deliverSigned sends body signed with secret and returns the status code.
+// deliverSigned sends body signed with the signing token secret and returns
+// the status code.
 func (g gitlab) deliverSigned(t *testing.T, id string, body []byte, secret string) int {
 	t.Helper()
 	resp, err := g.post(id, body, secret)
@@ -77,10 +82,16 @@ func (g gitlab) post(id string, body []byte, secret string) (*http.Response, err
 	return client.Do(req)
 }
 
-// sign computes the Standard Webhooks signature: base64 HMAC-SHA256 over
-// "id.timestamp.body", prefixed with the scheme version.
+// sign computes the Standard Webhooks signature the way GitLab does: the
+// HMAC-SHA256 over "id.timestamp.body" with the key that the signing token
+// carries, base64-encoded and prefixed with the scheme version. A token not
+// in the whsec_ form signs with its text, as a forger without the key would.
 func sign(secret, id, timestamp string, body []byte) string {
-	mac := hmac.New(sha256.New, []byte(secret))
+	key := []byte(secret)
+	if encoded, ok := strings.CutPrefix(secret, "whsec_"); ok {
+		key, _ = base64.StdEncoding.DecodeString(encoded)
+	}
+	mac := hmac.New(sha256.New, key)
 	mac.Write([]byte(id + "." + timestamp + "."))
 	mac.Write(body)
 	return "v1," + base64.StdEncoding.EncodeToString(mac.Sum(nil))

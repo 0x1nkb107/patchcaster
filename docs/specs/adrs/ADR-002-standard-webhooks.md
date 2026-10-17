@@ -38,6 +38,8 @@ Chosen option: "Standard Webhooks HMAC verification only", because it is strictl
 no operational gain in a v1 scoped to GitLab 19+. Confirmed by the project owner on 2026-10-10:
 security takes precedence, and the legacy static `X-Gitlab-Token` path is refused outright.
 
+The HMAC key is the key the signing token carries. GitLab shows a token as `whsec_` followed by the base64 of a 32-byte key, and its documentation verifies by stripping the prefix and decoding the rest. v0.1.0 used the token's text as the key instead, so it refused GitLab's deliveries. Since 2026-10-17, PatchCaster decodes the token and refuses a secret in any other form (owner decision 2026-10-17).
+
 ### Positive Consequences
 
 - One verification path; rejection logic (401) is unconditional and testable.

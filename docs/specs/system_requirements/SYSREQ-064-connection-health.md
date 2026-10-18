@@ -4,7 +4,6 @@ type: system_requirement
 name: "Connection and sink health"
 description: "Each connection and sink reports its health as metrics and in the web interface, and none of them affects readiness."
 specification: "The service SHALL expose Prometheus metrics per connection and per sink for deliveries by outcome, for the number of waiting messages and the age of the oldest one, and for the state of every Matrix session and chat command registration, SHALL show the same health in the web interface, and SHALL keep its readiness independent of the health of any connection or sink."
-status: proposed
 derives_from:
   - "SCEN-009"
   - "SCEN-019"
@@ -14,6 +13,8 @@ depends_on:
 ---
 
 # System Requirement: Connection and sink health
+
+Accepted in part on 2026-10-18, with increment 1 (SOL-001). Still planned, and not normative until their increment is accepted: the state of Matrix sessions, with increment 4, and of chat command registrations, with increment 5.
 
 ## Requirement Specification
 

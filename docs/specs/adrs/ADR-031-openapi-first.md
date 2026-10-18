@@ -3,7 +3,7 @@ id: "ADR-031"
 type: architecture_decision_record
 name: "The OpenAPI description comes first and generates the API's server code"
 description: "The management API is written as an OpenAPI description, from which server interfaces are generated and checked in, like the query code sqlc generates."
-status: proposed
+status: accepted
 deciders:
   - "Project owner"
 justifies:

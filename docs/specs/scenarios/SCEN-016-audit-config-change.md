@@ -3,7 +3,6 @@ id: "SCEN-016"
 type: scenario
 name: "An administrator traces a configuration change"
 description: "Announcements changed unexpectedly. The audit log shows who changed which route or template, when, and how."
-status: proposed
 refines:
   - "UC-004"
 ---

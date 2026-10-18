@@ -4,13 +4,14 @@ type: system_requirement
 name: "Sources and webhook registration"
 description: "A source selects repositories of a forge connection by scope. Each connection has one webhook endpoint, and PatchCaster registers the hooks it needs."
 specification: "The service SHALL accept webhooks for each forge connection at an endpoint of its own, verified with that connection's secrets; SHALL pass each verified event to every source of that connection whose scope contains the event's repository; and SHALL register, through the forge API where the connection has API access, one hook for each source scope not already covered by a broader registered scope."
-status: proposed
 derives_from:
   - "SCEN-015"
   - "SCEN-027"
 ---
 
 # System Requirement: Sources and webhook registration
+
+Accepted in part on 2026-10-18, with increment 1 (SOL-001). Still planned, and not normative until their increment is accepted: hook registration through the Forgejo API, with increment 3.
 
 ## Requirement Specification
 

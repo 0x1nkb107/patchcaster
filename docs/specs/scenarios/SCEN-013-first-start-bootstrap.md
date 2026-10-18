@@ -3,7 +3,6 @@ id: "SCEN-013"
 type: scenario
 name: "The first start bootstraps the first administrator"
 description: "A fresh instance has no configuration and no administrator. A one-time setup link leads to the identity provider setup and the first administrator."
-status: proposed
 refines:
   - "UC-004"
 ---

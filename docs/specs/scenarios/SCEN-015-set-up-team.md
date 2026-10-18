@@ -3,7 +3,6 @@ id: "SCEN-015"
 type: scenario
 name: "An administrator sets up a team"
 description: "An administrator creates a team, gives it a source and sinks, and names its operator. PatchCaster registers the source's webhook itself."
-status: proposed
 refines:
   - "UC-004"
 ---

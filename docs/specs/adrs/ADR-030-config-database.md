@@ -3,11 +3,13 @@ id: "ADR-030"
 type: architecture_decision_record
 name: "Configuration lives in the database"
 description: "Connections, teams, sources, sinks, routes and templates live in the database and change through the web interface and the API. Flags and environment keep only startup and operating settings."
-status: proposed
+status: accepted
 deciders:
   - "Project owner"
 justifies:
   - "SYSARCH-006"
+supersedes:
+  - "ADR-013"
 ---
 
 # ADR-030: Configuration lives in the database
@@ -35,4 +37,4 @@ v0.1 is configured by flags, environment variables and a routing file (UC-002, S
 - Good: operators change routing themselves, and changes need no redeploy.
 - Bad: the configuration is no longer visible in a Git diff by default. The audit log (SYSREQ-041) and API clients take over that role.
 - Bad: backups of the database now also back up the configuration, so they must be treated like it.
-- On acceptance, ADR-012 validates only the startup settings, ADR-013 retires with the routing file, and UC-005 replaces UC-002.
+- With its acceptance on 2026-10-18, ADR-012 validates only the startup settings, ADR-013 is superseded with the routing file, and UC-005 replaces UC-002.

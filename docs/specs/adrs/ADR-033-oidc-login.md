@@ -3,7 +3,7 @@ id: "ADR-033"
 type: architecture_decision_record
 name: "Generic OpenID Connect login with a bootstrap link and a recovery command"
 description: "People log in through the organization's OpenID Connect provider. A one-time setup link creates the first administrator, and a recovery command restores access."
-status: proposed
+status: accepted
 deciders:
   - "Project owner"
 justifies:

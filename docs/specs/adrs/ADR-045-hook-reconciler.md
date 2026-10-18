@@ -3,7 +3,7 @@ id: "ADR-045"
 type: architecture_decision_record
 name: "A background reconciler registers the forge hooks of the sources"
 description: "PatchCaster registers the hooks of a forge connection's sources in the background: it compares the hooks the sources need with the ones it registered, changes the forge to match, and records the forge's answer for each source."
-status: proposed
+status: accepted
 deciders:
   - "Project owner"
 justifies:

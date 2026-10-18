@@ -4,7 +4,6 @@ type: system_requirement
 name: "Roles and team scope"
 description: "Administrators, operators and users may do different things, and operators act only within their teams."
 specification: "The service SHALL authorize every configuration operation by role: administrators for connections, teams, sources, sinks and role assignments; operators for routes, filters and templates between the sources and sinks of their own teams; and users for their own identity links and tokens."
-status: proposed
 derives_from:
   - "SCEN-015"
   - "SCEN-018"

@@ -3,7 +3,7 @@ id: "ADR-042"
 type: architecture_decision_record
 name: "ESLint, Prettier and svelte-check guard the web interface"
 description: "The web interface's static-analysis gate runs ESLint with typescript-eslint and eslint-plugin-svelte, Prettier with its Svelte plugin, and svelte-check, on a pinned TypeScript 6.0."
-status: proposed
+status: accepted
 deciders:
   - "Project owner"
 justifies:

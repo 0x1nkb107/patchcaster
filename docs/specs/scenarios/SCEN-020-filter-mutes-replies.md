@@ -3,7 +3,6 @@ id: "SCEN-020"
 type: scenario
 name: "A route filter mutes replies but not the board"
 description: "A route filters out comments. Comments no longer reply in the thread, but the root board still counts them."
-status: proposed
 refines:
   - "UC-005"
 ---

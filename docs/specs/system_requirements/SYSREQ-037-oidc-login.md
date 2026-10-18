@@ -4,7 +4,6 @@ type: system_requirement
 name: "OpenID Connect login"
 description: "People log in only through the organization's OpenID Connect provider. PatchCaster keeps no passwords."
 specification: "The service SHALL authenticate people only through the OpenID Connect provider an administrator configured, using the authorization code flow with PKCE, and SHALL keep no passwords of its own."
-status: proposed
 derives_from:
   - "SCEN-013"
 ---

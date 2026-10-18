@@ -3,7 +3,6 @@ id: "SCEN-018"
 type: scenario
 name: "An operator routes a source into a sink"
 description: "A team lead connects the team's Forgejo source to the team's Matrix room. The next pull request opens a thread there."
-status: proposed
 refines:
   - "UC-005"
 ---

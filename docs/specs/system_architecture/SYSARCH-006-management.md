@@ -3,7 +3,6 @@ id: "SYSARCH-006"
 type: system_architecture
 name: "Management surface"
 description: "One configuration service behind the web interface and the API, with login, authorization, audit and encrypted secrets."
-status: proposed
 satisfies:
   - "SYSREQ-034"
   - "SYSREQ-035"
@@ -25,7 +24,9 @@ satisfies:
 
 # System Architecture: Management surface
 
-Normative once accepted: the web interface and the management API are two presentations of one configuration service, which owns authorization, auditing and secret handling.
+Accepted in part on 2026-10-18, with increment 1 (SOL-001). Still planned, and not normative until their increment is accepted: operator templates (ADR-038), with increment 2, and identity links (ADR-039), with increment 5.
+
+Normative: the web interface and the management API are two presentations of one configuration service, which owns authorization, auditing and secret handling.
 
 ## Technical Strategy
 
@@ -63,4 +64,4 @@ A request authenticates by session or token, the authorizer decides it, and the 
 
 ## Notes
 
-Proposed on 2026-10-15. On acceptance this extends SYSARCH-005, whose configuration then covers only startup and operating settings.
+Accepted in part on 2026-10-18. It extends SYSARCH-005, whose configuration covers only startup and operating settings.

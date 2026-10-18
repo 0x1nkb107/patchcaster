@@ -1,15 +1,17 @@
 // Package gitlab talks to the GitLab REST API on behalf of a forge
-// connection (SYSARCH-007). It checks the connection's token now, and will
-// register hooks later.
+// connection (SYSARCH-007). It checks the connection's token and registers
+// the hooks that deliver the connection's events (SYSREQ-044).
 package gitlab
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -61,32 +63,92 @@ func (c *Client) CurrentUser(ctx context.Context) (string, error) {
 	return user.Username, nil
 }
 
-// get reads one resource below /api/v4 into out.
-func (c *Client) get(ctx context.Context, path string, out any) error {
-	endpoint := c.baseURL.JoinPath("api", "v4", path)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint.String(), nil)
+// endpoint returns the address of a resource below /api/v4. Each segment
+// is escaped on its own, so that a path such as "group/project" can name a
+// project, as GitLab expects it.
+func (c *Client) endpoint(segments ...string) string {
+	escaped := make([]string, len(segments))
+	for i, segment := range segments {
+		escaped[i] = url.PathEscape(segment)
+	}
+	u := *c.baseURL
+	u.RawPath = strings.TrimSuffix(c.baseURL.EscapedPath(), "/") + "/api/v4/" + strings.Join(escaped, "/")
+	u.Path = strings.TrimSuffix(c.baseURL.Path, "/") + "/api/v4/" + strings.Join(segments, "/")
+	return u.String()
+}
+
+// answer is what GitLab sent back: the status, the headers and the body.
+type answer struct {
+	status int
+	header http.Header
+	body   []byte
+}
+
+// do sends one request with an optional JSON body and returns GitLab's
+// answer. Only a missing answer is an error here.
+func (c *Client) do(ctx context.Context, method, endpoint string, payload any) (*answer, error) {
+	var body io.Reader
+	if payload != nil {
+		encoded, err := json.Marshal(payload)
+		if err != nil {
+			return nil, fmt.Errorf("encode gitlab request: %w", err)
+		}
+		body = bytes.NewReader(encoded)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, endpoint, body)
 	if err != nil {
-		return fmt.Errorf("build gitlab request: %w", err)
+		return nil, fmt.Errorf("build gitlab request: %w", err)
 	}
 	req.Header.Set("PRIVATE-TOKEN", c.token)
 	req.Header.Set("Accept", "application/json")
+	if payload != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
 
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return &TransportError{Err: err}
+		return nil, &TransportError{Err: err}
 	}
 	defer func() { _ = resp.Body.Close() }()
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 64<<10))
+	read, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
-		return &TransportError{Err: fmt.Errorf("read answer: %w", err)}
+		return nil, &TransportError{Err: fmt.Errorf("read answer: %w", err)}
 	}
-	if resp.StatusCode != http.StatusOK {
-		return &APIError{Status: resp.StatusCode, Message: messageOf(body)}
+	return &answer{status: resp.StatusCode, header: resp.Header, body: read}, nil
+}
+
+// expect fails unless GitLab answered with status, and then decodes the
+// body into out, when out is not nil.
+func (a *answer) expect(status int, out any) error {
+	if a.status != status {
+		return &APIError{Status: a.status, Message: messageOf(a.body)}
 	}
-	if err := json.Unmarshal(body, out); err != nil {
-		return &APIError{Status: resp.StatusCode, Message: "the answer is not the JSON GitLab sends"}
+	if out == nil {
+		return nil
+	}
+	if err := json.Unmarshal(a.body, out); err != nil {
+		return &APIError{Status: a.status, Message: "the answer is not the JSON GitLab sends"}
 	}
 	return nil
+}
+
+// get reads one resource below /api/v4 into out.
+func (c *Client) get(ctx context.Context, path string, out any) error {
+	a, err := c.do(ctx, http.MethodGet, c.endpoint(path), nil)
+	if err != nil {
+		return err
+	}
+	return a.expect(http.StatusOK, out)
+}
+
+// nextPage returns the page after the one a list answer holds, or 0 on the
+// last page.
+func (a *answer) nextPage() int {
+	next, err := strconv.Atoi(a.header.Get("X-Next-Page"))
+	if err != nil {
+		return 0
+	}
+	return next
 }
 
 // messageOf reads the message of a GitLab error answer, which carries it in

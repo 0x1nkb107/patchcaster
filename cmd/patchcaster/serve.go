@@ -163,6 +163,7 @@ func (c *ServeCmd) Run(ctx context.Context) error {
 		log.Warn("stored secrets are sealed with a previous encryption key: run patchcaster secrets reseal")
 	}
 	m := metrics.New()
+	m.RegisterQueues(sinkQueues(st), time.Now, log)
 	probe := ops.NewServer(st, m)
 
 	renderer, err := deliver.NewRenderer()
@@ -283,4 +284,25 @@ func newLogger(level string) *slog.Logger {
 		TimeFormat: time.RFC3339,
 	})
 	return slog.New(h)
+}
+
+// sinkQueues reads the queue of every sink from st for the waiting gauges
+// (SYSREQ-064).
+func sinkQueues(st *store.Postgres) metrics.QueueReader {
+	return func(ctx context.Context) ([]metrics.SinkQueue, error) {
+		queues, err := st.SinkQueues(ctx)
+		if err != nil {
+			return nil, err
+		}
+		gauged := make([]metrics.SinkQueue, 0, len(queues))
+		for _, q := range queues {
+			gauged = append(gauged, metrics.SinkQueue{
+				ConnectionID:  q.ConnectionID,
+				SinkID:        q.SinkID,
+				Waiting:       q.Waiting,
+				OldestWaiting: q.OldestWaiting,
+			})
+		}
+		return gauged, nil
+	}
 }

@@ -122,9 +122,13 @@ func (s *Service) ListSinks(ctx context.Context, params v1gen.ListSinksParams) (
 		return nil, err
 	}
 	sinks, next := pageOf(sinks, limit, func(k store.Sink) int64 { return k.ID })
+	health, err := s.sinkHealth(ctx, sinks)
+	if err != nil {
+		return nil, err
+	}
 	items := make([]v1gen.Sink, 0, len(sinks))
 	for i := range sinks {
-		items = append(items, sinkOf(&sinks[i]))
+		items = append(items, sinkOf(&sinks[i], health[sinks[i].ID]))
 	}
 	return &v1gen.SinkPage{Items: items, NextCursor: next}, nil
 }
@@ -153,7 +157,11 @@ func (s *Service) CreateSink(ctx context.Context, req *v1gen.SinkRequest) (*v1ge
 	if err != nil {
 		return nil, storeProblem(err)
 	}
-	sink := sinkOf(created)
+	health, err := s.sinkHealth(ctx, []store.Sink{*created})
+	if err != nil {
+		return nil, err
+	}
+	sink := sinkOf(created, health[created.ID])
 	return &sink, nil
 }
 
@@ -166,7 +174,7 @@ func (s *Service) GetSink(ctx context.Context, params v1gen.GetSinkParams) (*v1g
 	if err := s.mayReadOwned(ctx, sink.Teams); err != nil {
 		return nil, err
 	}
-	return sinkHeaders(sink), nil
+	return s.sinkHeaders(ctx, sink)
 }
 
 // UpdateSink changes a sink's name and channel, for administrators. A new
@@ -204,7 +212,7 @@ func (s *Service) UpdateSink(ctx context.Context, req *v1gen.SinkUpdate, params 
 	if err != nil {
 		return nil, storeProblem(err)
 	}
-	return sinkHeaders(updated), nil
+	return s.sinkHeaders(ctx, updated)
 }
 
 // DeleteSink removes a sink no route uses, for administrators.
@@ -325,7 +333,7 @@ func sourceHeaders(src *store.Source) *v1gen.SourceHeaders {
 	}
 }
 
-func sinkOf(k *store.Sink) v1gen.Sink {
+func sinkOf(k *store.Sink, health v1gen.SinkHealth) v1gen.Sink {
 	return v1gen.Sink{
 		ID:           k.ID,
 		ConnectionID: k.ConnectionID,
@@ -333,13 +341,20 @@ func sinkOf(k *store.Sink) v1gen.Sink {
 		ChannelID:    k.ChannelID,
 		ChannelName:  k.ChannelName,
 		Teams:        nonNilIDs(k.Teams),
+		Health:       health,
 		Etag:         etagOf(k.Version),
 	}
 }
 
-func sinkHeaders(k *store.Sink) *v1gen.SinkHeaders {
+// sinkHeaders renders one sink with its health. The ETag covers the
+// configuration alone, so health never fails a change.
+func (s *Service) sinkHeaders(ctx context.Context, k *store.Sink) (*v1gen.SinkHeaders, error) {
+	health, err := s.sinkHealth(ctx, []store.Sink{*k})
+	if err != nil {
+		return nil, err
+	}
 	return &v1gen.SinkHeaders{
 		ETag:     v1gen.NewOptString(etagOf(k.Version)),
-		Response: sinkOf(k),
-	}
+		Response: sinkOf(k, health[k.ID]),
+	}, nil
 }

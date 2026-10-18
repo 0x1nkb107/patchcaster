@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -253,4 +254,46 @@ func TestOnlyAdministratorsManageConnections(t *testing.T) {
 	// assert
 	assert.Equal(t, http.StatusForbidden, rec.Code)
 	assert.Empty(t, f.store.connections)
+}
+
+func TestConnectionsReportTheirHealth(t *testing.T) {
+	// arrange
+	f := newFixture(t)
+	delivered := time.Date(2026, 10, 18, 9, 0, 0, 0, time.UTC)
+	f.store.connections[1] = &store.Connection{ID: 1, Kind: "gitlab", Name: "gitlab", Version: 1}
+	f.store.connections[2] = &store.Connection{ID: 2, Kind: "mattermost", Name: "chat", Version: 1}
+	f.store.forgeHealth = map[int64]store.ForgeHealth{1: {
+		LastDelivery:   delivered,
+		LastRejection:  delivered.Add(time.Minute),
+		RejectionCause: "signature",
+	}}
+	f.store.chatHealth = map[int64]store.SinkHealth{2: {
+		Waiting:     3,
+		LastFailure: delivered,
+		LastError:   "post: 503 Service Unavailable",
+	}}
+	read := func(id int64) map[string]any {
+		rec := f.serve(t, request{method: http.MethodGet, path: "/api/v1/connections/" + itoa(id), session: f.sessionOf(t, ada)})
+		require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+		var body struct {
+			Health map[string]any `json:"health"`
+		}
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
+		return body.Health
+	}
+
+	// act
+	forge, chat := read(1), read(2)
+
+	// assert
+	assert.Equal(t, map[string]any{
+		"last_delivery_at":  "2026-10-18T09:00:00Z",
+		"last_rejection_at": "2026-10-18T09:01:00Z",
+		"last_rejection":    "signature",
+	}, forge, "a forge connection reports its deliveries")
+	assert.Equal(t, map[string]any{
+		"waiting_messages": 3.0,
+		"last_failure_at":  "2026-10-18T09:00:00Z",
+		"last_error":       "post: 503 Service Unavailable",
+	}, chat, "a chat connection reports its sinks, and nothing it never had")
 }

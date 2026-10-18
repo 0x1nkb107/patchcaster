@@ -942,12 +942,16 @@ func (s *Connection) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
+		e.FieldStart("health")
+		s.Health.Encode(e)
+	}
+	{
 		e.FieldStart("etag")
 		e.Str(s.Etag)
 	}
 }
 
-var jsonFieldsNameOfConnection = [8]string{
+var jsonFieldsNameOfConnection = [9]string{
 	0: "id",
 	1: "kind",
 	2: "name",
@@ -955,7 +959,8 @@ var jsonFieldsNameOfConnection = [8]string{
 	4: "account",
 	5: "has_credential",
 	6: "webhook_url",
-	7: "etag",
+	7: "health",
+	8: "etag",
 }
 
 // Decode decodes Connection from json.
@@ -963,7 +968,7 @@ func (s *Connection) Decode(d *jx.Decoder) error {
 	if s == nil {
 		return errors.New("invalid: unable to decode Connection to nil")
 	}
-	var requiredBitSet [1]uint8
+	var requiredBitSet [2]uint8
 
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
@@ -1047,8 +1052,18 @@ func (s *Connection) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"webhook_url\"")
 			}
-		case "etag":
+		case "health":
 			requiredBitSet[0] |= 1 << 7
+			if err := func() error {
+				if err := s.Health.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"health\"")
+			}
+		case "etag":
+			requiredBitSet[1] |= 1 << 0
 			if err := func() error {
 				v, err := d.Str()
 				s.Etag = string(v)
@@ -1068,8 +1083,9 @@ func (s *Connection) Decode(d *jx.Decoder) error {
 	}
 	// Validate required fields.
 	var failures []validate.FieldError
-	for i, mask := range [1]uint8{
+	for i, mask := range [2]uint8{
 		0b10111111,
+		0b00000001,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -1111,6 +1127,228 @@ func (s *Connection) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *Connection) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *ConnectionHealth) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *ConnectionHealth) encodeFields(e *jx.Encoder) {
+	{
+		if s.LastDeliveryAt.Set {
+			e.FieldStart("last_delivery_at")
+			s.LastDeliveryAt.Encode(e, json.EncodeDateTime)
+		}
+	}
+	{
+		if s.LastRejectionAt.Set {
+			e.FieldStart("last_rejection_at")
+			s.LastRejectionAt.Encode(e, json.EncodeDateTime)
+		}
+	}
+	{
+		if s.LastRejection.Set {
+			e.FieldStart("last_rejection")
+			s.LastRejection.Encode(e)
+		}
+	}
+	{
+		if s.WaitingMessages.Set {
+			e.FieldStart("waiting_messages")
+			s.WaitingMessages.Encode(e)
+		}
+	}
+	{
+		if s.OldestWaitingSince.Set {
+			e.FieldStart("oldest_waiting_since")
+			s.OldestWaitingSince.Encode(e, json.EncodeDateTime)
+		}
+	}
+	{
+		if s.LastSuccessAt.Set {
+			e.FieldStart("last_success_at")
+			s.LastSuccessAt.Encode(e, json.EncodeDateTime)
+		}
+	}
+	{
+		if s.LastFailureAt.Set {
+			e.FieldStart("last_failure_at")
+			s.LastFailureAt.Encode(e, json.EncodeDateTime)
+		}
+	}
+	{
+		if s.LastError.Set {
+			e.FieldStart("last_error")
+			s.LastError.Encode(e)
+		}
+	}
+}
+
+var jsonFieldsNameOfConnectionHealth = [8]string{
+	0: "last_delivery_at",
+	1: "last_rejection_at",
+	2: "last_rejection",
+	3: "waiting_messages",
+	4: "oldest_waiting_since",
+	5: "last_success_at",
+	6: "last_failure_at",
+	7: "last_error",
+}
+
+// Decode decodes ConnectionHealth from json.
+func (s *ConnectionHealth) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode ConnectionHealth to nil")
+	}
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "last_delivery_at":
+			if err := func() error {
+				s.LastDeliveryAt.Reset()
+				if err := s.LastDeliveryAt.Decode(d, json.DecodeDateTime); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"last_delivery_at\"")
+			}
+		case "last_rejection_at":
+			if err := func() error {
+				s.LastRejectionAt.Reset()
+				if err := s.LastRejectionAt.Decode(d, json.DecodeDateTime); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"last_rejection_at\"")
+			}
+		case "last_rejection":
+			if err := func() error {
+				s.LastRejection.Reset()
+				if err := s.LastRejection.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"last_rejection\"")
+			}
+		case "waiting_messages":
+			if err := func() error {
+				s.WaitingMessages.Reset()
+				if err := s.WaitingMessages.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"waiting_messages\"")
+			}
+		case "oldest_waiting_since":
+			if err := func() error {
+				s.OldestWaitingSince.Reset()
+				if err := s.OldestWaitingSince.Decode(d, json.DecodeDateTime); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"oldest_waiting_since\"")
+			}
+		case "last_success_at":
+			if err := func() error {
+				s.LastSuccessAt.Reset()
+				if err := s.LastSuccessAt.Decode(d, json.DecodeDateTime); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"last_success_at\"")
+			}
+		case "last_failure_at":
+			if err := func() error {
+				s.LastFailureAt.Reset()
+				if err := s.LastFailureAt.Decode(d, json.DecodeDateTime); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"last_failure_at\"")
+			}
+		case "last_error":
+			if err := func() error {
+				s.LastError.Reset()
+				if err := s.LastError.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"last_error\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode ConnectionHealth")
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *ConnectionHealth) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *ConnectionHealth) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes ConnectionHealthLastRejection as json.
+func (s ConnectionHealthLastRejection) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes ConnectionHealthLastRejection from json.
+func (s *ConnectionHealthLastRejection) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode ConnectionHealthLastRejection to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch ConnectionHealthLastRejection(v) {
+	case ConnectionHealthLastRejectionSignature:
+		*s = ConnectionHealthLastRejectionSignature
+	case ConnectionHealthLastRejectionParse:
+		*s = ConnectionHealthLastRejectionParse
+	default:
+		*s = ConnectionHealthLastRejection(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s ConnectionHealthLastRejection) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *ConnectionHealthLastRejection) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -2233,6 +2471,39 @@ func (s *LoginSettingsUpdate) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *LoginSettingsUpdate) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes ConnectionHealthLastRejection as json.
+func (o OptConnectionHealthLastRejection) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	e.Str(string(o.Value))
+}
+
+// Decode decodes ConnectionHealthLastRejection from json.
+func (o *OptConnectionHealthLastRejection) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptConnectionHealthLastRejection to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptConnectionHealthLastRejection) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptConnectionHealthLastRejection) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -4098,19 +4369,24 @@ func (s *Sink) encodeFields(e *jx.Encoder) {
 		e.ArrEnd()
 	}
 	{
+		e.FieldStart("health")
+		s.Health.Encode(e)
+	}
+	{
 		e.FieldStart("etag")
 		e.Str(s.Etag)
 	}
 }
 
-var jsonFieldsNameOfSink = [7]string{
+var jsonFieldsNameOfSink = [8]string{
 	0: "id",
 	1: "connection_id",
 	2: "name",
 	3: "channel_id",
 	4: "channel_name",
 	5: "teams",
-	6: "etag",
+	6: "health",
+	7: "etag",
 }
 
 // Decode decodes Sink from json.
@@ -4202,8 +4478,18 @@ func (s *Sink) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"teams\"")
 			}
-		case "etag":
+		case "health":
 			requiredBitSet[0] |= 1 << 6
+			if err := func() error {
+				if err := s.Health.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"health\"")
+			}
+		case "etag":
+			requiredBitSet[0] |= 1 << 7
 			if err := func() error {
 				v, err := d.Str()
 				s.Etag = string(v)
@@ -4224,7 +4510,7 @@ func (s *Sink) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b01111111,
+		0b11111111,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -4266,6 +4552,170 @@ func (s *Sink) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *Sink) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *SinkHealth) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *SinkHealth) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("waiting_messages")
+		e.Int64(s.WaitingMessages)
+	}
+	{
+		if s.OldestWaitingSince.Set {
+			e.FieldStart("oldest_waiting_since")
+			s.OldestWaitingSince.Encode(e, json.EncodeDateTime)
+		}
+	}
+	{
+		if s.LastSuccessAt.Set {
+			e.FieldStart("last_success_at")
+			s.LastSuccessAt.Encode(e, json.EncodeDateTime)
+		}
+	}
+	{
+		if s.LastFailureAt.Set {
+			e.FieldStart("last_failure_at")
+			s.LastFailureAt.Encode(e, json.EncodeDateTime)
+		}
+	}
+	{
+		if s.LastError.Set {
+			e.FieldStart("last_error")
+			s.LastError.Encode(e)
+		}
+	}
+}
+
+var jsonFieldsNameOfSinkHealth = [5]string{
+	0: "waiting_messages",
+	1: "oldest_waiting_since",
+	2: "last_success_at",
+	3: "last_failure_at",
+	4: "last_error",
+}
+
+// Decode decodes SinkHealth from json.
+func (s *SinkHealth) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode SinkHealth to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "waiting_messages":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				v, err := d.Int64()
+				s.WaitingMessages = int64(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"waiting_messages\"")
+			}
+		case "oldest_waiting_since":
+			if err := func() error {
+				s.OldestWaitingSince.Reset()
+				if err := s.OldestWaitingSince.Decode(d, json.DecodeDateTime); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"oldest_waiting_since\"")
+			}
+		case "last_success_at":
+			if err := func() error {
+				s.LastSuccessAt.Reset()
+				if err := s.LastSuccessAt.Decode(d, json.DecodeDateTime); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"last_success_at\"")
+			}
+		case "last_failure_at":
+			if err := func() error {
+				s.LastFailureAt.Reset()
+				if err := s.LastFailureAt.Decode(d, json.DecodeDateTime); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"last_failure_at\"")
+			}
+		case "last_error":
+			if err := func() error {
+				s.LastError.Reset()
+				if err := s.LastError.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"last_error\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode SinkHealth")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00000001,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfSinkHealth) {
+					name = jsonFieldsNameOfSinkHealth[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *SinkHealth) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *SinkHealth) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }

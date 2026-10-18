@@ -40,6 +40,11 @@ type outcomeRec struct {
 	outcome string
 }
 
+type rejectionRec struct {
+	connectionID int64
+	cause        string
+}
+
 type fakeStore struct {
 	seen         map[string]bool
 	destinations []store.Destination // what every event of testConnection reaches
@@ -49,10 +54,19 @@ type fakeStore struct {
 	errAccept    error
 	errMark      error
 	acceptDup    bool // simulate losing the seen-insert race
+
+	// The health the handler records for forge connections.
+	delivered []int64
+	rejected  []rejectionRec
+	errHealth error
 }
 
-// testConnection is the forge connection whose endpoint the tests post to.
-const testConnection = 7
+// testConnection is the forge connection whose endpoint the tests post to,
+// and testLabel the label its metrics carry.
+const (
+	testConnection = 7
+	testLabel      = "7"
+)
 
 // testEndpoint is that connection's webhook endpoint.
 const testEndpoint = "/webhooks/7"
@@ -100,6 +114,22 @@ func (f *fakeStore) Accept(_ context.Context, ev *event.Event, deliveries []stor
 	}
 	f.accepted = append(f.accepted, acceptRec{ev: ev, deliveries: deliveries})
 	return store.AcceptResult{Accepted: true, Enqueued: len(deliveries), Attributed: 1}, nil
+}
+
+func (f *fakeStore) RecordForgeDelivery(_ context.Context, connectionID int64, _ time.Time) error {
+	if f.errHealth != nil {
+		return f.errHealth
+	}
+	f.delivered = append(f.delivered, connectionID)
+	return nil
+}
+
+func (f *fakeStore) RecordForgeRejection(_ context.Context, connectionID int64, _ time.Time, cause string) error {
+	if f.errHealth != nil {
+		return f.errHealth
+	}
+	f.rejected = append(f.rejected, rejectionRec{connectionID: connectionID, cause: cause})
+	return nil
 }
 
 // fakeKeys holds the signing key of testConnection only.
@@ -187,7 +217,9 @@ func TestHandler_AcceptsFreshOpenEvent(t *testing.T) {
 	assert.True(t, fs.accepted[0].deliveries[0].Plan.CreateRoot)
 	assert.True(t, ev.When.Equal(time.Date(2026, 10, 10, 9, 0, 0, 123_000_000, time.UTC)),
 		"event timestamp must survive ms-precision parsing, got %s", ev.When)
-	assert.Equal(t, 1.0, testutil.ToFloat64(m.Received))
+	assert.Equal(t, 1.0, testutil.ToFloat64(m.Received.WithLabelValues(testLabel)))
+	assert.Equal(t, 1.0, testutil.ToFloat64(m.StateApplied.WithLabelValues(event.KindMergeRequest, testLabel)))
+	assert.Equal(t, []int64{testConnection}, fs.delivered, "the connection's health shows the delivery")
 }
 
 func TestHandler_SuppressesSeenDelivery(t *testing.T) {
@@ -202,7 +234,7 @@ func TestHandler_SuppressesSeenDelivery(t *testing.T) {
 	// assert
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Empty(t, fs.accepted)
-	assert.Equal(t, 1.0, testutil.ToFloat64(m.Suppressed))
+	assert.Equal(t, 1.0, testutil.ToFloat64(m.Suppressed.WithLabelValues(testLabel)))
 }
 
 func TestHandler_RejectsBadSignature(t *testing.T) {
@@ -225,7 +257,10 @@ func TestHandler_RejectsBadSignature(t *testing.T) {
 	// assert
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
 	assert.Empty(t, fs.accepted)
-	assert.Equal(t, 1.0, testutil.ToFloat64(m.Rejected.WithLabelValues(metrics.CauseSignature)))
+	assert.Equal(t, 1.0, testutil.ToFloat64(m.Rejected.WithLabelValues(metrics.CauseSignature, testLabel)))
+	assert.Equal(t, []rejectionRec{{connectionID: testConnection, cause: metrics.CauseSignature}}, fs.rejected,
+		"the connection's health shows the rejection")
+	assert.Empty(t, fs.delivered, "an unsigned delivery is no delivery of the connection")
 }
 
 func TestHandler_RejectsUnparseableBody(t *testing.T) {
@@ -239,7 +274,8 @@ func TestHandler_RejectsUnparseableBody(t *testing.T) {
 	// assert
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 	assert.Empty(t, fs.outcomes) // a 4xx leaves no seen mark; GitLab may retry
-	assert.Equal(t, 1.0, testutil.ToFloat64(m.Rejected.WithLabelValues(metrics.CauseParse)))
+	assert.Equal(t, 1.0, testutil.ToFloat64(m.Rejected.WithLabelValues(metrics.CauseParse, testLabel)))
+	assert.Equal(t, []rejectionRec{{connectionID: testConnection, cause: metrics.CauseParse}}, fs.rejected)
 }
 
 func TestHandler_Discards(t *testing.T) {
@@ -308,7 +344,7 @@ func TestHandler_Discards(t *testing.T) {
 			assert.Empty(t, fs.accepted, "discarded deliveries must not enqueue")
 			require.Len(t, fs.outcomes, 1, "the seen mark must carry the decision")
 			assert.Equal(t, tc.outcome, fs.outcomes[0].outcome)
-			assert.Equal(t, 1.0, testutil.ToFloat64(m.Discarded.WithLabelValues(tc.cause)))
+			assert.Equal(t, 1.0, testutil.ToFloat64(m.Discarded.WithLabelValues(tc.cause, testLabel)))
 		})
 	}
 }
@@ -376,7 +412,21 @@ func TestHandler_AcceptRaceSuppresses(t *testing.T) {
 	// assert
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Empty(t, fs.accepted)
-	assert.Equal(t, 1.0, testutil.ToFloat64(m.Suppressed))
+	assert.Equal(t, 1.0, testutil.ToFloat64(m.Suppressed.WithLabelValues(testLabel)))
+}
+
+func TestHandler_HealthIsNoReasonToRefuseADelivery(t *testing.T) {
+	// arrange
+	fs := newFakeStore()
+	fs.errHealth = errors.New("down")
+	h, _ := newHandler(t, fs)
+
+	// act
+	rec := deliver(t, h.Mux(), "msg-1", mrBody(t, "open", freshTS))
+
+	// assert
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Len(t, fs.accepted, 1)
 }
 
 func TestHandler_MethodNotAllowed(t *testing.T) {
@@ -390,7 +440,7 @@ func TestHandler_MethodNotAllowed(t *testing.T) {
 
 	// assert
 	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
-	assert.Equal(t, 0.0, testutil.ToFloat64(m.Received), "non-POST traffic is not a delivery")
+	assert.Equal(t, 0, testutil.CollectAndCount(m.Received), "non-POST traffic is not a delivery")
 }
 
 func TestHandler_RefusesAnEndpointNoForgeOwns(t *testing.T) {
@@ -415,7 +465,9 @@ func TestHandler_RefusesAnEndpointNoForgeOwns(t *testing.T) {
 			// assert
 			assert.Equal(t, http.StatusNotFound, rec.Code)
 			assert.Empty(t, fs.accepted)
-			assert.Equal(t, 1.0, testutil.ToFloat64(m.Rejected.WithLabelValues(metrics.CauseEndpoint)))
+			assert.Equal(t, 1.0, testutil.ToFloat64(m.Received.WithLabelValues("")), "an unknown endpoint counts under no connection")
+			assert.Equal(t, 1.0, testutil.ToFloat64(m.Rejected.WithLabelValues(metrics.CauseEndpoint, "")))
+			assert.Empty(t, fs.rejected, "no connection's health shows it")
 		})
 	}
 }

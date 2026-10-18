@@ -25,6 +25,9 @@
 		<nav class="mx-auto flex max-w-4xl items-center gap-6 px-4 py-3">
 			<a href={resolve('/')} class="font-semibold">PatchCaster</a>
 			{#if data.person}
+				<a href={resolve('/health')} class="text-sm text-muted-foreground hover:text-foreground">
+					Health
+				</a>
 				<a href={resolve('/tokens')} class="text-sm text-muted-foreground hover:text-foreground">
 					API tokens
 				</a>

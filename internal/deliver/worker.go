@@ -61,6 +61,8 @@ type Store interface {
 	MarkNoticePosted(ctx context.Context, jobID int64, now time.Time) error
 	MarkRootRefreshed(ctx context.Context, jobID int64, now time.Time) error
 	ReapLeases(ctx context.Context, now time.Time) error
+	RecordSinkSuccess(ctx context.Context, sinkID int64, at time.Time) error
+	RecordSinkFailure(ctx context.Context, sinkID int64, at time.Time, reason string) error
 }
 
 // Config tunes the claim loop.
@@ -209,7 +211,7 @@ func (w *Worker) process(ctx context.Context, job *store.Job) {
 		// stored data or code drifted. Nothing retryable here: park it.
 		w.log.Error("job payload undecodable, parking", "job", job.ID, "err", err)
 		w.settle(ctx, job, store.Parked("payload_undecodable", job.Attempts+1, err.Error()))
-		w.metrics.Parked.WithLabelValues("payload_undecodable").Inc()
+		w.metrics.CountParked("payload_undecodable", sinkOf(job))
 		return
 	}
 	if ev.Plan == nil {
@@ -235,7 +237,7 @@ func (w *Worker) process(ctx context.Context, job *store.Job) {
 		w.settle(ctx, job, store.Retried(job.Attempts, w.now().Add(storeFaultDelay), err.Error()))
 		return
 	}
-	d := delivery{job: job, ev: ev, poster: poster, log: log}
+	d := delivery{job: job, ev: ev, poster: poster, log: log, sink: sinkOf(job)}
 	if ev.Plan.CreateRoot {
 		w.deliverRoot(ctx, d, thread)
 		return
@@ -249,6 +251,12 @@ type delivery struct {
 	ev     *event.Event
 	poster Poster
 	log    *slog.Logger
+	sink   metrics.Sink
+}
+
+// sinkOf names the sink of a job for the delivery metrics.
+func sinkOf(job *store.Job) metrics.Sink {
+	return metrics.SinkOf(job.ConnectionID, job.SinkID)
 }
 
 // skipGoneSink settles a job whose sink or connection was removed: nothing
@@ -256,7 +264,7 @@ type delivery struct {
 func (w *Worker) skipGoneSink(ctx context.Context, job *store.Job, log *slog.Logger) {
 	log.Info("sink removed, skipping", "cause", metrics.CauseSinkGone)
 	w.settle(ctx, job, store.Skipped(metrics.CauseSinkGone))
-	w.metrics.Skipped.WithLabelValues(metrics.CauseSinkGone).Inc()
+	w.metrics.CountSkipped(metrics.CauseSinkGone, sinkOf(job))
 }
 
 // deliverRoot posts the thread-opening message. An existing mapping means the
@@ -273,7 +281,7 @@ func (w *Worker) deliverRoot(ctx context.Context, d delivery, thread *store.Thre
 		}
 		log.Info("root already announced, skipping", "cause", cause)
 		w.settle(ctx, job, store.Skipped(cause))
-		w.metrics.Skipped.WithLabelValues(cause).Inc()
+		w.metrics.CountSkipped(cause, d.sink)
 		return
 	}
 
@@ -291,13 +299,13 @@ func (w *Worker) deliverRoot(ctx context.Context, d delivery, thread *store.Thre
 	if err != nil {
 		log.Error("render failed, parking", "err", err)
 		w.settle(ctx, job, store.Parked("render_failed", job.Attempts+1, err.Error()))
-		w.metrics.Parked.WithLabelValues("render_failed").Inc()
+		w.metrics.CountParked("render_failed", d.sink)
 		return
 	}
 
 	postID, err := w.post(ctx, d, job.DestChannel, message, "")
 	if err != nil {
-		w.deferOrFail(ctx, job, err, log)
+		w.deferOrFail(ctx, d, err)
 		return
 	}
 
@@ -327,13 +335,13 @@ func (w *Worker) deliverUpdate(ctx context.Context, d delivery, thread *store.Th
 	if thread == nil {
 		log.Info("no thread mapping, skipping", "cause", metrics.CauseNoMapping)
 		w.settle(ctx, job, store.Skipped(metrics.CauseNoMapping))
-		w.metrics.Skipped.WithLabelValues(metrics.CauseNoMapping).Inc()
+		w.metrics.CountSkipped(metrics.CauseNoMapping, d.sink)
 		return
 	}
 	if !thread.Open {
 		log.Info("thread closed, skipping", "cause", metrics.CauseThreadClosed)
 		w.settle(ctx, job, store.Skipped(metrics.CauseThreadClosed))
-		w.metrics.Skipped.WithLabelValues(metrics.CauseThreadClosed).Inc()
+		w.metrics.CountSkipped(metrics.CauseThreadClosed, d.sink)
 		return
 	}
 
@@ -343,14 +351,14 @@ func (w *Worker) deliverUpdate(ctx context.Context, d delivery, thread *store.Th
 		if err != nil {
 			log.Error("notice render failed, parking", "notice", ev.Plan.Notice, "err", err)
 			w.settle(ctx, job, store.Parked("render_failed", job.Attempts+1, err.Error()))
-			w.metrics.Parked.WithLabelValues("render_failed").Inc()
+			w.metrics.CountParked("render_failed", d.sink)
 			return
 		}
 		if _, err := w.post(ctx, d, thread.ChannelID, message, thread.RootPostID); err != nil {
 			if w.parkIfRootGone(ctx, d, err) {
 				return
 			}
-			w.deferOrFail(ctx, job, err, log)
+			w.deferOrFail(ctx, d, err)
 			return
 		}
 		if err := w.store.MarkNoticePosted(ctx, job.ID, w.now()); err != nil {
@@ -380,7 +388,7 @@ func (w *Worker) deliverUpdate(ctx context.Context, d delivery, thread *store.Th
 			// would rewrite a good root with an empty one. Skip the refresh.
 			log.Warn("board state missing; skipping root refresh")
 		default:
-			w.deferOrFail(ctx, job, err, log)
+			w.deferOrFail(ctx, d, err)
 			return
 		}
 	}
@@ -426,7 +434,7 @@ func (w *Worker) refreshRoot(ctx context.Context, d delivery, thread *store.Thre
 	if err != nil {
 		log.Error("root render failed, parking", "err", err)
 		w.settle(ctx, job, store.Parked("render_failed", job.Attempts+1, err.Error()))
-		w.metrics.Parked.WithLabelValues("render_failed").Inc()
+		w.metrics.CountParked("render_failed", d.sink)
 		return errSettledHere
 	}
 	if err := w.updatePost(ctx, d, thread.RootPostID, message); err != nil {
@@ -459,7 +467,7 @@ func (w *Worker) parkIfRootGone(ctx context.Context, d delivery, causeErr error)
 		return true
 	}
 	w.settle(ctx, job, store.Parked(metrics.CauseThreadGone, job.Attempts+1, causeErr.Error()))
-	w.metrics.Parked.WithLabelValues(metrics.CauseThreadGone).Inc()
+	w.metrics.CountParked(metrics.CauseThreadGone, d.sink)
 	return true
 }
 
@@ -487,15 +495,12 @@ func headerFromEvent(ev *event.Event) *store.State {
 // post performs one create attempt at the sink's platform, with metrics.
 func (w *Worker) post(ctx context.Context, d delivery, channelID, message, rootID string) (string, error) {
 	start := time.Now()
-	defer func() { w.metrics.MMDuration.Observe(time.Since(start).Seconds()) }()
-
 	postID, err := d.poster.Post(ctx, channelID, message, rootID)
+	w.recordAttempt(ctx, d, start, err)
 	if err != nil {
-		w.recordAttemptOutcome(err)
 		return "", err
 	}
-	w.metrics.MMAttempts.WithLabelValues(metrics.OutcomeSent).Inc()
-	w.metrics.Posted.Inc()
+	w.metrics.CountPosted(d.sink)
 	return postID, nil
 }
 
@@ -503,25 +508,47 @@ func (w *Worker) post(ctx context.Context, d delivery, channelID, message, rootI
 // metrics.
 func (w *Worker) updatePost(ctx context.Context, d delivery, postID, message string) error {
 	start := time.Now()
-	defer func() { w.metrics.MMDuration.Observe(time.Since(start).Seconds()) }()
+	err := d.poster.Update(ctx, postID, message)
+	w.recordAttempt(ctx, d, start, err)
+	return err
+}
 
-	if err := d.poster.Update(ctx, postID, message); err != nil {
-		w.recordAttemptOutcome(err)
-		return err
+// recordAttempt counts an attempt at the sink's platform that started at
+// start, and shows its outcome in the sink's health (SYSREQ-064).
+func (w *Worker) recordAttempt(ctx context.Context, d delivery, start time.Time, err error) {
+	outcome := attemptOutcome(err)
+	w.metrics.CountAttempt(outcome, d.sink, time.Since(start))
+	w.recordHealth(ctx, d, outcome, err)
+}
+
+// recordHealth shows an attempt's outcome in the sink's health. A thread
+// whose root is gone says nothing about the sink. Health is no reason to
+// hold a delivery back, so a failure to record it is only logged.
+func (w *Worker) recordHealth(ctx context.Context, d delivery, outcome string, err error) {
+	var recordErr error
+	switch outcome {
+	case metrics.OutcomeSent:
+		recordErr = w.store.RecordSinkSuccess(ctx, d.job.SinkID, w.now())
+	case metrics.OutcomeThreadGone:
+		return
+	default:
+		recordErr = w.store.RecordSinkFailure(ctx, d.job.SinkID, w.now(), err.Error())
 	}
-	w.metrics.MMAttempts.WithLabelValues(metrics.OutcomeSent).Inc()
-	return nil
+	if recordErr != nil {
+		d.log.Warn("recording the attempt in the sink's health failed", "err", recordErr)
+	}
 }
 
 // deferOrFail schedules the next attempt or parks on budget exhaustion
 // (SYSREQ-016/018). A rate limit's Reset instant outranks the backoff ladder
 // when it is later.
-func (w *Worker) deferOrFail(ctx context.Context, job *store.Job, causeErr error, log *slog.Logger) {
+func (w *Worker) deferOrFail(ctx context.Context, d delivery, causeErr error) {
+	job, log := d.job, d.log
 	attempts := job.Attempts + 1
 	if attempts >= maxAttempts {
 		log.Warn("attempt budget exhausted, parking", "attempts", attempts, "err", causeErr)
 		w.settle(ctx, job, store.Parked(metrics.CauseBudgetExched, attempts, causeErr.Error()))
-		w.metrics.Parked.WithLabelValues(metrics.CauseBudgetExched).Inc()
+		w.metrics.CountParked(metrics.CauseBudgetExched, d.sink)
 		return
 	}
 
@@ -534,17 +561,20 @@ func (w *Worker) deferOrFail(ctx context.Context, job *store.Job, causeErr error
 	w.settle(ctx, job, store.Retried(attempts, next, causeErr.Error()))
 }
 
-// recordAttemptOutcome buckets the error kind for the attempts counter.
-func (w *Worker) recordAttemptOutcome(err error) {
+// attemptOutcome buckets an attempt's error for the attempts counter. No
+// error means the platform accepted the attempt.
+func attemptOutcome(err error) string {
 	switch {
+	case err == nil:
+		return metrics.OutcomeSent
 	case errors.As(err, new(*mattermost.RateLimitedError)):
-		w.metrics.MMAttempts.WithLabelValues(metrics.OutcomeRateLimited).Inc()
+		return metrics.OutcomeRateLimited
 	case errors.As(err, new(*mattermost.ThreadGoneError)):
-		w.metrics.MMAttempts.WithLabelValues(metrics.OutcomeThreadGone).Inc()
+		return metrics.OutcomeThreadGone
 	case errors.As(err, new(*mattermost.TransportError)):
-		w.metrics.MMAttempts.WithLabelValues(metrics.OutcomeTransport).Inc()
+		return metrics.OutcomeTransport
 	default:
-		w.metrics.MMAttempts.WithLabelValues(metrics.OutcomeRetryable).Inc()
+		return metrics.OutcomeRetryable
 	}
 }
 

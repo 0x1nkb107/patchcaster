@@ -46,6 +46,13 @@ type Connection struct {
 	Version    int64
 }
 
+type ConnectionHealth struct {
+	ConnectionID    int64
+	LastDeliveryAt  sql.NullTime
+	LastRejectionAt sql.NullTime
+	LastRejection   sql.NullString
+}
+
 type InstanceKeyCheck struct {
 	ID       int16
 	Sealed   []byte
@@ -176,6 +183,13 @@ type Sink struct {
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 	Version      int64
+}
+
+type SinkHealth struct {
+	SinkID        int64
+	LastSuccessAt sql.NullTime
+	LastFailureAt sql.NullTime
+	LastError     sql.NullString
 }
 
 type Source struct {

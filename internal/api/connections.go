@@ -29,9 +29,13 @@ func (s *Service) ListConnections(ctx context.Context, params v1gen.ListConnecti
 		return nil, err
 	}
 	connections, next := pageOf(connections, limit, func(c store.Connection) int64 { return c.ID })
+	health, err := s.connectionHealth(ctx, connections)
+	if err != nil {
+		return nil, err
+	}
 	items := make([]v1gen.Connection, 0, len(connections))
 	for i := range connections {
-		items = append(items, s.connectionOf(&connections[i]))
+		items = append(items, s.connectionOf(&connections[i], health[connections[i].ID]))
 	}
 	return &v1gen.ConnectionPage{Items: items, NextCursor: next}, nil
 }
@@ -76,7 +80,11 @@ func (s *Service) CreateConnection(ctx context.Context, req *v1gen.ConnectionReq
 	if err != nil {
 		return nil, storeProblem(err)
 	}
-	connection := s.connectionOf(created)
+	health, err := s.connectionHealth(ctx, []store.Connection{*created})
+	if err != nil {
+		return nil, err
+	}
+	connection := s.connectionOf(created, health[created.ID])
 	return &connection, nil
 }
 
@@ -90,7 +98,7 @@ func (s *Service) GetConnection(ctx context.Context, params v1gen.GetConnectionP
 	if err != nil {
 		return nil, storeProblem(err)
 	}
-	return s.connectionHeaders(connection), nil
+	return s.connectionHeaders(ctx, connection)
 }
 
 // UpdateConnection changes a connection's name, base URL or credential, for
@@ -132,7 +140,7 @@ func (s *Service) UpdateConnection(ctx context.Context, req *v1gen.ConnectionUpd
 	if err != nil {
 		return nil, storeProblem(err)
 	}
-	return s.connectionHeaders(updated), nil
+	return s.connectionHeaders(ctx, updated)
 }
 
 // DeleteConnection removes a connection and its signing tokens, for
@@ -296,7 +304,7 @@ func (s *Service) webhookURL(id int64) string {
 	return s.publicURL.JoinPath("webhooks", strconv.FormatInt(id, 10)).String()
 }
 
-func (s *Service) connectionOf(c *store.Connection) v1gen.Connection {
+func (s *Service) connectionOf(c *store.Connection, health v1gen.ConnectionHealth) v1gen.Connection {
 	connection := v1gen.Connection{
 		ID:            c.ID,
 		Kind:          v1gen.ConnectionKind(c.Kind),
@@ -304,6 +312,7 @@ func (s *Service) connectionOf(c *store.Connection) v1gen.Connection {
 		BaseURL:       c.BaseURL,
 		Account:       c.Account,
 		HasCredential: c.Credential != nil,
+		Health:        health,
 		Etag:          etagOf(c.Version),
 	}
 	if platform.Kind(c.Kind).IsForge() {
@@ -312,11 +321,17 @@ func (s *Service) connectionOf(c *store.Connection) v1gen.Connection {
 	return connection
 }
 
-func (s *Service) connectionHeaders(c *store.Connection) *v1gen.ConnectionHeaders {
+// connectionHeaders renders one connection with its health. The ETag
+// covers the configuration alone, so health never fails a change.
+func (s *Service) connectionHeaders(ctx context.Context, c *store.Connection) (*v1gen.ConnectionHeaders, error) {
+	health, err := s.connectionHealth(ctx, []store.Connection{*c})
+	if err != nil {
+		return nil, err
+	}
 	return &v1gen.ConnectionHeaders{
 		ETag:     v1gen.NewOptString(etagOf(c.Version)),
-		Response: s.connectionOf(c),
-	}
+		Response: s.connectionOf(c, health[c.ID]),
+	}, nil
 }
 
 func signingTokenOf(t store.SigningToken) v1gen.SigningToken {

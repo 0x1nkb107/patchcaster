@@ -144,6 +144,39 @@ export const ConnectionKind = {
   mattermost: 'mattermost',
 } as const;
 
+/**
+ * Forge only. Why the last rejected delivery was rejected.
+ */
+export type ConnectionHealthLastRejection = typeof ConnectionHealthLastRejection[keyof typeof ConnectionHealthLastRejection];
+
+
+export const ConnectionHealthLastRejection = {
+  signature: 'signature',
+  parse: 'parse',
+} as const;
+
+/**
+ * How the connection works. A forge connection reports the deliveries it sends, a chat connection the messages of all its sinks. Health changes with every delivery and is not part of the connection's version.
+ */
+export interface ConnectionHealth {
+  /** Forge only. When an authentic delivery last arrived. Absent before the first. */
+  last_delivery_at?: string;
+  /** Forge only. When a delivery was last rejected. Absent before the first rejection. */
+  last_rejection_at?: string;
+  /** Forge only. Why the last rejected delivery was rejected. */
+  last_rejection?: ConnectionHealthLastRejection;
+  /** Chat only. Messages queued for the connection's sinks and not yet delivered. */
+  waiting_messages?: number;
+  /** Chat only. When the oldest waiting message was queued. Absent when none waits. */
+  oldest_waiting_since?: string;
+  /** Chat only. When the platform last accepted a message for any of the sinks. */
+  last_success_at?: string;
+  /** Chat only. When an attempt at the platform last failed, for any of the sinks. */
+  last_failure_at?: string;
+  /** Chat only. Why that attempt failed. */
+  last_error?: string;
+}
+
 export interface Connection {
   id: number;
   kind: ConnectionKind;
@@ -154,6 +187,7 @@ export interface Connection {
   has_credential: boolean;
   /** Where a forge sends this connection's webhooks. Absent for a chat connection. */
   webhook_url?: string;
+  health: ConnectionHealth;
   /** The connection's current version, for If-Match on a change. */
   etag: string;
 }
@@ -318,6 +352,22 @@ export interface SourceUpdate {
   scope: SourceScope;
 }
 
+/**
+ * How messages reach the sink. Health changes with every delivery and is not part of the sink's version.
+ */
+export interface SinkHealth {
+  /** Messages queued for the sink and not yet delivered. */
+  waiting_messages: number;
+  /** When the oldest waiting message was queued. Absent when none waits. */
+  oldest_waiting_since?: string;
+  /** When the platform last accepted a message for the sink. Absent before the first. */
+  last_success_at?: string;
+  /** When an attempt at the platform last failed. Absent before the first failure. */
+  last_failure_at?: string;
+  /** Why that attempt failed, as the platform or the network answered. */
+  last_error?: string;
+}
+
 export interface Sink {
   id: number;
   connection_id: number;
@@ -327,6 +377,7 @@ export interface Sink {
   channel_name: string;
   /** The ids of the teams that own the sink. */
   teams: number[];
+  health: SinkHealth;
   /** The sink's current version, for If-Match on a change. */
   etag: string;
 }

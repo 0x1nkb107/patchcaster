@@ -1,0 +1,3 @@
+kind: Breaking
+body: Label the delivery metrics by connection and sink, with their ids in the labels connection and sink. Sum over the new labels where a dashboard or alert expects one series per metric.
+time: 2026-10-18T13:33:21.456797155+02:00

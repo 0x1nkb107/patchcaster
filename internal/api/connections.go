@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strconv"
 
 	"github.com/patchcaster-app/patchcaster/internal/api/v1gen"
 	"github.com/patchcaster-app/patchcaster/internal/ingest"
@@ -139,6 +138,11 @@ func (s *Service) UpdateConnection(ctx context.Context, req *v1gen.ConnectionUpd
 	}, s.now())
 	if err != nil {
 		return nil, storeProblem(err)
+	}
+	// A new or removed credential, or a new base URL, changes which hooks
+	// PatchCaster can register (SYSREQ-044).
+	if platform.Kind(updated.Kind).IsForge() {
+		s.hooks.Poke(updated.ID)
 	}
 	return s.connectionHeaders(ctx, updated)
 }
@@ -301,7 +305,7 @@ func (s *Service) sealCredential(id int64, credential string, isNew bool) ([]byt
 // webhookURL is where a forge sends a connection's webhooks: below the
 // webhook listener's public address, by the connection's id.
 func (s *Service) webhookURL(id int64) string {
-	return s.publicURL.JoinPath("webhooks", strconv.FormatInt(id, 10)).String()
+	return ingest.EndpointURL(s.publicURL, id)
 }
 
 func (s *Service) connectionOf(c *store.Connection, health v1gen.ConnectionHealth) v1gen.Connection {

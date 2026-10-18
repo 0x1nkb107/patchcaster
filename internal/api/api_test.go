@@ -216,6 +216,23 @@ func (f *fakeStore) CreateSource(context.Context, store.Actor, store.Source, tim
 
 func (f *fakeStore) Source(context.Context, int64) (*store.Source, error) { return nil, errNotInTest }
 
+func (f *fakeStore) SourceScopes(context.Context, int64) ([]store.SourceScope, error) {
+	return nil, nil
+}
+
+func (f *fakeStore) ForgeHooks(context.Context, int64) ([]store.ForgeHook, error) {
+	return nil, nil
+}
+
+// fakeHooks records which connections the service asked to reconcile.
+type fakeHooks struct {
+	poked []int64
+}
+
+func (h *fakeHooks) Poke(connectionID int64) {
+	h.poked = append(h.poked, connectionID)
+}
+
 func (f *fakeStore) Sources(context.Context, int64, int64, int) ([]store.Source, error) {
 	return nil, errNotInTest
 }
@@ -314,6 +331,7 @@ type fixture struct {
 	store     *fakeStore
 	login     *fakeLogin
 	platforms *fakePlatforms
+	hooks     *fakeHooks
 	box       *seal.Box
 	sessions  *scs.SessionManager
 	svc       *Service
@@ -341,6 +359,7 @@ func newFixture(t *testing.T) *fixture {
 		},
 		login:     &fakeLogin{},
 		platforms: &fakePlatforms{},
+		hooks:     &fakeHooks{},
 		box:       seal.NewBox(key),
 		sessions:  auth.NewSessions(memstore.New(), false),
 	}
@@ -351,6 +370,7 @@ func newFixture(t *testing.T) *fixture {
 		Sessions:  f.sessions,
 		Login:     f.login,
 		Platforms: f.platforms,
+		Hooks:     f.hooks,
 		PublicURL: &url.URL{Scheme: "https", Host: "hooks.example.org"},
 		Log:       slog.New(slog.DiscardHandler),
 	})

@@ -16,6 +16,7 @@ import (
 	"github.com/patchcaster-app/patchcaster/internal/auth"
 	"github.com/patchcaster-app/patchcaster/internal/deliver"
 	"github.com/patchcaster-app/patchcaster/internal/graceful"
+	"github.com/patchcaster-app/patchcaster/internal/hooks"
 	"github.com/patchcaster-app/patchcaster/internal/ingest"
 	"github.com/patchcaster-app/patchcaster/internal/metrics"
 	"github.com/patchcaster-app/patchcaster/internal/ops"
@@ -193,6 +194,14 @@ func (c *ServeCmd) Run(ctx context.Context) error {
 		nil,
 	)
 
+	reconciler := hooks.NewReconciler(st, hooks.ForgeRegistrars{Box: box}, box, hooks.Config{
+		Interval: hookPassInterval,
+		Busy:     hookBusyDelay,
+		WebhookURL: func(connectionID int64) string {
+			return ingest.EndpointURL(publicURL, connectionID)
+		},
+	}, log, nil)
+
 	sessions := auth.NewSessions(st.Sessions(), interfaceURL.Scheme == "https")
 	login := auth.NewLogin(st, box, sessions, interfaceURL, log)
 	svc := api.NewService(api.Config{
@@ -202,6 +211,7 @@ func (c *ServeCmd) Run(ctx context.Context) error {
 		Sessions:  sessions,
 		Login:     login,
 		Platforms: platform.Checker{},
+		Hooks:     reconciler,
 		PublicURL: publicURL,
 		Log:       log,
 	})
@@ -243,6 +253,7 @@ func (c *ServeCmd) Run(ctx context.Context) error {
 			func(ctx context.Context) error { return pruneLoop(ctx, st, c.SeenRetention, log) },
 			func(ctx context.Context) error { return expireSessionsLoop(ctx, st, log) },
 			wakeup.Run,
+			reconciler.Run,
 		},
 		markReady:   probe.MarkReady,
 		drainBudget: c.DrainTimeout,
@@ -251,6 +262,14 @@ func (c *ServeCmd) Run(ctx context.Context) error {
 	log.Info("serving", "public", c.Addr, "internal", c.InternalAddr, "management", c.ManagementAddr)
 	return lc.run(ctx)
 }
+
+// The pace of hook registration (SYSREQ-044). A pass over every forge
+// connection retries failed registrations and follows a changed public
+// URL. A connection that another replica holds is tried again shortly.
+const (
+	hookPassInterval = 5 * time.Minute
+	hookBusyDelay    = 10 * time.Second
+)
 
 // pruneLoop keeps the dedupe table bounded: seen rows older than the
 // retention horizon no longer protect anything (SYSREQ-014).

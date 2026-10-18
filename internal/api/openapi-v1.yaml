@@ -1374,7 +1374,7 @@ components:
             "payments/api". Empty for the whole instance.
     Source:
       type: object
-      required: [id, connection_id, name, scope, teams, etag]
+      required: [id, connection_id, name, scope, teams, hook, etag]
       properties:
         id:
           type: integer
@@ -1392,9 +1392,36 @@ components:
           items:
             type: integer
             format: int64
+        hook:
+          $ref: "#/components/schemas/SourceHook"
         etag:
           type: string
           description: The source's current version, for If-Match on a change.
+    SourceHook:
+      type: object
+      description: >-
+        How the source's events reach PatchCaster. Where the connection has API access,
+        PatchCaster registers one hook for every scope no broader source covers. The hook
+        changes in the background and is not part of the source's version.
+      required: [state]
+      properties:
+        state:
+          type: string
+          enum: [registered, pending, failed, covered, manual]
+          description: >-
+            registered: the hook of the source's scope is registered. pending: it is still
+            to be registered. failed: the last attempt failed, see last_error. covered: the
+            hook of a broader source takes the events, see covered_by. manual: the connection
+            has no API access, so a hook is registered by hand at its webhook_url.
+        covered_by:
+          $ref: "#/components/schemas/SourceScope"
+        last_error:
+          type: string
+          description: Why the last attempt at the forge failed. Absent after a success.
+        registered_at:
+          type: string
+          format: date-time
+          description: When the forge registered the hook. Absent until then.
     SourcePage:
       type: object
       required: [items]

@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"slices"
 	"strconv"
 	"time"
@@ -59,6 +60,13 @@ type Handler struct {
 	Now     func() time.Time // injectable clock
 	Log     *slog.Logger
 	Metrics *metrics.Metrics
+}
+
+// EndpointURL is where a forge sends the webhooks of the connection with
+// connectionID: below the webhook listener's public address publicURL, by
+// the connection's id.
+func EndpointURL(publicURL *url.URL, connectionID int64) string {
+	return publicURL.JoinPath("webhooks", strconv.FormatInt(connectionID, 10)).String()
 }
 
 // Mux exposes the endpoint surface for the public listener: one endpoint

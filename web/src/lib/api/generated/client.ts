@@ -315,6 +315,33 @@ export interface SourceScope {
   path?: string;
 }
 
+/**
+ * registered: the hook of the source's scope is registered. pending: it is still to be registered. failed: the last attempt failed, see last_error. covered: the hook of a broader source takes the events, see covered_by. manual: the connection has no API access, so a hook is registered by hand at its webhook_url.
+ */
+export type SourceHookState = typeof SourceHookState[keyof typeof SourceHookState];
+
+
+export const SourceHookState = {
+  registered: 'registered',
+  pending: 'pending',
+  failed: 'failed',
+  covered: 'covered',
+  manual: 'manual',
+} as const;
+
+/**
+ * How the source's events reach PatchCaster. Where the connection has API access, PatchCaster registers one hook for every scope no broader source covers. The hook changes in the background and is not part of the source's version.
+ */
+export interface SourceHook {
+  /** registered: the hook of the source's scope is registered. pending: it is still to be registered. failed: the last attempt failed, see last_error. covered: the hook of a broader source takes the events, see covered_by. manual: the connection has no API access, so a hook is registered by hand at its webhook_url. */
+  state: SourceHookState;
+  covered_by?: SourceScope;
+  /** Why the last attempt at the forge failed. Absent after a success. */
+  last_error?: string;
+  /** When the forge registered the hook. Absent until then. */
+  registered_at?: string;
+}
+
 export interface Source {
   id: number;
   connection_id: number;
@@ -322,6 +349,7 @@ export interface Source {
   scope: SourceScope;
   /** The ids of the teams that own the source. */
   teams: number[];
+  hook: SourceHook;
   /** The source's current version, for If-Match on a change. */
   etag: string;
 }

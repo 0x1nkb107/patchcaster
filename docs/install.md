@@ -90,7 +90,7 @@ On startup PatchCaster connects to PostgreSQL, applies any pending migrations, t
 1. Run the [first setup](operations.md#first-setup) to connect the identity provider and become the first administrator.
 2. [Connect](operations.md#connections) GitLab and Mattermost.
 3. Set up a [team](operations.md#teams-and-routes) with a source, a sink and a route between them.
-4. [Add the GitLab webhook](integrations/gitlab.md) at the GitLab connection's `webhook_url`.
+4. Give the GitLab connection an access token, and PatchCaster registers the hooks itself. Without one, [add the GitLab webhook](integrations/gitlab.md) at the connection's `webhook_url`.
 
 Then open a merge request in a routed project. Its thread should appear in the routed channel.
 

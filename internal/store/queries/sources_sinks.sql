@@ -90,3 +90,11 @@ WHERE s.connection_id = sqlc.arg(connection_id)
        OR (s.scope_kind = 'group' AND starts_with(sqlc.arg(repository)::text, s.scope_path || '/'))
        OR (s.scope_kind = 'repository' AND s.scope_path = sqlc.arg(repository)::text))
 ORDER BY r.sink_id, r.id;
+
+-- name: SourceScopesOfConnection :many
+-- SourceScopesOfConnection lists the scopes of every source of a forge
+-- connection, for the hooks they need.
+SELECT id, scope_kind, scope_path
+FROM sources
+WHERE connection_id = $1
+ORDER BY id;

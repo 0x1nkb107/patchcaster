@@ -27,9 +27,18 @@ Everyone who logs in later starts with the role User. To admit only some of the 
 A connection holds what PatchCaster acts with on one platform: GitLab as a forge, Mattermost as a chat platform. Administrators manage them at `/api/v1/connections`. A connection's credential is checked against its platform before it is stored, and the connection shows the account the credential acts as. A token the platform refuses is not stored, and the answer names the platform's reason. The credential is stored encrypted and is never shown again: send a new one to replace it.
 
 - A **Mattermost** connection needs the bot account's token.
-- A **GitLab** connection needs an access token only for what PatchCaster does through the GitLab API. Without one, register the hooks by hand at the connection's `webhook_url`. Then generate a signing token in each hook's form and add it to the connection under `/api/v1/connections/{id}/signing-tokens`, exactly as GitLab shows it. A connection holds several signing tokens at once, so a token rotates without downtime: add the new one, switch the hook over, then remove the old one.
+- A **GitLab** connection with an access token gets its hooks from PatchCaster: see [registered hooks](#registered-hooks). Without a token, register the hooks by hand at the connection's `webhook_url`. Then generate a signing token in each hook's form and add it to the connection under `/api/v1/connections/{id}/signing-tokens`, exactly as GitLab shows it. A connection holds several signing tokens at once, so a token rotates without downtime: add the new one, switch the hook over, then remove the old one.
 
-A connection that sources or sinks use cannot be removed. A changed credential or signing token applies to the next delivery, without a restart.
+A connection that sources or sinks use cannot be removed, and neither can one whose registered hooks are still being removed. A changed credential or signing token applies to the next delivery, without a restart.
+
+### Registered hooks
+
+With an access token, PatchCaster registers the hooks a GitLab connection's sources need, in the background, right after a source or the connection changes. It registers one hook for every scope that no broader source covers: a project hook for a repository, a group hook for a group, and a system hook for the whole instance. A broader source replaces the narrower hooks it covers, and removing it brings them back. Each hook gets a signing token that PatchCaster generates, adds to the connection and removes again with the hook.
+
+- GitLab's system hooks deliver merge request and push events only. With an instance source, the narrower sources keep hooks for comments and pipelines. Repositories that only the instance source reaches get no comments or pipelines.
+- The token needs the Maintainer role in each repository, the Owner role in each group, and an administrator for the instance. Group hooks also need GitLab Premium or Ultimate.
+- A hook GitLab refuses is tried again every five minutes. Each source shows in `hook` how its events arrive: `registered`, `pending`, `failed` with GitLab's answer, `covered` with the broader scope, or `manual` without a token.
+- PatchCaster names its hooks "PatchCaster". Hooks registered by hand stay as they are, so do not register one by hand where PatchCaster registers one too: every event would arrive twice.
 
 ## Teams and routes
 

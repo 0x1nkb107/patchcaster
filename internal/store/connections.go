@@ -228,7 +228,8 @@ func (p *Postgres) UpdateConnection(ctx context.Context, actor Actor, c Connecti
 }
 
 // DeleteConnection removes a connection at the version the caller read,
-// with its signing tokens. A connection that sources or sinks use cannot go.
+// with its signing tokens. A connection that sources or sinks use cannot
+// go, and neither can one whose registered hooks remain.
 func (p *Postgres) DeleteConnection(ctx context.Context, actor Actor, id, version int64, now time.Time) error {
 	return p.inTx(ctx, func(q *sqlcgen.Queries) error {
 		before, err := readConnection(ctx, q, id)
@@ -330,8 +331,10 @@ func (p *Postgres) RemoveSigningToken(ctx context.Context, actor Actor, connecti
 		if err != nil {
 			return fmt.Errorf("read signing token %d: %w", tokenID, err)
 		}
+		// The token of a hook PatchCaster registered stays until the hook
+		// is gone, so that the hook's deliveries keep verifying.
 		if _, err := q.SigningTokenRemove(ctx, sqlcgen.SigningTokenRemoveParams{ID: tokenID, ConnectionID: connectionID}); err != nil {
-			return fmt.Errorf("remove signing token %d: %w", tokenID, err)
+			return referenceProblem(fmt.Errorf("remove signing token %d: %w", tokenID, err), nil)
 		}
 		return audit(ctx, q, actor, now, change{
 			action:     "signing_token.remove",

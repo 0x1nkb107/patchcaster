@@ -27,7 +27,7 @@ pushes, merge and close.
 1. [Create a Mattermost bot account](docs/integrations/mattermost.md) and add it to every channel it should post to.
 2. [Install](docs/install.md) PatchCaster next to a PostgreSQL 18 database, and run the [first setup](docs/operations.md#first-setup) to connect your identity provider.
 3. [Connect GitLab and Mattermost](docs/operations.md#connections), and set up the [teams and routes](docs/operations.md#teams-and-routes) that send each project's merge requests to its channels.
-4. [Add the GitLab webhook](docs/integrations/gitlab.md) at the GitLab connection's address, and enable its triggers.
+4. Give the GitLab connection an access token, and PatchCaster registers the hooks itself. Without one, [add the GitLab webhook](docs/integrations/gitlab.md) at the connection's address and enable its triggers.
 
 The [local demo](demo/README.md) does not work with the stored configuration yet.
 

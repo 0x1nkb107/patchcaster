@@ -556,6 +556,15 @@ export const ListSourcesResponse = zod.object({
   "path": zod.string().optional().describe('The group\'s or the repository\'s full path, such as "payments" or "payments/api". Empty for the whole instance.')
 }),
   "teams": zod.array(zod.int()).describe('The ids of the teams that own the source.'),
+  "hook": zod.object({
+  "state": zod.enum(['registered', 'pending', 'failed', 'covered', 'manual']).describe('registered: the hook of the source\'s scope is registered. pending: it is still to be registered. failed: the last attempt failed, see last_error. covered: the hook of a broader source takes the events, see covered_by. manual: the connection has no API access, so a hook is registered by hand at its webhook_url.'),
+  "covered_by": zod.object({
+  "kind": zod.enum(['instance', 'group', 'repository']).describe('The whole forge instance, one group or organization with everything below it, or one repository.'),
+  "path": zod.string().optional().describe('The group\'s or the repository\'s full path, such as "payments" or "payments/api". Empty for the whole instance.')
+}).optional(),
+  "last_error": zod.string().optional().describe('Why the last attempt at the forge failed. Absent after a success.'),
+  "registered_at": zod.iso.datetime({"offset":true}).optional().describe('When the forge registered the hook. Absent until then.')
+}).describe('How the source\'s events reach PatchCaster. Where the connection has API access, PatchCaster registers one hook for every scope no broader source covers. The hook changes in the background and is not part of the source\'s version.'),
   "etag": zod.string().describe('The source\'s current version, for If-Match on a change.')
 })),
   "next_cursor": zod.string().optional().describe('Absent on the last page.')
@@ -588,6 +597,15 @@ export const CreateSourceResponse = zod.object({
   "path": zod.string().optional().describe('The group\'s or the repository\'s full path, such as "payments" or "payments/api". Empty for the whole instance.')
 }),
   "teams": zod.array(zod.int()).describe('The ids of the teams that own the source.'),
+  "hook": zod.object({
+  "state": zod.enum(['registered', 'pending', 'failed', 'covered', 'manual']).describe('registered: the hook of the source\'s scope is registered. pending: it is still to be registered. failed: the last attempt failed, see last_error. covered: the hook of a broader source takes the events, see covered_by. manual: the connection has no API access, so a hook is registered by hand at its webhook_url.'),
+  "covered_by": zod.object({
+  "kind": zod.enum(['instance', 'group', 'repository']).describe('The whole forge instance, one group or organization with everything below it, or one repository.'),
+  "path": zod.string().optional().describe('The group\'s or the repository\'s full path, such as "payments" or "payments/api". Empty for the whole instance.')
+}).optional(),
+  "last_error": zod.string().optional().describe('Why the last attempt at the forge failed. Absent after a success.'),
+  "registered_at": zod.iso.datetime({"offset":true}).optional().describe('When the forge registered the hook. Absent until then.')
+}).describe('How the source\'s events reach PatchCaster. Where the connection has API access, PatchCaster registers one hook for every scope no broader source covers. The hook changes in the background and is not part of the source\'s version.'),
   "etag": zod.string().describe('The source\'s current version, for If-Match on a change.')
 })
 
@@ -608,6 +626,15 @@ export const GetSourceResponse = zod.object({
   "path": zod.string().optional().describe('The group\'s or the repository\'s full path, such as "payments" or "payments/api". Empty for the whole instance.')
 }),
   "teams": zod.array(zod.int()).describe('The ids of the teams that own the source.'),
+  "hook": zod.object({
+  "state": zod.enum(['registered', 'pending', 'failed', 'covered', 'manual']).describe('registered: the hook of the source\'s scope is registered. pending: it is still to be registered. failed: the last attempt failed, see last_error. covered: the hook of a broader source takes the events, see covered_by. manual: the connection has no API access, so a hook is registered by hand at its webhook_url.'),
+  "covered_by": zod.object({
+  "kind": zod.enum(['instance', 'group', 'repository']).describe('The whole forge instance, one group or organization with everything below it, or one repository.'),
+  "path": zod.string().optional().describe('The group\'s or the repository\'s full path, such as "payments" or "payments/api". Empty for the whole instance.')
+}).optional(),
+  "last_error": zod.string().optional().describe('Why the last attempt at the forge failed. Absent after a success.'),
+  "registered_at": zod.iso.datetime({"offset":true}).optional().describe('When the forge registered the hook. Absent until then.')
+}).describe('How the source\'s events reach PatchCaster. Where the connection has API access, PatchCaster registers one hook for every scope no broader source covers. The hook changes in the background and is not part of the source\'s version.'),
   "etag": zod.string().describe('The source\'s current version, for If-Match on a change.')
 })
 
@@ -645,6 +672,15 @@ export const UpdateSourceResponse = zod.object({
   "path": zod.string().optional().describe('The group\'s or the repository\'s full path, such as "payments" or "payments/api". Empty for the whole instance.')
 }),
   "teams": zod.array(zod.int()).describe('The ids of the teams that own the source.'),
+  "hook": zod.object({
+  "state": zod.enum(['registered', 'pending', 'failed', 'covered', 'manual']).describe('registered: the hook of the source\'s scope is registered. pending: it is still to be registered. failed: the last attempt failed, see last_error. covered: the hook of a broader source takes the events, see covered_by. manual: the connection has no API access, so a hook is registered by hand at its webhook_url.'),
+  "covered_by": zod.object({
+  "kind": zod.enum(['instance', 'group', 'repository']).describe('The whole forge instance, one group or organization with everything below it, or one repository.'),
+  "path": zod.string().optional().describe('The group\'s or the repository\'s full path, such as "payments" or "payments/api". Empty for the whole instance.')
+}).optional(),
+  "last_error": zod.string().optional().describe('Why the last attempt at the forge failed. Absent after a success.'),
+  "registered_at": zod.iso.datetime({"offset":true}).optional().describe('When the forge registered the hook. Absent until then.')
+}).describe('How the source\'s events reach PatchCaster. Where the connection has API access, PatchCaster registers one hook for every scope no broader source covers. The hook changes in the background and is not part of the source\'s version.'),
   "etag": zod.string().describe('The source\'s current version, for If-Match on a change.')
 })
 

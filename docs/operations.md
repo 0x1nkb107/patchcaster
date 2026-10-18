@@ -7,7 +7,7 @@ shuts down and upgrades, and what its delivery guarantees mean in practice.
 
 The management listener (`--management-addr`, `:8081` by default) serves the web interface at the interface URL, the management API under `/api/v1/`, and the API's OpenAPI description at `GET /api/v1/openapi.yaml`. It answers nothing else, and the webhook and internal listeners never answer interface or API paths, so each listener can be exposed differently: the webhook listener to the forges, the management listener only to the organization's people and automation. Errors are RFC 9457 problem details (`application/problem+json`). A validation error lists each field at fault by its path, such as `allowed_groups[0]`. Lists page with `limit` and the `next_cursor` of the previous page. Every change sends the `ETag` of what it read in `If-Match`, and fails with `412 Precondition Failed` when the resource changed meanwhile.
 
-The web interface covers the first setup, the login and API tokens so far. Everything else goes through the API, which the interface uses too. The interface runs only its own scripts, and no other site may show it in a frame. Every page links to the licences of the third-party packages it contains.
+The web interface covers the first setup, the login, API tokens and the [health](#connection-and-sink-health) of connections and sinks so far. Everything else goes through the API, which the interface uses too. The interface runs only its own scripts, and no other site may show it in a frame. Every page links to the licences of the third-party packages it contains.
 
 The management listener also serves the login. People log in through the organization's OpenID Connect provider, and PatchCaster keeps no passwords. A session ends after one hour without activity, twelve hours after login at the latest, or at logout (`DELETE /api/v1/session`). The API refuses any change that a browser sends from another site.
 
@@ -71,22 +71,31 @@ The internal listener (`--internal-addr`, `:9090` by default) serves:
 | `GET /readyz` | readiness; store-backed, flips to 503 at SIGTERM |
 | `GET /metrics` | Prometheus metrics, all prefixed `patchcaster_` |
 
-The metrics follow a delivery from ingest to post:
+The metrics follow a delivery from ingest to post. They name connections and sinks by their ids in the labels `connection` and `sink`, as the management API shows them. A delivery to an endpoint that names no connection counts with an empty `connection`.
 
 | Metric | Labels | Counts |
 | --- | --- | --- |
-| `deliveries_received_total` | | webhook deliveries received |
-| `deliveries_rejected_total` | `cause`: `endpoint`, `signature`, `parse` | deliveries refused with 404/401/400 |
-| `deliveries_suppressed_total` | | duplicates suppressed by webhook id |
-| `deliveries_discarded_total` | `cause`: `unprocessed_kind`, `not_allowlisted`, `unlinked`, `expired`, `unrouted` | authentic deliveries dropped without a post |
-| `state_applied_total` | `kind` | accepted deliveries applied to a status board |
+| `deliveries_received_total` | `connection` | webhook deliveries received |
+| `deliveries_rejected_total` | `cause`: `endpoint`, `signature`, `parse`; `connection` | deliveries refused with 404/401/400 |
+| `deliveries_suppressed_total` | `connection` | duplicates suppressed by webhook id |
+| `deliveries_discarded_total` | `cause`: `unprocessed_kind`, `not_allowlisted`, `unlinked`, `expired`, `unrouted`; `connection` | authentic deliveries dropped without a post |
+| `state_applied_total` | `kind`, `connection` | accepted deliveries applied to a status board |
 | `notices_total` | `notice` | thread replies posted, by notice kind |
-| `push_attribution_misses_total` | | pushes that matched no open merge request |
-| `messages_posted_total` | | messages Mattermost accepted |
-| `messages_skipped_total` | `cause`: `no_mapping`, `thread_closed`, `duplicate_open`, `sink_gone` | queued messages deliberately not posted |
-| `messages_parked_total` | `cause`: `attempt_budget`, `thread_gone`, `render_failed`, `payload_undecodable` | messages given up on (see below) |
-| `mattermost_attempts_total` | `outcome`: `sent`, `retryable`, `ratelimited`, `thread_gone`, `transport` | Mattermost API attempts |
-| `mattermost_attempt_duration_seconds` | | histogram of attempt durations |
+| `push_attribution_misses_total` | `connection` | pushes that matched no open merge request |
+| `messages_posted_total` | `connection`, `sink` | messages Mattermost accepted |
+| `messages_skipped_total` | `cause`: `no_mapping`, `thread_closed`, `duplicate_open`, `sink_gone`; `connection`, `sink` | queued messages deliberately not posted |
+| `messages_parked_total` | `cause`: `attempt_budget`, `thread_gone`, `render_failed`, `payload_undecodable`; `connection`, `sink` | messages given up on (see below) |
+| `mattermost_attempts_total` | `outcome`: `sent`, `retryable`, `ratelimited`, `thread_gone`, `transport`; `connection`, `sink` | Mattermost API attempts |
+| `mattermost_attempt_duration_seconds` | `connection` | histogram of attempt durations |
+
+Two gauges show what waits for each sink. Every replica reads them from the shared queue, so all replicas report the same values:
+
+| Metric | Labels | Shows |
+| --- | --- | --- |
+| `sink_waiting_messages` | `connection`, `sink` | messages queued for the sink and not yet delivered |
+| `sink_oldest_waiting_seconds` | `connection`, `sink` | the age of the oldest of them, 0 when none waits |
+
+A sink whose oldest message keeps ageing cannot deliver. The [health page](#connection-and-sink-health) says why.
 
 A rising `deliveries_discarded_total{cause="unprocessed_kind"}` usually means
 a GitLab trigger is enabled that PatchCaster does not use; a missing trigger
@@ -95,6 +104,16 @@ shows up as silence instead (see [GitLab triggers](integrations/gitlab.md#trigge
 `outbox_listener_up` is a gauge, not a count: 1 while new messages wake the
 delivery worker at once, 0 while the worker only polls (see
 [database connection](#database-connection)).
+
+## Connection and sink health
+
+The interface's health page shows how each connection and sink works, and so do their resources in the management API, under `health`. Administrators see every connection and sink, operators the sinks of their teams.
+
+- A **sink** shows its waiting messages and the oldest of them, when Mattermost last accepted a message for it, and when an attempt last failed, with Mattermost's answer or the network error. It is failing while its last attempt failed.
+- A **chat connection** sums up its sinks.
+- A **forge connection** shows when its last authentic delivery arrived, and when and why a delivery was last rejected. A rejected signature usually means that a hook signs with a token the connection does not hold.
+
+A connection or sink in trouble never changes readiness, so the instance stays in rotation and every other sink keeps delivering.
 
 ## Drain and shutdown
 

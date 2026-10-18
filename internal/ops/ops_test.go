@@ -59,7 +59,7 @@ func TestReadinessTracksStore(t *testing.T) {
 func TestMetricsEndpointExposesFunnel(t *testing.T) {
 	// arrange
 	m := metrics.New()
-	m.Received.Inc()
+	m.CountReceived(metrics.ConnectionOf(3))
 	srv := NewServer(stubPinger{}, m)
 
 	// act
@@ -68,5 +68,5 @@ func TestMetricsEndpointExposesFunnel(t *testing.T) {
 
 	// assert
 	require.Equal(t, http.StatusOK, rec.Code)
-	assert.Contains(t, rec.Body.String(), "patchcaster_deliveries_received_total 1")
+	assert.Contains(t, rec.Body.String(), `patchcaster_deliveries_received_total{connection="3"} 1`)
 }

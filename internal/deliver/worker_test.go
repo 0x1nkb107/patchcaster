@@ -96,6 +96,13 @@ type settleRec struct {
 	s     store.Settlement
 }
 
+// healthRec is an outcome the worker recorded in a sink's health.
+type healthRec struct {
+	sinkID int64
+	at     time.Time
+	reason string // empty for a success
+}
+
 type fakeStore struct {
 	jobs        []*store.Job
 	thread      *store.Thread
@@ -108,7 +115,9 @@ type fakeStore struct {
 	stateClosed []string
 	noticeFlags []int64
 	rootFlags   []int64
-	sinkGone    bool          // the sink was removed after the job was queued
+	sinkGone    bool // the sink was removed after the job was queued
+	health      []healthRec
+	errHealth   error
 	settledCh   chan struct{} // pinged on every settle when non-nil
 	idleCh      chan struct{} // pinged when a claim finds nothing, when non-nil
 }
@@ -186,6 +195,22 @@ func (f *fakeStore) MarkRootRefreshed(_ context.Context, jobID int64, _ time.Tim
 
 func (f *fakeStore) ReapLeases(context.Context, time.Time) error { return nil }
 
+func (f *fakeStore) RecordSinkSuccess(_ context.Context, sinkID int64, at time.Time) error {
+	if f.errHealth != nil {
+		return f.errHealth
+	}
+	f.health = append(f.health, healthRec{sinkID: sinkID, at: at})
+	return nil
+}
+
+func (f *fakeStore) RecordSinkFailure(_ context.Context, sinkID int64, at time.Time, reason string) error {
+	if f.errHealth != nil {
+		return f.errHealth
+	}
+	f.health = append(f.health, healthRec{sinkID: sinkID, at: at, reason: reason})
+	return nil
+}
+
 // --- harness -------------------------------------------------------------------
 
 func openJob(attempts int) *store.Job {
@@ -200,8 +225,25 @@ func openJobFor(attempts int, action string) *store.Job {
 	return queuedJob(1, attempts, "chan-dest", ev)
 }
 
+// The sink every test job goes to, its chat connection, and the labels
+// their metrics carry.
+const (
+	testSink      = 3
+	testChat      = 2
+	testSinkLabel = "3"
+	testChatLabel = "2"
+)
+
 func queuedJob(id int64, attempts int, dest string, ev *event.Event) *store.Job {
-	job := &store.Job{ID: id, MRRef: ev.MRRef, Action: ev.Action, DestChannel: dest, Attempts: attempts}
+	job := &store.Job{
+		ID:           id,
+		MRRef:        ev.MRRef,
+		Action:       ev.Action,
+		DestChannel:  dest,
+		Attempts:     attempts,
+		SinkID:       testSink,
+		ConnectionID: testChat,
+	}
 	b, err := json.Marshal(ev)
 	if err != nil {
 		panic(err)
@@ -246,7 +288,8 @@ func TestWorker_RootPostedOnceAndMapped(t *testing.T) {
 	assert.Equal(t, []string{"987|chan-dest|post-ok"}, h.fs.opened)
 	require.Len(t, h.fs.settles, 1)
 	assert.Equal(t, store.SettlementSent, h.fs.settles[0].s.Kind)
-	assert.Equal(t, 1.0, testutil.ToFloat64(h.m.Posted))
+	assert.Equal(t, 1.0, testutil.ToFloat64(h.m.Posted.WithLabelValues(testChatLabel, testSinkLabel)))
+	assert.Equal(t, 1.0, testutil.ToFloat64(h.m.MMAttempts.WithLabelValues(metrics.OutcomeSent, testChatLabel, testSinkLabel)))
 }
 
 func TestWorker_DuplicateRootSkips(t *testing.T) {
@@ -262,7 +305,7 @@ func TestWorker_DuplicateRootSkips(t *testing.T) {
 	require.Len(t, h.fs.settles, 1)
 	assert.Equal(t, store.SettlementSkipped, h.fs.settles[0].s.Kind)
 	assert.Equal(t, metrics.CauseDuplicateOpen, h.fs.settles[0].s.Reason)
-	assert.Equal(t, 1.0, testutil.ToFloat64(h.m.Skipped.WithLabelValues(metrics.CauseDuplicateOpen)))
+	assert.Equal(t, 1.0, testutil.ToFloat64(h.m.Skipped.WithLabelValues(metrics.CauseDuplicateOpen, testChatLabel, testSinkLabel)))
 }
 
 func TestWorker_ReplyUsesThreadChannelNotDestination(t *testing.T) {
@@ -328,7 +371,49 @@ func TestWorker_DeletedRootParksAndClosesForever(t *testing.T) {
 	assert.Equal(t, store.SettlementParked, h.fs.settles[0].s.Kind)
 	assert.Equal(t, metrics.CauseThreadGone, h.fs.settles[0].s.Reason)
 	assert.Equal(t, []string{"987"}, h.fs.closed, "mapping must stay closed afterwards")
-	assert.Equal(t, 1.0, testutil.ToFloat64(h.m.Parked.WithLabelValues(metrics.CauseThreadGone)))
+	assert.Equal(t, 1.0, testutil.ToFloat64(h.m.Parked.WithLabelValues(metrics.CauseThreadGone, testChatLabel, testSinkLabel)))
+	assert.Empty(t, h.fs.health, "a deleted root says nothing about the sink")
+}
+
+// --- sink health -----------------------------------------------------------------
+
+func TestWorker_ASuccessShowsInTheSinksHealth(t *testing.T) {
+	// arrange
+	h := newHarness(t)
+
+	// act
+	h.w.process(context.Background(), openJob(0))
+
+	// assert
+	assert.Equal(t, []healthRec{{sinkID: testSink, at: workerNow}}, h.fs.health)
+}
+
+func TestWorker_AFailureShowsInTheSinksHealth(t *testing.T) {
+	// arrange
+	h := newHarness(t)
+	h.fs.thread = &store.Thread{ChannelID: "c", RootPostID: "r", Open: true}
+	failure := &mattermost.APIError{Status: 500, Body: "boom"}
+	h.fp.results = []postResult{{err: failure}}
+
+	// act
+	h.w.process(context.Background(), noticeJob(2, 0, "chan-dest"))
+
+	// assert
+	assert.Equal(t, []healthRec{{sinkID: testSink, at: workerNow, reason: failure.Error()}}, h.fs.health)
+	assert.Equal(t, 1.0, testutil.ToFloat64(h.m.MMAttempts.WithLabelValues(metrics.OutcomeRetryable, testChatLabel, testSinkLabel)))
+}
+
+func TestWorker_HealthIsNoReasonToHoldADeliveryBack(t *testing.T) {
+	// arrange
+	h := newHarness(t)
+	h.fs.errHealth = errors.New("down")
+
+	// act
+	h.w.process(context.Background(), openJob(0))
+
+	// assert
+	require.Len(t, h.fs.settles, 1)
+	assert.Equal(t, store.SettlementSent, h.fs.settles[0].s.Kind)
 }
 
 // --- retry policy ----------------------------------------------------------------
@@ -392,7 +477,7 @@ func TestWorker_RateLimitResetOutranksBackoff(t *testing.T) {
 	s := h.fs.settles[0].s
 	require.Equal(t, store.SettlementRetried, s.Kind)
 	assert.True(t, s.Next.Equal(reset), "schedule must honor RateLimit-Reset when later (SYSREQ-018)")
-	assert.Equal(t, 1.0, testutil.ToFloat64(h.m.MMAttempts.WithLabelValues(metrics.OutcomeRateLimited)))
+	assert.Equal(t, 1.0, testutil.ToFloat64(h.m.MMAttempts.WithLabelValues(metrics.OutcomeRateLimited, testChatLabel, testSinkLabel)))
 }
 
 func TestWorker_BackoffOutranksNearReset(t *testing.T) {
@@ -477,7 +562,7 @@ func TestWorker_RunDeliversInClaimOrder(t *testing.T) {
 	require.Len(t, h.fp.calls, 2)
 	assert.Empty(t, h.fp.calls[0].rootID)
 	assert.Equal(t, "post-ok", h.fp.calls[1].rootID, "update rode the thread opened by the open event")
-	assert.Equal(t, 2.0, testutil.ToFloat64(h.m.Posted))
+	assert.Equal(t, 2.0, testutil.ToFloat64(h.m.Posted.WithLabelValues(testChatLabel, testSinkLabel)))
 }
 
 func TestWorker_RunDrainsBacklogWithoutWaitingForTicks(t *testing.T) {
@@ -864,7 +949,7 @@ func TestWorker_RemovedSinkSkips(t *testing.T) {
 			require.Len(t, h.fs.settles, 1)
 			assert.Equal(t, store.SettlementSkipped, h.fs.settles[0].s.Kind)
 			assert.Equal(t, metrics.CauseSinkGone, h.fs.settles[0].s.Reason)
-			assert.Equal(t, 1.0, testutil.ToFloat64(h.m.Skipped.WithLabelValues(metrics.CauseSinkGone)))
+			assert.Equal(t, 1.0, testutil.ToFloat64(h.m.Skipped.WithLabelValues(metrics.CauseSinkGone, testChatLabel, testSinkLabel)))
 		})
 	}
 }

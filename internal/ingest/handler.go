@@ -42,6 +42,8 @@ type Store interface {
 	MarkOutcome(ctx context.Context, webhookID, outcome string, now time.Time) error
 	Destinations(ctx context.Context, connectionID int64, repository string) ([]store.Destination, error)
 	Accept(ctx context.Context, ev *event.Event, deliveries []store.Delivery, now time.Time) (store.AcceptResult, error)
+	RecordForgeDelivery(ctx context.Context, connectionID int64, at time.Time) error
+	RecordForgeRejection(ctx context.Context, connectionID int64, at time.Time, cause string) error
 }
 
 // Keys opens the signing keys of a forge connection. Keyring is the real one.
@@ -72,37 +74,42 @@ func (h *Handler) Mux() http.Handler {
 // unavailable, or 200 with the delivery durably settled (accepted,
 // suppressed, or discarded).
 func (h *Handler) handle(w http.ResponseWriter, r *http.Request) {
-	h.Metrics.Received.Inc()
-
 	id := r.Header.Get("Webhook-Id")
 	ts := r.Header.Get("Webhook-Timestamp")
 	sig := r.Header.Get("Webhook-Signature")
 	log := h.Log.With("webhook_id", id)
 
+	// Until the endpoint names a known connection, the delivery counts
+	// under no connection, so that the labels stay bounded.
 	connectionID, keys, err := h.endpointKeys(r)
 	if errors.Is(err, ErrUnknownEndpoint) {
-		h.reject(w, log, metrics.CauseEndpoint, http.StatusNotFound, "no forge connection at this endpoint")
+		h.Metrics.CountReceived(metrics.NoConnection)
+		h.reject(w, log, metrics.NoConnection, metrics.CauseEndpoint, http.StatusNotFound, "no forge connection at this endpoint")
 		return
 	}
 	if err != nil {
+		h.Metrics.CountReceived(metrics.NoConnection)
 		log.Error("signing key lookup failed", "err", err)
 		http.Error(w, "store unavailable", http.StatusServiceUnavailable)
 		return
 	}
+	connection := metrics.ConnectionOf(connectionID)
+	h.Metrics.CountReceived(connection)
 	log = log.With("connection", connectionID)
 
 	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxBodyBytes))
 	if err != nil {
-		h.reject(w, log, metrics.CauseParse, http.StatusBadRequest, "read body")
+		h.rejectFrom(w, r, log, connectionID, metrics.CauseParse, http.StatusBadRequest, "read body")
 		return
 	}
 
 	// The identifier is part of the signed content, so a missing header fails
 	// verification by construction (SYSREQ-012).
 	if !Verify(keys, id, ts, body, sig) {
-		h.reject(w, log, metrics.CauseSignature, http.StatusUnauthorized, "signature verification")
+		h.rejectFrom(w, r, log, connectionID, metrics.CauseSignature, http.StatusUnauthorized, "signature verification")
 		return
 	}
+	h.recordDelivery(r, log, connectionID)
 
 	seen, err := h.Store.Seen(r.Context(), id)
 	if err != nil {
@@ -111,7 +118,7 @@ func (h *Handler) handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if seen {
-		h.Metrics.Suppressed.Inc()
+		h.Metrics.CountSuppressed(connection)
 		log.Info("duplicate delivery suppressed")
 		w.WriteHeader(http.StatusOK)
 		return
@@ -119,7 +126,7 @@ func (h *Handler) handle(w http.ResponseWriter, r *http.Request) {
 
 	ev, err := event.Parse(body)
 	if err != nil {
-		h.reject(w, log, metrics.CauseParse, http.StatusBadRequest, "parse payload")
+		h.rejectFrom(w, r, log, connectionID, metrics.CauseParse, http.StatusBadRequest, "parse payload")
 		return
 	}
 	ev.WebhookID = id
@@ -127,7 +134,7 @@ func (h *Handler) handle(w http.ResponseWriter, r *http.Request) {
 	log = log.With("project", ev.ProjectPath, "mr", ev.MRRef, "action", ev.Action)
 
 	if !ev.Processed() {
-		h.discard(w, r, log, id, metrics.CauseUnprocessed, "event kind not processed")
+		h.discard(w, r, log, connection, id, metrics.CauseUnprocessed, "event kind not processed")
 		return
 	}
 
@@ -137,17 +144,17 @@ func (h *Handler) handle(w http.ResponseWriter, r *http.Request) {
 	switch ev.Kind {
 	case event.KindMergeRequest:
 		if !acceptedActions[ev.Action] {
-			h.discard(w, r, log, id, metrics.CauseNotAllowlisted, "action not allowlisted")
+			h.discard(w, r, log, connection, id, metrics.CauseNotAllowlisted, "action not allowlisted")
 			return
 		}
 	case event.KindNote, event.KindPipeline:
 		if ev.MRRef == "" {
-			h.discard(w, r, log, id, metrics.CauseUnlinked, "delivery names no merge request")
+			h.discard(w, r, log, connection, id, metrics.CauseUnlinked, "delivery names no merge request")
 			return
 		}
 	case event.KindPush:
 		if ev.PushBranch == "" {
-			h.discard(w, r, log, id, metrics.CauseUnlinked, "push names no branch")
+			h.discard(w, r, log, connection, id, metrics.CauseUnlinked, "push names no branch")
 			return
 		}
 	}
@@ -155,7 +162,7 @@ func (h *Handler) handle(w http.ResponseWriter, r *http.Request) {
 	// Unparseable or absent timestamps leave When zero, which is older than
 	// any real cap: treated as expired per SYSREQ-013 acceptance criteria.
 	if h.Now().Add(-h.MaxAge).After(ev.When) {
-		h.discard(w, r, log, id, metrics.CauseExpired, "event older than freshness cap")
+		h.discard(w, r, log, connection, id, metrics.CauseExpired, "event older than freshness cap")
 		return
 	}
 
@@ -167,7 +174,7 @@ func (h *Handler) handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(deliveries) == 0 {
-		h.discard(w, r, log, id, metrics.CauseUnrouted, "no route for project")
+		h.discard(w, r, log, connection, id, metrics.CauseUnrouted, "no route for project")
 		return
 	}
 
@@ -180,14 +187,14 @@ func (h *Handler) handle(w http.ResponseWriter, r *http.Request) {
 	}
 	if !res.Accepted {
 		// A concurrent duplicate won the seen-insert race.
-		h.Metrics.Suppressed.Inc()
+		h.Metrics.CountSuppressed(connection)
 		log.Info("duplicate delivery suppressed at accept")
 		w.WriteHeader(http.StatusOK)
 		return
 	}
-	h.Metrics.StateApplied.WithLabelValues(ev.Kind).Inc()
+	h.Metrics.CountStateApplied(ev.Kind, connection)
 	if ev.Kind == event.KindPush && res.Attributed == 0 {
-		h.Metrics.PushAttrMiss.Inc()
+		h.Metrics.CountPushAttributionMiss(connection)
 	}
 	log.Info("delivery accepted", "kind", ev.Kind, "sinks", len(deliveries), "enqueued", res.Enqueued)
 	w.WriteHeader(http.StatusOK)
@@ -258,19 +265,37 @@ func mutedByAll(a, b []string) []string {
 // discard settles a verified delivery as seen-without-posting. The seen mark
 // and its reason must persist, otherwise GitLab retries would churn the same
 // verdict forever (SYSREQ-014).
-func (h *Handler) discard(w http.ResponseWriter, r *http.Request, log *slog.Logger, id, cause, msg string) {
+func (h *Handler) discard(w http.ResponseWriter, r *http.Request, log *slog.Logger, connection metrics.Connection, id, cause, msg string) {
 	if err := h.Store.MarkOutcome(r.Context(), id, cause, h.Now()); err != nil {
 		log.Error("marking discard outcome failed", "err", err, "cause", cause)
 		http.Error(w, "store unavailable", http.StatusServiceUnavailable)
 		return
 	}
-	h.Metrics.Discarded.WithLabelValues(cause).Inc()
+	h.Metrics.CountDiscarded(cause, connection)
 	log.Info("delivery discarded", "cause", cause, "detail", msg)
 	w.WriteHeader(http.StatusOK)
 }
 
-func (h *Handler) reject(w http.ResponseWriter, log *slog.Logger, cause string, status int, msg string) {
-	h.Metrics.Rejected.WithLabelValues(cause).Inc()
+func (h *Handler) reject(w http.ResponseWriter, log *slog.Logger, connection metrics.Connection, cause string, status int, msg string) {
+	h.Metrics.CountRejected(cause, connection)
 	log.Warn("delivery rejected", "cause", cause, "detail", msg)
 	http.Error(w, http.StatusText(status), status)
+}
+
+// rejectFrom rejects a delivery to a known forge connection, whose health
+// then shows the rejection (SYSREQ-064).
+func (h *Handler) rejectFrom(w http.ResponseWriter, r *http.Request, log *slog.Logger, connectionID int64, cause string, status int, msg string) {
+	if err := h.Store.RecordForgeRejection(r.Context(), connectionID, h.Now(), cause); err != nil {
+		log.Warn("recording the rejection in the connection's health failed", "err", err)
+	}
+	h.reject(w, log, metrics.ConnectionOf(connectionID), cause, status, msg)
+}
+
+// recordDelivery shows an authentic delivery in its connection's health
+// (SYSREQ-064). Health is no reason to refuse a delivery, so a failure is
+// only logged.
+func (h *Handler) recordDelivery(r *http.Request, log *slog.Logger, connectionID int64) {
+	if err := h.Store.RecordForgeDelivery(r.Context(), connectionID, h.Now()); err != nil {
+		log.Warn("recording the delivery in the connection's health failed", "err", err)
+	}
 }

@@ -6,7 +6,6 @@ description: "Inline verify, filter, and route inside the request handler; hand 
 satisfies:
   - "SYSREQ-001"
   - "SYSREQ-008"
-  - "SYSREQ-009"
   - "SYSREQ-010"
   - "SYSREQ-011"
   - "SYSREQ-012"
@@ -28,17 +27,19 @@ patterns). Middleware order is part of the design: body-size limit and raw-body 
 on headers alone — the check only; the seen-mark itself rides the enqueue transaction
 (SYSREQ-014) — then parse; the post-parse expiry cap (SYSREQ-013, event time
 lives in the signed body) precedes the action allowlist (SYSREQ-008), then routing
-(SYSREQ-009/010/011), then outbox enqueue — persisting the resolved destination with the
-row (SYSREQ-024) — then the `2xx` write. No framework: the surface is a
+(SYSREQ-010/011, SYSREQ-046), then outbox enqueue — persisting the resolved sink and channel
+with each row (SYSREQ-024) — then the `2xx` write. No framework: the surface is a
 dozen routes wide and the standard library removes a dependency boundary.
 
 ## Static View (Structure)
 
-Components: `WebhookHandler`, `Signer` (verifier), `Allowlist`, `Router` (loaded routing table),
-`Store` (SYSARCH-002 interface: `SeenWebhook`, `Enqueue`), `Config`.
+Components: `WebhookHandler`, `Signer` (verifier), `Allowlist`, `Keyring` (the signing tokens of
+each forge connection), `Store` (SYSARCH-002 interface: `SeenWebhook`, `Destinations`, `Enqueue`).
 
-Interfaces are narrow and local: the handler depends on `Store` and `Router` only, so ingest
+Interfaces are narrow and local: the handler depends on `Store` and `Keyring` only, so ingest
 tests run against fakes without a database or network.
+
+Generalized on 2026-10-18 by SYSARCH-007 and SYSARCH-008: every forge connection has an endpoint of its own, `POST /webhooks/{connection}`, verified with that connection's signing tokens, and the routes stored in the database resolve the sinks of each event.
 
 ## Dynamic View (Behavior)
 

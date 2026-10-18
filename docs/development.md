@@ -34,6 +34,7 @@ Nothing else is installed by hand: sqlc, golangci-lint, goreleaser and changie a
 | `internal/deliver` | outbox worker and the embedded message templates |
 | `internal/mattermost` | bot-account client that posts and updates messages, and reads the bot's account and channels |
 | `internal/gitlab`, `internal/platform` | GitLab API client, and the credential and channel checks of each platform |
+| `internal/hooks` | registers the forge hooks that the sources need, in the background |
 | `internal/store` | PostgreSQL queue, thread mappings and dedupe records; migrations, queries, generated `sqlcgen` |
 | `internal/metrics`, `internal/ops` | funnel counters, probe and metrics handlers |
 | `internal/graceful` | HTTP serving with a drain budget, for both listeners |

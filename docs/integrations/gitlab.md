@@ -9,6 +9,8 @@ signing token enabled. PatchCaster verifies only the `webhook-signature` HMAC
 (`v1,{base64}` over `{webhook-id}.{timestamp}.{body}`); the legacy
 `X-Gitlab-Token` is never trusted.
 
+A connection with an access token needs nothing of this: PatchCaster [registers its hooks](../operations.md#registered-hooks) through the GitLab API, with the triggers below. Without a token, register them by hand:
+
 * **URL**: the GitLab connection's `webhook_url`, `<public URL>/webhooks/<connection id>`, served by the public listener (`--addr`, `:8080` by default).
 * **Signing token**: select **Generate signing token** in the hook form, and add the token to the connection at `/api/v1/connections/{id}/signing-tokens`, exactly as GitLab shows it, `whsec_` prefix included. GitLab shows it only once. A connection holds several signing tokens, one per hook or during a [rotation](../operations.md#connections).
 
@@ -24,3 +26,5 @@ degrades silently:
 | Comment events | `💬` notices (merge-request notes only) |
 | Pipeline events | `🟡/🟢/🔴` status segment; pass/fail notices |
 | Push events | `N new commits` counts attributed by project + branch |
+
+A system hook offers merge request and push events only, so a project that only a system hook covers gets no comment notices and no pipeline status.

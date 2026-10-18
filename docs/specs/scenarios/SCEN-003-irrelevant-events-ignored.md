@@ -12,11 +12,11 @@ refines:
 ## Overview
 
 Deliveries that carry nothing to forward — other event kinds, non-allowlisted actions, or
-projects absent from the routing table — are acknowledged and produce no channel noise.
+projects that no route reaches — are acknowledged and produce no channel noise.
 
 ## Initial State
 
-- The service is running with its routing table and allowlist loaded.
+- The service is running with its routes stored and its allowlist built in.
 
 ## Trigger
 

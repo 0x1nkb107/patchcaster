@@ -20,7 +20,7 @@ receive traffic or claims of health.
 
 ## Trigger
 
-Any of: startup with an invalid routing table or missing bot token; the database losing
+Any of: startup with invalid settings or a missing encryption key; the database losing
 write availability after startup (failover, quota, connection outage).
 
 ## Step-by-Step Flow

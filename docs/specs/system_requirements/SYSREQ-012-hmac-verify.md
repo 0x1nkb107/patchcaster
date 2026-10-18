@@ -25,7 +25,8 @@ body bytes — a forged or mutated delivery becomes computationally infeasible (
 ## Acceptance Criteria
 
 - A delivery whose recomputed HMAC-SHA256 over the signed content (`id`, timestamp, raw body)
-  matches any configured signing secret proceeds.
+  matches any signing token of the forge connection whose endpoint it reached proceeds
+  (SYSREQ-044).
 - Missing, malformed, or mismatched `webhook-signature` answers `401` before the body is parsed
   and with zero side effects.
 - The `X-Gitlab-Token` header is never trusted (ADR-002): a request with a matching static token

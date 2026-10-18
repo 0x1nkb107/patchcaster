@@ -22,7 +22,7 @@ ADR-015 declared SBOMs out of scope for v1. goreleaser's `dockers_v2` step nonet
 - The configuration sets `sbom` explicitly instead of relying on goreleaser's default, so the decision is visible where the images are defined.
 - The attestations are attached to the image index. The cosign signature on the index digest (ADR-016) therefore covers them, because the index refers to each attestation by its digest.
 - The images are built with a `docker-container` buildx builder, which supports attestations, index annotations and multi-platform pushes whatever image store the runner's Docker daemon uses.
-- The release archives ship no SBOM. That would need syft as a new pinned tool, and its output carries timestamps and random document IDs that would break the reproducible checksums of ADR-021.
+- The release archives ship no SBOM. That would need syft as a new pinned tool, and its output carries timestamps and random document IDs that would break the reproducible checksums of ADR-021. (Amended on 2026-10-18 by ADR-044: the release also attaches an SBOM of the web interface's JavaScript packages, which PatchCaster's own build writes without timestamps, and which the signed checksums cover.)
 - This amends the statement in ADR-015 that SBOMs are out of scope for v1. Homebrew taps stay out of scope.
 
 ## Consequences

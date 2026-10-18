@@ -3,7 +3,7 @@ id: "SYSREQ-022"
 type: system_requirement
 name: "Strict startup configuration"
 description: "Configuration is loaded once and validated at startup."
-specification: "The service SHALL load its complete configuration at startup from command-line flags, environment variables, and built-in defaults in that precedence, exiting with a non-zero status when configuration is incomplete or invalid."
+specification: "The service SHALL load its startup and operating settings at startup from command-line flags, environment variables, and built-in defaults in that precedence, exiting with a non-zero status when configuration is incomplete or invalid."
 derives_from:
   - "SCEN-008"
 ---
@@ -12,7 +12,7 @@ derives_from:
 
 ## Requirement Specification
 
-> The service SHALL load its complete configuration at startup from command-line flags, environment variables, and built-in defaults in that precedence, exiting with a non-zero status when configuration is incomplete or invalid.
+> The service SHALL load its startup and operating settings at startup from command-line flags, environment variables, and built-in defaults in that precedence, exiting with a non-zero status when configuration is incomplete or invalid.
 
 ## Rationale
 
@@ -23,8 +23,8 @@ CLI (ADR-003).
 
 ## Acceptance Criteria
 
-- Every option (site URL, bot token, signing secrets, routing table path, listen addresses,
-  database connection settings) is declared with kong and bound to a `PATCHCASTER_`-prefixed environment variable;
+- Every startup and operating setting (database URL, encryption key, interface URL, public URL,
+  listen addresses, operating limits) is declared with kong and bound to a `PATCHCASTER_`-prefixed environment variable;
   the precedence is flags > environment variables > built-in defaults (owner-set, 2026-10-10).
 - Any missing or malformed required value exits non-zero with a message naming the option, before
   any listener accepts a connection.
@@ -36,4 +36,4 @@ CLI (ADR-003).
 
 ## Notes
 
-None.
+Narrowed on 2026-10-18 by SYSREQ-034: connections, routes and their secrets live in the database, not in flags.

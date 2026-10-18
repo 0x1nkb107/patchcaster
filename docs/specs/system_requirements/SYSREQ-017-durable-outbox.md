@@ -27,8 +27,7 @@ end to end.
 - The outbound message row is written before the `2xx` is sent for a routed event, together with
   the state changes the delivery implies (SYSREQ-027): one transaction admits, records, and
   applies — or admits nothing.
-- The row persists the destination channel resolved at ingress; retries never re-resolve routing
-  (SYSREQ-024).
+- Each sink the event reaches gets a row of its own, which persists the sink and channel resolved at ingress; retries never re-resolve routing (SYSREQ-024, SYSREQ-048).
 - `SIGKILL` immediately after the acknowledgement leaves the message pending; the next process
   delivers it.
 - A message whose acceptance was recorded is never re-posted. After a crash between Mattermost
@@ -50,4 +49,4 @@ end to end.
 Duplicate *deliveries from GitLab* are handled by SYSREQ-014; this item covers the service's own
 delivery pipeline. The duplicate window between acceptance and record is accepted residual risk,
 documented rather than eliminated: search-before-post as a mitigation was considered and rejected
-as unbounded best-effort against an API that never promised idempotency.
+as unbounded best-effort against an API that never promised idempotency. Amended on 2026-10-18 by SYSREQ-048: one row per sink, ordered and retried per merge request and sink.

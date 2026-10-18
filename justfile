@@ -213,10 +213,11 @@ devdb:
 
 # The pinned host toolchain compiles, then the binary and the licence files
 # are staged in the layout the shared release Dockerfile reads (ADR-015,
-# ADR-024) — no compiler ever runs inside the image.
+# ADR-024) — no compiler ever runs inside the image. The binary embeds the
+# web interface, which is built first.
 # Build the OCI image locally (single architecture; pass `arm64` for arm64).
 [group('dev')]
-container arch="amd64":
+container arch="amd64": web-build
 	CGO_ENABLED=0 GOARCH={{arch}} go build -trimpath -ldflags "-s -w" -o dist/container/linux/{{arch}}/patchcaster ./cmd/patchcaster
 	mkdir -p dist/container/LICENSES
 	cp LICENSE dist/container/LICENSE
@@ -268,7 +269,8 @@ release-check:
 	go tool -modfile tools/goreleaser/go.mod goreleaser check
 
 # Keyless signing has no identity outside Actions (ADR-016). Extra args go
-# to goreleaser, e.g. `--skip=docker` without a daemon.
+# to goreleaser, e.g. `--skip=docker` without a daemon. Its hooks install
+# and build the web interface, which needs Node (ADR-032).
 # Release dry run: builds binaries and images, publishes and signs nothing.
 [group('release')]
 release-snapshot +args="":

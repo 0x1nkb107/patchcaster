@@ -18,6 +18,15 @@ const fallbackPage = "index.html"
 // which browsers may therefore keep for good.
 const immutablePrefix = "_app/immutable/"
 
+// framingPolicy is the part of the interface's Content-Security-Policy
+// that a meta tag cannot carry. The bundle's page carries the rest itself,
+// with the hash of its inline script (ADR-032).
+const framingPolicy = "frame-ancestors 'none'"
+
+// notBuiltPolicy allows the page of a binary without the bundle nothing,
+// because it has no scripts, styles or images.
+const notBuiltPolicy = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+
 // notBuilt is what a binary built without the bundle serves instead.
 const notBuilt = `<!doctype html>
 <html lang="en">
@@ -32,12 +41,20 @@ const notBuilt = `<!doctype html>
 // Handler serves the bundle in bundle: its files as they are, and the
 // fallback page for every other path. Without a fallback page, the bundle
 // was not built, and every path gets a page that says so. Either way, it
-// serves only GET and HEAD.
+// serves only GET and HEAD, under a Content-Security-Policy.
 func Handler(bundle fs.FS) http.Handler {
 	if _, err := fs.Stat(bundle, fallbackPage); err != nil {
-		return onlyReads(http.HandlerFunc(serveNotBuilt))
+		return onlyReads(withPolicy(notBuiltPolicy, http.HandlerFunc(serveNotBuilt)))
 	}
-	return onlyReads(&handler{bundle: bundle})
+	return onlyReads(withPolicy(framingPolicy, &handler{bundle: bundle}))
+}
+
+// withPolicy sends policy as the Content-Security-Policy of every answer.
+func withPolicy(policy string, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Security-Policy", policy)
+		next.ServeHTTP(w, r)
+	})
 }
 
 // onlyReads refuses every method but GET and HEAD, because the interface

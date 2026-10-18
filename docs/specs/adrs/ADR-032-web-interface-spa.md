@@ -50,8 +50,17 @@ The binary must serve a web interface (UC-004, UC-005, UC-006). Its heaviest scr
 - `web/.npmrc` sets `min-release-age=7` (owner decision 2026-10-15). When dependencies are added or updated, npm then resolves only versions published more than seven days ago. A hijacked release thus has a week to be noticed and pulled before it can enter the lockfile, and `npm ci` installs the lockfile as reviewed.
   - npm supports the setting from 11.10.0 on. Older releases only warn about an unknown setting and install anyway, so the frontend recipes refuse to run with an npm older than 11.10.0.
   - A fix younger than seven days enters only through `min-release-age-exclude`, one reviewed package at a time.
-- Just recipes, CI and the release pipeline build the frontend before the Go binary. The release rehearsal (ADR-023) fails when the bundle is missing, and it builds the bundle twice and compares the results, so reproducibility (ADR-021) covers the bundle too.
-- The bundled packages' licence notices ship with the interface, and the interface is served with a strict Content-Security-Policy.
+- Just recipes, CI and the release pipeline build the frontend before the Go binary. goreleaser's hooks run `just web-install` and `just web-build`, and `just container` builds the frontend first.
+- The bundle is reproducible (ADR-021):
+  - SvelteKit names the build after the commit, not after the time of the build. The browser compares that name with the served one to notice an upgrade.
+  - `web/.nvmrc` names the exact Node version, which CI and the release workflow install, and the lockfile pins every package.
+  - The release rehearsal (ADR-023) checks that the binary embeds the bundle of its commit. It then installs and builds the bundle a second time and requires the same bytes.
+- The bundled packages' licence notices ship with the interface, and the release lists the packages in an SBOM of their own (ADR-044).
+- The interface runs under a strict Content-Security-Policy:
+  - SvelteKit's hash mode writes the policy into a meta tag of the fallback page. Scripts, styles, images, fonts and connections come from the interface's own origin only, plus the hash of the inline script that boots the application. Plugins, a changed base address and forms that post elsewhere are forbidden.
+  - Style attributes are allowed (owner decision 2026-10-17). SvelteKit's route announcer carries one, and style attributes cannot run scripts. `<style>` elements stay forbidden.
+  - A meta tag cannot forbid framing, so the Go server adds `frame-ancestors 'none'` as a header to everything the bundle serves. The page of a binary without the bundle gets `default-src 'none'`.
+  - zod runs without its JIT compiler. It would need the Function constructor, which the policy forbids, and its probe for it alone reports a violation.
 
 ## Consequences
 
@@ -60,5 +69,6 @@ The binary must serve a web interface (UC-004, UC-005, UC-006). Its heaviest scr
 - Good: Go code builds and tests without Node, because the placeholder keeps the embed pattern valid. Only the binary that ships needs the frontend built.
 - Bad: a second toolchain and its supply chain enter development, CI and every release. The lockfile, `npm ci`, the seven-day release age and an audit gate in CI limit that risk.
 - Bad: a security fix published within the last seven days needs an explicit exception before it can be installed.
-- Bad: the image SBOM (ADR-022) lists Go modules only. The release must list the bundled JavaScript packages as well, for example in an SBOM of their own.
+- The image SBOM (ADR-022) lists Go modules only. The bundled JavaScript packages have an SBOM of their own (ADR-044).
+- Bad: libraries that need inline scripts, `eval` or `<style>` elements do not work under the policy. New libraries have to be tried in a browser.
 - Bad: the interface needs JavaScript, which is acceptable for an administration tool.

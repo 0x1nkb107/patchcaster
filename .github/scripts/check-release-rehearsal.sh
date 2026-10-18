@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Checks the outcome of the CI release rehearsal (ADR-023) against the release
 # contract: what the registry serves for the tag, what the archives contain,
-# and what the binary reports. Run it after `just release-publish` in the
-# rehearsal job, with PATCHCASTER_IMAGE_REPO pointing at the throwaway
-# registry and the rehearsal tag checked out.
+# what the binary embeds and reports, and that the web interface builds the
+# same bytes twice. Run it after `just release-publish` in the rehearsal job,
+# with PATCHCASTER_IMAGE_REPO pointing at the throwaway registry and the
+# rehearsal tag checked out.
 set -euo pipefail
 
 repo="${PATCHCASTER_IMAGE_REPO:?PATCHCASTER_IMAGE_REPO must name the rehearsal registry}"
@@ -13,6 +14,7 @@ revision="$(git rev-parse HEAD)"
 commit_date="$(TZ=UTC git log -1 --format=%cd --date=format-local:%Y-%m-%dT%H:%M:%SZ)"
 platforms=$'linux/amd64\nlinux/arm64'
 licence_files=(LICENSE LICENSES/LicenseRef-PatchCaster-Accepted-AGPL.txt)
+web_sbom="patchcaster_${version}_web.cdx.json"
 failures=0
 
 # fail records a failed check and keeps going, so one run reports them all.
@@ -155,6 +157,72 @@ check_image_licence_files() {
 	docker rm "${container}" >/dev/null
 }
 
+# check_web_sbom requires the SBOM of the web interface's packages next to
+# the archives, listed in the checksums and describing this build (ADR-044).
+check_web_sbom() {
+	if [[ ! -f "dist/${web_sbom}" ]]; then
+		fail "missing dist/${web_sbom}"
+		return
+	fi
+	if grep -q -F "  ${web_sbom}" dist/checksums.txt; then
+		pass "checksums.txt lists ${web_sbom}"
+	else
+		fail "checksums.txt does not list ${web_sbom}"
+	fi
+	expect_equal "${web_sbom} names the commit" "${revision}" \
+		"$(jq -r '.metadata.component.version' "dist/${web_sbom}")"
+	if jq -e '[.components[].purl | select(startswith("pkg:npm/svelte@"))] | length == 1' \
+		"dist/${web_sbom}" >/dev/null; then
+		pass "${web_sbom} lists the bundled packages"
+	else
+		fail "${web_sbom} does not list the svelte package"
+	fi
+}
+
+# check_embedded_bundle requires the binary to embed this build's web
+# interface (ADR-032). The policy in its fallback page hashes the boot
+# script, which names the commit, so no other build has the same one.
+check_embedded_bundle() {
+	local policy workdir
+	policy="$(grep -o '<meta http-equiv="content-security-policy"[^>]*>' web/dist/app/index.html || true)"
+	if [[ -z "${policy}" ]]; then
+		fail "the web interface's fallback page carries no Content-Security-Policy"
+		return
+	fi
+	workdir="$(mktemp -d)"
+	tar -xzf "dist/patchcaster_${version}_linux_amd64.tar.gz" -C "${workdir}" patchcaster
+	if grep -a -q -F -- "${policy}" "${workdir}/patchcaster"; then
+		pass "the binary embeds the web interface of this build"
+	else
+		fail "the binary does not embed the web interface of this build"
+	fi
+	rm -rf "${workdir}"
+}
+
+# check_bundle_reproducible installs and builds the web interface once
+# more and requires the same bytes, its SBOM included (ADR-021).
+check_bundle_reproducible() {
+	local first
+	first="$(mktemp -d)"
+	cp -r web/dist/app "${first}/app"
+	if ! { just web-install && just web-build; } >/dev/null; then
+		fail "the second build of the web interface failed"
+		rm -rf "${first}"
+		return
+	fi
+	if diff -r "${first}/app" web/dist/app >/dev/null; then
+		pass "a second build of the web interface is identical"
+	else
+		fail "a second build of the web interface differs"
+	fi
+	if cmp -s "dist/${web_sbom}" web/sbom/web.cdx.json; then
+		pass "a second build writes the same SBOM"
+	else
+		fail "a second build writes a different SBOM"
+	fi
+	rm -rf "${first}"
+}
+
 check_binary_version() {
 	local workdir reported
 	workdir="$(mktemp -d)"
@@ -172,6 +240,9 @@ check_sbom_content
 check_labels
 check_archives
 check_image_licence_files
+check_web_sbom
+check_embedded_bundle
+check_bundle_reproducible
 check_binary_version
 
 if ((failures > 0)); then

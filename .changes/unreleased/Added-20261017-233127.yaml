@@ -1,0 +1,3 @@
+kind: Added
+body: Link the licences of the web interface's JavaScript packages from every page. The interface runs only its own scripts, and no other site may show it in a frame.
+time: 2026-10-17T23:31:27.522832976+02:00

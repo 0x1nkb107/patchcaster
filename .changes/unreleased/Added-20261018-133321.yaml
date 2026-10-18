@@ -1,0 +1,3 @@
+kind: Added
+body: 'Show the health of every connection and sink on a new health page and in the management API: waiting messages, the last success and the last failure with its cause. The gauges patchcaster_sink_waiting_messages and patchcaster_sink_oldest_waiting_seconds report what waits for each sink.'
+time: 2026-10-18T13:33:21.542229951+02:00

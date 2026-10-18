@@ -1138,7 +1138,7 @@ components:
       description: The platform. GitLab is a forge, Mattermost a chat platform.
     Connection:
       type: object
-      required: [id, kind, name, base_url, account, has_credential, etag]
+      required: [id, kind, name, base_url, account, has_credential, health, etag]
       properties:
         id:
           type: integer
@@ -1157,9 +1157,49 @@ components:
         webhook_url:
           type: string
           description: Where a forge sends this connection's webhooks. Absent for a chat connection.
+        health:
+          $ref: "#/components/schemas/ConnectionHealth"
         etag:
           type: string
           description: The connection's current version, for If-Match on a change.
+    ConnectionHealth:
+      type: object
+      description: >-
+        How the connection works. A forge connection reports the deliveries it sends, a chat
+        connection the messages of all its sinks. Health changes with every delivery and is
+        not part of the connection's version.
+      properties:
+        last_delivery_at:
+          type: string
+          format: date-time
+          description: Forge only. When an authentic delivery last arrived. Absent before the first.
+        last_rejection_at:
+          type: string
+          format: date-time
+          description: Forge only. When a delivery was last rejected. Absent before the first rejection.
+        last_rejection:
+          type: string
+          enum: [signature, parse]
+          description: Forge only. Why the last rejected delivery was rejected.
+        waiting_messages:
+          type: integer
+          format: int64
+          description: Chat only. Messages queued for the connection's sinks and not yet delivered.
+        oldest_waiting_since:
+          type: string
+          format: date-time
+          description: Chat only. When the oldest waiting message was queued. Absent when none waits.
+        last_success_at:
+          type: string
+          format: date-time
+          description: Chat only. When the platform last accepted a message for any of the sinks.
+        last_failure_at:
+          type: string
+          format: date-time
+          description: Chat only. When an attempt at the platform last failed, for any of the sinks.
+        last_error:
+          type: string
+          description: Chat only. Why that attempt failed.
     ConnectionPage:
       type: object
       required: [items]
@@ -1392,7 +1432,7 @@ components:
           $ref: "#/components/schemas/SourceScope"
     Sink:
       type: object
-      required: [id, connection_id, name, channel_id, channel_name, teams, etag]
+      required: [id, connection_id, name, channel_id, channel_name, teams, health, etag]
       properties:
         id:
           type: integer
@@ -1413,9 +1453,37 @@ components:
           items:
             type: integer
             format: int64
+        health:
+          $ref: "#/components/schemas/SinkHealth"
         etag:
           type: string
           description: The sink's current version, for If-Match on a change.
+    SinkHealth:
+      type: object
+      description: >-
+        How messages reach the sink. Health changes with every delivery and is not part of
+        the sink's version.
+      required: [waiting_messages]
+      properties:
+        waiting_messages:
+          type: integer
+          format: int64
+          description: Messages queued for the sink and not yet delivered.
+        oldest_waiting_since:
+          type: string
+          format: date-time
+          description: When the oldest waiting message was queued. Absent when none waits.
+        last_success_at:
+          type: string
+          format: date-time
+          description: When the platform last accepted a message for the sink. Absent before the first.
+        last_failure_at:
+          type: string
+          format: date-time
+          description: When an attempt at the platform last failed. Absent before the first failure.
+        last_error:
+          type: string
+          description: Why that attempt failed, as the platform or the network answered.
     SinkPage:
       type: object
       required: [items]

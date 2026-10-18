@@ -19,6 +19,9 @@ import (
 
 // Store is what the v1 operations need from persistence.
 type Store interface {
+	SinkHealth(ctx context.Context, ids []int64) (map[int64]store.SinkHealth, error)
+	ForgeHealth(ctx context.Context, ids []int64) (map[int64]store.ForgeHealth, error)
+	ChatConnectionHealth(ctx context.Context, ids []int64) (map[int64]store.SinkHealth, error)
 	AdministratorCount(ctx context.Context) (int, error)
 	Person(ctx context.Context, id int64) (*store.Person, error)
 	People(ctx context.Context, afterID int64, limit int) ([]store.Person, error)

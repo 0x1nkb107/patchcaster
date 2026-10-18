@@ -311,7 +311,8 @@ type Connection struct {
 	Account       string `json:"account"`
 	HasCredential bool   `json:"has_credential"`
 	// Where a forge sends this connection's webhooks. Absent for a chat connection.
-	WebhookURL OptString `json:"webhook_url"`
+	WebhookURL OptString        `json:"webhook_url"`
+	Health     ConnectionHealth `json:"health"`
 	// The connection's current version, for If-Match on a change.
 	Etag string `json:"etag"`
 }
@@ -349,6 +350,11 @@ func (s *Connection) GetHasCredential() bool {
 // GetWebhookURL returns the value of WebhookURL.
 func (s *Connection) GetWebhookURL() OptString {
 	return s.WebhookURL
+}
+
+// GetHealth returns the value of Health.
+func (s *Connection) GetHealth() ConnectionHealth {
+	return s.Health
 }
 
 // GetEtag returns the value of Etag.
@@ -391,6 +397,11 @@ func (s *Connection) SetWebhookURL(val OptString) {
 	s.WebhookURL = val
 }
 
+// SetHealth sets the value of Health.
+func (s *Connection) SetHealth(val ConnectionHealth) {
+	s.Health = val
+}
+
 // SetEtag sets the value of Etag.
 func (s *Connection) SetEtag(val string) {
 	s.Etag = val
@@ -420,6 +431,151 @@ func (s *ConnectionHeaders) SetETag(val OptString) {
 // SetResponse sets the value of Response.
 func (s *ConnectionHeaders) SetResponse(val Connection) {
 	s.Response = val
+}
+
+// How the connection works. A forge connection reports the deliveries it sends, a chat connection the
+// messages of all its sinks. Health changes with every delivery and is not part of the connection's
+// version.
+// Ref: #/components/schemas/ConnectionHealth
+type ConnectionHealth struct {
+	// Forge only. When an authentic delivery last arrived. Absent before the first.
+	LastDeliveryAt OptDateTime `json:"last_delivery_at"`
+	// Forge only. When a delivery was last rejected. Absent before the first rejection.
+	LastRejectionAt OptDateTime `json:"last_rejection_at"`
+	// Forge only. Why the last rejected delivery was rejected.
+	LastRejection OptConnectionHealthLastRejection `json:"last_rejection"`
+	// Chat only. Messages queued for the connection's sinks and not yet delivered.
+	WaitingMessages OptInt64 `json:"waiting_messages"`
+	// Chat only. When the oldest waiting message was queued. Absent when none waits.
+	OldestWaitingSince OptDateTime `json:"oldest_waiting_since"`
+	// Chat only. When the platform last accepted a message for any of the sinks.
+	LastSuccessAt OptDateTime `json:"last_success_at"`
+	// Chat only. When an attempt at the platform last failed, for any of the sinks.
+	LastFailureAt OptDateTime `json:"last_failure_at"`
+	// Chat only. Why that attempt failed.
+	LastError OptString `json:"last_error"`
+}
+
+// GetLastDeliveryAt returns the value of LastDeliveryAt.
+func (s *ConnectionHealth) GetLastDeliveryAt() OptDateTime {
+	return s.LastDeliveryAt
+}
+
+// GetLastRejectionAt returns the value of LastRejectionAt.
+func (s *ConnectionHealth) GetLastRejectionAt() OptDateTime {
+	return s.LastRejectionAt
+}
+
+// GetLastRejection returns the value of LastRejection.
+func (s *ConnectionHealth) GetLastRejection() OptConnectionHealthLastRejection {
+	return s.LastRejection
+}
+
+// GetWaitingMessages returns the value of WaitingMessages.
+func (s *ConnectionHealth) GetWaitingMessages() OptInt64 {
+	return s.WaitingMessages
+}
+
+// GetOldestWaitingSince returns the value of OldestWaitingSince.
+func (s *ConnectionHealth) GetOldestWaitingSince() OptDateTime {
+	return s.OldestWaitingSince
+}
+
+// GetLastSuccessAt returns the value of LastSuccessAt.
+func (s *ConnectionHealth) GetLastSuccessAt() OptDateTime {
+	return s.LastSuccessAt
+}
+
+// GetLastFailureAt returns the value of LastFailureAt.
+func (s *ConnectionHealth) GetLastFailureAt() OptDateTime {
+	return s.LastFailureAt
+}
+
+// GetLastError returns the value of LastError.
+func (s *ConnectionHealth) GetLastError() OptString {
+	return s.LastError
+}
+
+// SetLastDeliveryAt sets the value of LastDeliveryAt.
+func (s *ConnectionHealth) SetLastDeliveryAt(val OptDateTime) {
+	s.LastDeliveryAt = val
+}
+
+// SetLastRejectionAt sets the value of LastRejectionAt.
+func (s *ConnectionHealth) SetLastRejectionAt(val OptDateTime) {
+	s.LastRejectionAt = val
+}
+
+// SetLastRejection sets the value of LastRejection.
+func (s *ConnectionHealth) SetLastRejection(val OptConnectionHealthLastRejection) {
+	s.LastRejection = val
+}
+
+// SetWaitingMessages sets the value of WaitingMessages.
+func (s *ConnectionHealth) SetWaitingMessages(val OptInt64) {
+	s.WaitingMessages = val
+}
+
+// SetOldestWaitingSince sets the value of OldestWaitingSince.
+func (s *ConnectionHealth) SetOldestWaitingSince(val OptDateTime) {
+	s.OldestWaitingSince = val
+}
+
+// SetLastSuccessAt sets the value of LastSuccessAt.
+func (s *ConnectionHealth) SetLastSuccessAt(val OptDateTime) {
+	s.LastSuccessAt = val
+}
+
+// SetLastFailureAt sets the value of LastFailureAt.
+func (s *ConnectionHealth) SetLastFailureAt(val OptDateTime) {
+	s.LastFailureAt = val
+}
+
+// SetLastError sets the value of LastError.
+func (s *ConnectionHealth) SetLastError(val OptString) {
+	s.LastError = val
+}
+
+// Forge only. Why the last rejected delivery was rejected.
+type ConnectionHealthLastRejection string
+
+const (
+	ConnectionHealthLastRejectionSignature ConnectionHealthLastRejection = "signature"
+	ConnectionHealthLastRejectionParse     ConnectionHealthLastRejection = "parse"
+)
+
+// AllValues returns all ConnectionHealthLastRejection values.
+func (ConnectionHealthLastRejection) AllValues() []ConnectionHealthLastRejection {
+	return []ConnectionHealthLastRejection{
+		ConnectionHealthLastRejectionSignature,
+		ConnectionHealthLastRejectionParse,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ConnectionHealthLastRejection) MarshalText() ([]byte, error) {
+	switch s {
+	case ConnectionHealthLastRejectionSignature:
+		return []byte(s), nil
+	case ConnectionHealthLastRejectionParse:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ConnectionHealthLastRejection) UnmarshalText(data []byte) error {
+	switch ConnectionHealthLastRejection(data) {
+	case ConnectionHealthLastRejectionSignature:
+		*s = ConnectionHealthLastRejectionSignature
+		return nil
+	case ConnectionHealthLastRejectionParse:
+		*s = ConnectionHealthLastRejectionParse
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
 }
 
 // The platform. GitLab is a forge, Mattermost a chat platform.
@@ -811,6 +967,52 @@ func (s *LoginSettingsUpdate) SetGroupsClaim(val string) {
 // SetAllowedGroups sets the value of AllowedGroups.
 func (s *LoginSettingsUpdate) SetAllowedGroups(val []string) {
 	s.AllowedGroups = val
+}
+
+// NewOptConnectionHealthLastRejection returns new OptConnectionHealthLastRejection with value set to v.
+func NewOptConnectionHealthLastRejection(v ConnectionHealthLastRejection) OptConnectionHealthLastRejection {
+	return OptConnectionHealthLastRejection{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptConnectionHealthLastRejection is optional ConnectionHealthLastRejection.
+type OptConnectionHealthLastRejection struct {
+	Value ConnectionHealthLastRejection
+	Set   bool
+}
+
+// IsSet returns true if OptConnectionHealthLastRejection was set.
+func (o OptConnectionHealthLastRejection) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptConnectionHealthLastRejection) Reset() {
+	var v ConnectionHealthLastRejection
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptConnectionHealthLastRejection) SetTo(v ConnectionHealthLastRejection) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptConnectionHealthLastRejection) Get() (v ConnectionHealthLastRejection, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptConnectionHealthLastRejection) Or(d ConnectionHealthLastRejection) ConnectionHealthLastRejection {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
 }
 
 // NewOptDateTime returns new OptDateTime with value set to v.
@@ -1625,7 +1827,8 @@ type Sink struct {
 	// How the platform named the channel when it was last checked.
 	ChannelName string `json:"channel_name"`
 	// The ids of the teams that own the sink.
-	Teams []int64 `json:"teams"`
+	Teams  []int64    `json:"teams"`
+	Health SinkHealth `json:"health"`
 	// The sink's current version, for If-Match on a change.
 	Etag string `json:"etag"`
 }
@@ -1658,6 +1861,11 @@ func (s *Sink) GetChannelName() string {
 // GetTeams returns the value of Teams.
 func (s *Sink) GetTeams() []int64 {
 	return s.Teams
+}
+
+// GetHealth returns the value of Health.
+func (s *Sink) GetHealth() SinkHealth {
+	return s.Health
 }
 
 // GetEtag returns the value of Etag.
@@ -1695,6 +1903,11 @@ func (s *Sink) SetTeams(val []int64) {
 	s.Teams = val
 }
 
+// SetHealth sets the value of Health.
+func (s *Sink) SetHealth(val SinkHealth) {
+	s.Health = val
+}
+
 // SetEtag sets the value of Etag.
 func (s *Sink) SetEtag(val string) {
 	s.Etag = val
@@ -1724,6 +1937,72 @@ func (s *SinkHeaders) SetETag(val OptString) {
 // SetResponse sets the value of Response.
 func (s *SinkHeaders) SetResponse(val Sink) {
 	s.Response = val
+}
+
+// How messages reach the sink. Health changes with every delivery and is not part of the sink's
+// version.
+// Ref: #/components/schemas/SinkHealth
+type SinkHealth struct {
+	// Messages queued for the sink and not yet delivered.
+	WaitingMessages int64 `json:"waiting_messages"`
+	// When the oldest waiting message was queued. Absent when none waits.
+	OldestWaitingSince OptDateTime `json:"oldest_waiting_since"`
+	// When the platform last accepted a message for the sink. Absent before the first.
+	LastSuccessAt OptDateTime `json:"last_success_at"`
+	// When an attempt at the platform last failed. Absent before the first failure.
+	LastFailureAt OptDateTime `json:"last_failure_at"`
+	// Why that attempt failed, as the platform or the network answered.
+	LastError OptString `json:"last_error"`
+}
+
+// GetWaitingMessages returns the value of WaitingMessages.
+func (s *SinkHealth) GetWaitingMessages() int64 {
+	return s.WaitingMessages
+}
+
+// GetOldestWaitingSince returns the value of OldestWaitingSince.
+func (s *SinkHealth) GetOldestWaitingSince() OptDateTime {
+	return s.OldestWaitingSince
+}
+
+// GetLastSuccessAt returns the value of LastSuccessAt.
+func (s *SinkHealth) GetLastSuccessAt() OptDateTime {
+	return s.LastSuccessAt
+}
+
+// GetLastFailureAt returns the value of LastFailureAt.
+func (s *SinkHealth) GetLastFailureAt() OptDateTime {
+	return s.LastFailureAt
+}
+
+// GetLastError returns the value of LastError.
+func (s *SinkHealth) GetLastError() OptString {
+	return s.LastError
+}
+
+// SetWaitingMessages sets the value of WaitingMessages.
+func (s *SinkHealth) SetWaitingMessages(val int64) {
+	s.WaitingMessages = val
+}
+
+// SetOldestWaitingSince sets the value of OldestWaitingSince.
+func (s *SinkHealth) SetOldestWaitingSince(val OptDateTime) {
+	s.OldestWaitingSince = val
+}
+
+// SetLastSuccessAt sets the value of LastSuccessAt.
+func (s *SinkHealth) SetLastSuccessAt(val OptDateTime) {
+	s.LastSuccessAt = val
+}
+
+// SetLastFailureAt sets the value of LastFailureAt.
+func (s *SinkHealth) SetLastFailureAt(val OptDateTime) {
+	s.LastFailureAt = val
+}
+
+// SetLastError sets the value of LastError.
+func (s *SinkHealth) SetLastError(val OptString) {
+	s.LastError = val
 }
 
 // Ref: #/components/schemas/SinkPage

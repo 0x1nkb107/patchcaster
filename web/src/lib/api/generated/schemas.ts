@@ -212,6 +212,16 @@ export const ListConnectionsResponse = zod.object({
   "account": zod.string().describe('Whom the credential acted as when it was last checked. Empty without one.'),
   "has_credential": zod.boolean(),
   "webhook_url": zod.string().optional().describe('Where a forge sends this connection\'s webhooks. Absent for a chat connection.'),
+  "health": zod.object({
+  "last_delivery_at": zod.iso.datetime({"offset":true}).optional().describe('Forge only. When an authentic delivery last arrived. Absent before the first.'),
+  "last_rejection_at": zod.iso.datetime({"offset":true}).optional().describe('Forge only. When a delivery was last rejected. Absent before the first rejection.'),
+  "last_rejection": zod.enum(['signature', 'parse']).optional().describe('Forge only. Why the last rejected delivery was rejected.'),
+  "waiting_messages": zod.int().optional().describe('Chat only. Messages queued for the connection\'s sinks and not yet delivered.'),
+  "oldest_waiting_since": zod.iso.datetime({"offset":true}).optional().describe('Chat only. When the oldest waiting message was queued. Absent when none waits.'),
+  "last_success_at": zod.iso.datetime({"offset":true}).optional().describe('Chat only. When the platform last accepted a message for any of the sinks.'),
+  "last_failure_at": zod.iso.datetime({"offset":true}).optional().describe('Chat only. When an attempt at the platform last failed, for any of the sinks.'),
+  "last_error": zod.string().optional().describe('Chat only. Why that attempt failed.')
+}).describe('How the connection works. A forge connection reports the deliveries it sends, a chat connection the messages of all its sinks. Health changes with every delivery and is not part of the connection\'s version.'),
   "etag": zod.string().describe('The connection\'s current version, for If-Match on a change.')
 })),
   "next_cursor": zod.string().optional().describe('Absent on the last page.')
@@ -243,6 +253,16 @@ export const CreateConnectionResponse = zod.object({
   "account": zod.string().describe('Whom the credential acted as when it was last checked. Empty without one.'),
   "has_credential": zod.boolean(),
   "webhook_url": zod.string().optional().describe('Where a forge sends this connection\'s webhooks. Absent for a chat connection.'),
+  "health": zod.object({
+  "last_delivery_at": zod.iso.datetime({"offset":true}).optional().describe('Forge only. When an authentic delivery last arrived. Absent before the first.'),
+  "last_rejection_at": zod.iso.datetime({"offset":true}).optional().describe('Forge only. When a delivery was last rejected. Absent before the first rejection.'),
+  "last_rejection": zod.enum(['signature', 'parse']).optional().describe('Forge only. Why the last rejected delivery was rejected.'),
+  "waiting_messages": zod.int().optional().describe('Chat only. Messages queued for the connection\'s sinks and not yet delivered.'),
+  "oldest_waiting_since": zod.iso.datetime({"offset":true}).optional().describe('Chat only. When the oldest waiting message was queued. Absent when none waits.'),
+  "last_success_at": zod.iso.datetime({"offset":true}).optional().describe('Chat only. When the platform last accepted a message for any of the sinks.'),
+  "last_failure_at": zod.iso.datetime({"offset":true}).optional().describe('Chat only. When an attempt at the platform last failed, for any of the sinks.'),
+  "last_error": zod.string().optional().describe('Chat only. Why that attempt failed.')
+}).describe('How the connection works. A forge connection reports the deliveries it sends, a chat connection the messages of all its sinks. Health changes with every delivery and is not part of the connection\'s version.'),
   "etag": zod.string().describe('The connection\'s current version, for If-Match on a change.')
 })
 
@@ -262,6 +282,16 @@ export const GetConnectionResponse = zod.object({
   "account": zod.string().describe('Whom the credential acted as when it was last checked. Empty without one.'),
   "has_credential": zod.boolean(),
   "webhook_url": zod.string().optional().describe('Where a forge sends this connection\'s webhooks. Absent for a chat connection.'),
+  "health": zod.object({
+  "last_delivery_at": zod.iso.datetime({"offset":true}).optional().describe('Forge only. When an authentic delivery last arrived. Absent before the first.'),
+  "last_rejection_at": zod.iso.datetime({"offset":true}).optional().describe('Forge only. When a delivery was last rejected. Absent before the first rejection.'),
+  "last_rejection": zod.enum(['signature', 'parse']).optional().describe('Forge only. Why the last rejected delivery was rejected.'),
+  "waiting_messages": zod.int().optional().describe('Chat only. Messages queued for the connection\'s sinks and not yet delivered.'),
+  "oldest_waiting_since": zod.iso.datetime({"offset":true}).optional().describe('Chat only. When the oldest waiting message was queued. Absent when none waits.'),
+  "last_success_at": zod.iso.datetime({"offset":true}).optional().describe('Chat only. When the platform last accepted a message for any of the sinks.'),
+  "last_failure_at": zod.iso.datetime({"offset":true}).optional().describe('Chat only. When an attempt at the platform last failed, for any of the sinks.'),
+  "last_error": zod.string().optional().describe('Chat only. Why that attempt failed.')
+}).describe('How the connection works. A forge connection reports the deliveries it sends, a chat connection the messages of all its sinks. Health changes with every delivery and is not part of the connection\'s version.'),
   "etag": zod.string().describe('The connection\'s current version, for If-Match on a change.')
 })
 
@@ -298,6 +328,16 @@ export const UpdateConnectionResponse = zod.object({
   "account": zod.string().describe('Whom the credential acted as when it was last checked. Empty without one.'),
   "has_credential": zod.boolean(),
   "webhook_url": zod.string().optional().describe('Where a forge sends this connection\'s webhooks. Absent for a chat connection.'),
+  "health": zod.object({
+  "last_delivery_at": zod.iso.datetime({"offset":true}).optional().describe('Forge only. When an authentic delivery last arrived. Absent before the first.'),
+  "last_rejection_at": zod.iso.datetime({"offset":true}).optional().describe('Forge only. When a delivery was last rejected. Absent before the first rejection.'),
+  "last_rejection": zod.enum(['signature', 'parse']).optional().describe('Forge only. Why the last rejected delivery was rejected.'),
+  "waiting_messages": zod.int().optional().describe('Chat only. Messages queued for the connection\'s sinks and not yet delivered.'),
+  "oldest_waiting_since": zod.iso.datetime({"offset":true}).optional().describe('Chat only. When the oldest waiting message was queued. Absent when none waits.'),
+  "last_success_at": zod.iso.datetime({"offset":true}).optional().describe('Chat only. When the platform last accepted a message for any of the sinks.'),
+  "last_failure_at": zod.iso.datetime({"offset":true}).optional().describe('Chat only. When an attempt at the platform last failed, for any of the sinks.'),
+  "last_error": zod.string().optional().describe('Chat only. Why that attempt failed.')
+}).describe('How the connection works. A forge connection reports the deliveries it sends, a chat connection the messages of all its sinks. Health changes with every delivery and is not part of the connection\'s version.'),
   "etag": zod.string().describe('The connection\'s current version, for If-Match on a change.')
 })
 
@@ -645,6 +685,13 @@ export const ListSinksResponse = zod.object({
   "channel_id": zod.string(),
   "channel_name": zod.string().describe('How the platform named the channel when it was last checked.'),
   "teams": zod.array(zod.int()).describe('The ids of the teams that own the sink.'),
+  "health": zod.object({
+  "waiting_messages": zod.int().describe('Messages queued for the sink and not yet delivered.'),
+  "oldest_waiting_since": zod.iso.datetime({"offset":true}).optional().describe('When the oldest waiting message was queued. Absent when none waits.'),
+  "last_success_at": zod.iso.datetime({"offset":true}).optional().describe('When the platform last accepted a message for the sink. Absent before the first.'),
+  "last_failure_at": zod.iso.datetime({"offset":true}).optional().describe('When an attempt at the platform last failed. Absent before the first failure.'),
+  "last_error": zod.string().optional().describe('Why that attempt failed, as the platform or the network answered.')
+}).describe('How messages reach the sink. Health changes with every delivery and is not part of the sink\'s version.'),
   "etag": zod.string().describe('The sink\'s current version, for If-Match on a change.')
 })),
   "next_cursor": zod.string().optional().describe('Absent on the last page.')
@@ -673,6 +720,13 @@ export const CreateSinkResponse = zod.object({
   "channel_id": zod.string(),
   "channel_name": zod.string().describe('How the platform named the channel when it was last checked.'),
   "teams": zod.array(zod.int()).describe('The ids of the teams that own the sink.'),
+  "health": zod.object({
+  "waiting_messages": zod.int().describe('Messages queued for the sink and not yet delivered.'),
+  "oldest_waiting_since": zod.iso.datetime({"offset":true}).optional().describe('When the oldest waiting message was queued. Absent when none waits.'),
+  "last_success_at": zod.iso.datetime({"offset":true}).optional().describe('When the platform last accepted a message for the sink. Absent before the first.'),
+  "last_failure_at": zod.iso.datetime({"offset":true}).optional().describe('When an attempt at the platform last failed. Absent before the first failure.'),
+  "last_error": zod.string().optional().describe('Why that attempt failed, as the platform or the network answered.')
+}).describe('How messages reach the sink. Health changes with every delivery and is not part of the sink\'s version.'),
   "etag": zod.string().describe('The sink\'s current version, for If-Match on a change.')
 })
 
@@ -691,6 +745,13 @@ export const GetSinkResponse = zod.object({
   "channel_id": zod.string(),
   "channel_name": zod.string().describe('How the platform named the channel when it was last checked.'),
   "teams": zod.array(zod.int()).describe('The ids of the teams that own the sink.'),
+  "health": zod.object({
+  "waiting_messages": zod.int().describe('Messages queued for the sink and not yet delivered.'),
+  "oldest_waiting_since": zod.iso.datetime({"offset":true}).optional().describe('When the oldest waiting message was queued. Absent when none waits.'),
+  "last_success_at": zod.iso.datetime({"offset":true}).optional().describe('When the platform last accepted a message for the sink. Absent before the first.'),
+  "last_failure_at": zod.iso.datetime({"offset":true}).optional().describe('When an attempt at the platform last failed. Absent before the first failure.'),
+  "last_error": zod.string().optional().describe('Why that attempt failed, as the platform or the network answered.')
+}).describe('How messages reach the sink. Health changes with every delivery and is not part of the sink\'s version.'),
   "etag": zod.string().describe('The sink\'s current version, for If-Match on a change.')
 })
 
@@ -724,6 +785,13 @@ export const UpdateSinkResponse = zod.object({
   "channel_id": zod.string(),
   "channel_name": zod.string().describe('How the platform named the channel when it was last checked.'),
   "teams": zod.array(zod.int()).describe('The ids of the teams that own the sink.'),
+  "health": zod.object({
+  "waiting_messages": zod.int().describe('Messages queued for the sink and not yet delivered.'),
+  "oldest_waiting_since": zod.iso.datetime({"offset":true}).optional().describe('When the oldest waiting message was queued. Absent when none waits.'),
+  "last_success_at": zod.iso.datetime({"offset":true}).optional().describe('When the platform last accepted a message for the sink. Absent before the first.'),
+  "last_failure_at": zod.iso.datetime({"offset":true}).optional().describe('When an attempt at the platform last failed. Absent before the first failure.'),
+  "last_error": zod.string().optional().describe('Why that attempt failed, as the platform or the network answered.')
+}).describe('How messages reach the sink. Health changes with every delivery and is not part of the sink\'s version.'),
   "etag": zod.string().describe('The sink\'s current version, for If-Match on a change.')
 })
 

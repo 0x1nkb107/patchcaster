@@ -40,6 +40,10 @@ type fakeStore struct {
 	connections    map[int64]*store.Connection
 	signingTokens  map[int64]store.NewSigningToken
 	nextID         int64
+
+	// The health the store reports, by id. Missing ids have none yet.
+	forgeHealth map[int64]store.ForgeHealth
+	chatHealth  map[int64]store.SinkHealth
 }
 
 func (f *fakeStore) AdministratorCount(context.Context) (int, error) {
@@ -229,6 +233,26 @@ func (f *fakeStore) CreateSink(context.Context, store.Actor, store.Sink, time.Ti
 }
 
 func (f *fakeStore) Sink(context.Context, int64) (*store.Sink, error) { return nil, errNotInTest }
+
+func (f *fakeStore) SinkHealth(context.Context, []int64) (map[int64]store.SinkHealth, error) {
+	return map[int64]store.SinkHealth{}, nil
+}
+
+func (f *fakeStore) ForgeHealth(_ context.Context, ids []int64) (map[int64]store.ForgeHealth, error) {
+	health := map[int64]store.ForgeHealth{}
+	for _, id := range ids {
+		health[id] = f.forgeHealth[id]
+	}
+	return health, nil
+}
+
+func (f *fakeStore) ChatConnectionHealth(_ context.Context, ids []int64) (map[int64]store.SinkHealth, error) {
+	health := map[int64]store.SinkHealth{}
+	for _, id := range ids {
+		health[id] = f.chatHealth[id]
+	}
+	return health, nil
+}
 
 func (f *fakeStore) Sinks(context.Context, int64, int64, int) ([]store.Sink, error) {
 	return nil, errNotInTest

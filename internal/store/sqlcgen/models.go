@@ -53,6 +53,22 @@ type ConnectionHealth struct {
 	LastRejection   sql.NullString
 }
 
+type ForgeHook struct {
+	ConnectionID   int64
+	ScopeKind      string
+	ScopePath      string
+	MergeRequests  bool
+	Pushes         bool
+	Comments       bool
+	Pipelines      bool
+	Url            string
+	ForgeHookID    sql.NullInt64
+	SigningTokenID sql.NullInt64
+	LastError      sql.NullString
+	AttemptedAt    time.Time
+	RegisteredAt   sql.NullTime
+}
+
 type InstanceKeyCheck struct {
 	ID       int16
 	Sealed   []byte

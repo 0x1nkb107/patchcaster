@@ -382,6 +382,44 @@ func (q *Queries) SourceList(ctx context.Context, arg SourceListParams) ([]Sourc
 	return items, nil
 }
 
+const sourceScopesOfConnection = `-- name: SourceScopesOfConnection :many
+SELECT id, scope_kind, scope_path
+FROM sources
+WHERE connection_id = $1
+ORDER BY id
+`
+
+type SourceScopesOfConnectionRow struct {
+	ID        int64
+	ScopeKind string
+	ScopePath string
+}
+
+// SourceScopesOfConnection lists the scopes of every source of a forge
+// connection, for the hooks they need.
+func (q *Queries) SourceScopesOfConnection(ctx context.Context, connectionID int64) ([]SourceScopesOfConnectionRow, error) {
+	rows, err := q.db.QueryContext(ctx, sourceScopesOfConnection, connectionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SourceScopesOfConnectionRow
+	for rows.Next() {
+		var i SourceScopesOfConnectionRow
+		if err := rows.Scan(&i.ID, &i.ScopeKind, &i.ScopePath); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const sourceUpdate = `-- name: SourceUpdate :execrows
 UPDATE sources
 SET name = $1, scope_kind = $2, scope_path = $3,

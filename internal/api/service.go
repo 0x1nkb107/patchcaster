@@ -19,6 +19,8 @@ import (
 
 // Store is what the v1 operations need from persistence.
 type Store interface {
+	SourceScopes(ctx context.Context, connectionID int64) ([]store.SourceScope, error)
+	ForgeHooks(ctx context.Context, connectionID int64) ([]store.ForgeHook, error)
 	SinkHealth(ctx context.Context, ids []int64) (map[int64]store.SinkHealth, error)
 	ForgeHealth(ctx context.Context, ids []int64) (map[int64]store.ForgeHealth, error)
 	ChatConnectionHealth(ctx context.Context, ids []int64) (map[int64]store.SinkHealth, error)
@@ -91,6 +93,7 @@ type Config struct {
 	Sessions  *scs.SessionManager
 	Login     Login
 	Platforms Platforms
+	Hooks     Hooks
 	PublicURL *url.URL
 	Log       *slog.Logger
 	Now       func() time.Time
@@ -104,6 +107,7 @@ type Service struct {
 	sessions  *scs.SessionManager
 	login     Login
 	platforms Platforms
+	hooks     Hooks
 	publicURL *url.URL
 	log       *slog.Logger
 	now       func() time.Time
@@ -124,6 +128,7 @@ func NewService(cfg Config) *Service {
 		sessions:  cfg.Sessions,
 		login:     cfg.Login,
 		platforms: cfg.Platforms,
+		hooks:     cfg.Hooks,
 		publicURL: cfg.PublicURL,
 		log:       cfg.Log,
 		now:       now,

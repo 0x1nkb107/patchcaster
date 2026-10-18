@@ -25,9 +25,13 @@ func (s *Service) ListSources(ctx context.Context, params v1gen.ListSourcesParam
 		return nil, err
 	}
 	sources, next := pageOf(sources, limit, func(src store.Source) int64 { return src.ID })
+	hookStates, err := s.sourceHooks(ctx, sources)
+	if err != nil {
+		return nil, err
+	}
 	items := make([]v1gen.Source, 0, len(sources))
 	for i := range sources {
-		items = append(items, sourceOf(&sources[i]))
+		items = append(items, sourceOf(&sources[i], hookStates[sources[i].ID]))
 	}
 	return &v1gen.SourcePage{Items: items, NextCursor: next}, nil
 }
@@ -53,7 +57,12 @@ func (s *Service) CreateSource(ctx context.Context, req *v1gen.SourceRequest) (*
 	if err != nil {
 		return nil, storeProblem(err)
 	}
-	source := sourceOf(created)
+	s.hooks.Poke(created.ConnectionID)
+	hookStates, err := s.sourceHooks(ctx, []store.Source{*created})
+	if err != nil {
+		return nil, err
+	}
+	source := sourceOf(created, hookStates[created.ID])
 	return &source, nil
 }
 
@@ -66,7 +75,7 @@ func (s *Service) GetSource(ctx context.Context, params v1gen.GetSourceParams) (
 	if err := s.mayReadOwned(ctx, source.Teams); err != nil {
 		return nil, err
 	}
-	return sourceHeaders(source), nil
+	return s.sourceHeaders(ctx, source)
 }
 
 // UpdateSource changes a source's name and scope, for administrators.
@@ -92,7 +101,8 @@ func (s *Service) UpdateSource(ctx context.Context, req *v1gen.SourceUpdate, par
 	if err != nil {
 		return nil, storeProblem(err)
 	}
-	return sourceHeaders(updated), nil
+	s.hooks.Poke(updated.ConnectionID)
+	return s.sourceHeaders(ctx, updated)
 }
 
 // DeleteSource removes a source no route uses, for administrators.
@@ -104,9 +114,15 @@ func (s *Service) DeleteSource(ctx context.Context, params v1gen.DeleteSourcePar
 	if err != nil {
 		return err
 	}
+	// The connection names whose hooks follow the removal.
+	source, err := s.store.Source(ctx, params.ID)
+	if err != nil {
+		return storeProblem(err)
+	}
 	if err := s.store.DeleteSource(ctx, actorOf(ctx), params.ID, version, s.now()); err != nil {
 		return storeProblem(err)
 	}
+	s.hooks.Poke(source.ConnectionID)
 	return nil
 }
 
@@ -311,26 +327,29 @@ func parseScope(scope v1gen.SourceScope) (string, string, error) {
 	return string(scope.Kind), path, nil
 }
 
-func sourceOf(src *store.Source) v1gen.Source {
-	scope := v1gen.SourceScope{Kind: v1gen.SourceScopeKind(src.ScopeKind)}
-	if src.ScopePath != "" {
-		scope.Path = v1gen.NewOptString(src.ScopePath)
-	}
+func sourceOf(src *store.Source, hook v1gen.SourceHook) v1gen.Source {
 	return v1gen.Source{
 		ID:           src.ID,
 		ConnectionID: src.ConnectionID,
 		Name:         src.Name,
-		Scope:        scope,
+		Scope:        scopeOf(store.HookScope{Kind: src.ScopeKind, Path: src.ScopePath}),
 		Teams:        nonNilIDs(src.Teams),
+		Hook:         hook,
 		Etag:         etagOf(src.Version),
 	}
 }
 
-func sourceHeaders(src *store.Source) *v1gen.SourceHeaders {
+// sourceHeaders renders one source with its hook state. The ETag covers
+// the configuration alone, so the hook never fails a change.
+func (s *Service) sourceHeaders(ctx context.Context, src *store.Source) (*v1gen.SourceHeaders, error) {
+	hookStates, err := s.sourceHooks(ctx, []store.Source{*src})
+	if err != nil {
+		return nil, err
+	}
 	return &v1gen.SourceHeaders{
 		ETag:     v1gen.NewOptString(etagOf(src.Version)),
-		Response: sourceOf(src),
-	}
+		Response: sourceOf(src, hookStates[src.ID]),
+	}, nil
 }
 
 func sinkOf(k *store.Sink, health v1gen.SinkHealth) v1gen.Sink {

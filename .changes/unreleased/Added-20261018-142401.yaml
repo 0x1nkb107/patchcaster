@@ -1,0 +1,3 @@
+kind: Added
+body: Register the GitLab hooks that a connection's sources need through the GitLab API, when the connection has an access token. PatchCaster generates each hook's signing token, replaces narrower hooks with broader ones, removes hooks no source needs, and shows on each source how its events arrive.
+time: 2026-10-18T14:24:01.476366822+02:00

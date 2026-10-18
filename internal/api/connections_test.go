@@ -297,3 +297,30 @@ func TestConnectionsReportTheirHealth(t *testing.T) {
 		"last_error":       "post: 503 Service Unavailable",
 	}, chat, "a chat connection reports its sinks, and nothing it never had")
 }
+
+func TestAChangedForgeConnectionUpdatesItsHooks(t *testing.T) {
+	// arrange
+	f := newFixture(t)
+	forge := f.createConnection(t, `{"kind":"gitlab","name":"gitlab","base_url":"https://gitlab.example.org"}`).connection(t)
+	chat := f.createConnection(t, `{"kind":"mattermost","name":"chat","base_url":"https://chat.example.org","credential":"bot-token"}`).connection(t)
+	admin := f.sessionOf(t, ada)
+	update := func(c connectionBody, body string) int {
+		rec := f.serve(t, request{
+			method:  http.MethodPut,
+			path:    "/api/v1/connections/" + itoa(c.ID),
+			body:    body,
+			session: admin,
+			header:  map[string]string{"If-Match": c.Etag},
+		})
+		return rec.Code
+	}
+
+	// act
+	forgeStatus := update(forge, `{"name":"gitlab","base_url":"https://gitlab.example.org","credential":"access-token"}`)
+	chatStatus := update(chat, `{"name":"team chat","base_url":"https://chat.example.org"}`)
+
+	// assert
+	require.Equal(t, http.StatusOK, forgeStatus)
+	require.Equal(t, http.StatusOK, chatStatus)
+	assert.Equal(t, []int64{forge.ID}, f.hooks.poked, "a forge connection's hooks follow its credential, a chat connection has none")
+}

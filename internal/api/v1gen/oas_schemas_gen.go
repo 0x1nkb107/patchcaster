@@ -1153,6 +1153,52 @@ func (o OptInt64) Or(d int64) int64 {
 	return d
 }
 
+// NewOptSourceScope returns new OptSourceScope with value set to v.
+func NewOptSourceScope(v SourceScope) OptSourceScope {
+	return OptSourceScope{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptSourceScope is optional SourceScope.
+type OptSourceScope struct {
+	Value SourceScope
+	Set   bool
+}
+
+// IsSet returns true if OptSourceScope was set.
+func (o OptSourceScope) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptSourceScope) Reset() {
+	var v SourceScope
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptSourceScope) SetTo(v SourceScope) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptSourceScope) Get() (v SourceScope, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptSourceScope) Or(d SourceScope) SourceScope {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptString returns new OptString with value set to v.
 func NewOptString(v string) OptString {
 	return OptString{
@@ -2104,7 +2150,8 @@ type Source struct {
 	Name         string      `json:"name"`
 	Scope        SourceScope `json:"scope"`
 	// The ids of the teams that own the source.
-	Teams []int64 `json:"teams"`
+	Teams []int64    `json:"teams"`
+	Hook  SourceHook `json:"hook"`
 	// The source's current version, for If-Match on a change.
 	Etag string `json:"etag"`
 }
@@ -2132,6 +2179,11 @@ func (s *Source) GetScope() SourceScope {
 // GetTeams returns the value of Teams.
 func (s *Source) GetTeams() []int64 {
 	return s.Teams
+}
+
+// GetHook returns the value of Hook.
+func (s *Source) GetHook() SourceHook {
+	return s.Hook
 }
 
 // GetEtag returns the value of Etag.
@@ -2164,6 +2216,11 @@ func (s *Source) SetTeams(val []int64) {
 	s.Teams = val
 }
 
+// SetHook sets the value of Hook.
+func (s *Source) SetHook(val SourceHook) {
+	s.Hook = val
+}
+
 // SetEtag sets the value of Etag.
 func (s *Source) SetEtag(val string) {
 	s.Etag = val
@@ -2193,6 +2250,129 @@ func (s *SourceHeaders) SetETag(val OptString) {
 // SetResponse sets the value of Response.
 func (s *SourceHeaders) SetResponse(val Source) {
 	s.Response = val
+}
+
+// How the source's events reach PatchCaster. Where the connection has API access, PatchCaster
+// registers one hook for every scope no broader source covers. The hook changes in the background and
+// is not part of the source's version.
+// Ref: #/components/schemas/SourceHook
+type SourceHook struct {
+	// Registered: the hook of the source's scope is registered. pending: it is still to be registered.
+	// failed: the last attempt failed, see last_error. covered: the hook of a broader source takes the
+	// events, see covered_by. manual: the connection has no API access, so a hook is registered by hand at
+	// its webhook_url.
+	State     SourceHookState `json:"state"`
+	CoveredBy OptSourceScope  `json:"covered_by"`
+	// Why the last attempt at the forge failed. Absent after a success.
+	LastError OptString `json:"last_error"`
+	// When the forge registered the hook. Absent until then.
+	RegisteredAt OptDateTime `json:"registered_at"`
+}
+
+// GetState returns the value of State.
+func (s *SourceHook) GetState() SourceHookState {
+	return s.State
+}
+
+// GetCoveredBy returns the value of CoveredBy.
+func (s *SourceHook) GetCoveredBy() OptSourceScope {
+	return s.CoveredBy
+}
+
+// GetLastError returns the value of LastError.
+func (s *SourceHook) GetLastError() OptString {
+	return s.LastError
+}
+
+// GetRegisteredAt returns the value of RegisteredAt.
+func (s *SourceHook) GetRegisteredAt() OptDateTime {
+	return s.RegisteredAt
+}
+
+// SetState sets the value of State.
+func (s *SourceHook) SetState(val SourceHookState) {
+	s.State = val
+}
+
+// SetCoveredBy sets the value of CoveredBy.
+func (s *SourceHook) SetCoveredBy(val OptSourceScope) {
+	s.CoveredBy = val
+}
+
+// SetLastError sets the value of LastError.
+func (s *SourceHook) SetLastError(val OptString) {
+	s.LastError = val
+}
+
+// SetRegisteredAt sets the value of RegisteredAt.
+func (s *SourceHook) SetRegisteredAt(val OptDateTime) {
+	s.RegisteredAt = val
+}
+
+// Registered: the hook of the source's scope is registered. pending: it is still to be registered.
+// failed: the last attempt failed, see last_error. covered: the hook of a broader source takes the
+// events, see covered_by. manual: the connection has no API access, so a hook is registered by hand at
+// its webhook_url.
+type SourceHookState string
+
+const (
+	SourceHookStateRegistered SourceHookState = "registered"
+	SourceHookStatePending    SourceHookState = "pending"
+	SourceHookStateFailed     SourceHookState = "failed"
+	SourceHookStateCovered    SourceHookState = "covered"
+	SourceHookStateManual     SourceHookState = "manual"
+)
+
+// AllValues returns all SourceHookState values.
+func (SourceHookState) AllValues() []SourceHookState {
+	return []SourceHookState{
+		SourceHookStateRegistered,
+		SourceHookStatePending,
+		SourceHookStateFailed,
+		SourceHookStateCovered,
+		SourceHookStateManual,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SourceHookState) MarshalText() ([]byte, error) {
+	switch s {
+	case SourceHookStateRegistered:
+		return []byte(s), nil
+	case SourceHookStatePending:
+		return []byte(s), nil
+	case SourceHookStateFailed:
+		return []byte(s), nil
+	case SourceHookStateCovered:
+		return []byte(s), nil
+	case SourceHookStateManual:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SourceHookState) UnmarshalText(data []byte) error {
+	switch SourceHookState(data) {
+	case SourceHookStateRegistered:
+		*s = SourceHookStateRegistered
+		return nil
+	case SourceHookStatePending:
+		*s = SourceHookStatePending
+		return nil
+	case SourceHookStateFailed:
+		*s = SourceHookStateFailed
+		return nil
+	case SourceHookStateCovered:
+		*s = SourceHookStateCovered
+		return nil
+	case SourceHookStateManual:
+		*s = SourceHookStateManual
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
 }
 
 // Ref: #/components/schemas/SourcePage

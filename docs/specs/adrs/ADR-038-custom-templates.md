@@ -28,6 +28,8 @@ v0.1 renders built-in templates with `text/template` over an explicit view model
 - Saving a template parses it and renders sample events for every platform. The preview shows those renderings, and size limits per platform apply at that point.
   - The samples cover each pipeline state, open and closed merge requests, and the longest values a forge sends, made of the character whose escaping grows most. A refused template names the line and the cause.
 - Built-in templates ship with the binary and apply wherever a route has no template of its own.
+- When several routes reach one sink, the route with the narrowest source writes the sink's message, and the thread keeps that route while it exists (owner decision 2026-10-20). Without it, the route the message was queued with writes it.
+- A stored template that fails at delivery gives way to the built-in one, with a warning and a count, so that the message still goes out (owner decision 2026-10-20).
 
 ## Consequences
 

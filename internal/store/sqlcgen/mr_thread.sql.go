@@ -7,6 +7,7 @@ package sqlcgen
 
 import (
 	"context"
+	"database/sql"
 	"time"
 )
 
@@ -30,7 +31,7 @@ func (q *Queries) ThreadClose(ctx context.Context, arg ThreadCloseParams) error 
 }
 
 const threadGet = `-- name: ThreadGet :one
-SELECT mr_ref, channel_id, root_post_id, state
+SELECT mr_ref, channel_id, root_post_id, state, route_id
 FROM mr_thread
 WHERE mr_ref = $1 AND sink_id = $2
 `
@@ -45,6 +46,7 @@ type ThreadGetRow struct {
 	ChannelID  string
 	RootPostID string
 	State      string
+	RouteID    sql.NullInt64
 }
 
 // ThreadGet reads the thread mapping of a merge request in one sink
@@ -57,13 +59,14 @@ func (q *Queries) ThreadGet(ctx context.Context, arg ThreadGetParams) (ThreadGet
 		&i.ChannelID,
 		&i.RootPostID,
 		&i.State,
+		&i.RouteID,
 	)
 	return i, err
 }
 
 const threadOpen = `-- name: ThreadOpen :exec
-INSERT INTO mr_thread (mr_ref, sink_id, channel_id, root_post_id, state, created_at, updated_at)
-VALUES ($1, $2, $3, $4, 'open', $5, $5)
+INSERT INTO mr_thread (mr_ref, sink_id, channel_id, root_post_id, route_id, state, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, 'open', $6, $6)
 ON CONFLICT (mr_ref, sink_id) DO NOTHING
 `
 
@@ -72,17 +75,20 @@ type ThreadOpenParams struct {
 	SinkID     int64
 	ChannelID  string
 	RootPostID string
+	RouteID    sql.NullInt64
 	CreatedAt  time.Time
 }
 
-// ThreadOpen maps a merge request to its root post in one sink. An existing
-// mapping stays as it is, so the first root wins.
+// ThreadOpen maps a merge request to its root post in one sink, with the
+// route whose templates wrote the root. An existing mapping stays as it is,
+// so the first root wins.
 func (q *Queries) ThreadOpen(ctx context.Context, arg ThreadOpenParams) error {
 	_, err := q.db.ExecContext(ctx, threadOpen,
 		arg.MrRef,
 		arg.SinkID,
 		arg.ChannelID,
 		arg.RootPostID,
+		arg.RouteID,
 		arg.CreatedAt,
 	)
 	return err

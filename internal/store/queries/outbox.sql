@@ -1,8 +1,8 @@
 -- name: InsertOutbox :exec
 -- InsertOutbox enqueues a delivery as pending and due at once (SYSREQ-017).
-INSERT INTO outbox (mr_ref, sink_id, connection_id, action, dest_channel, payload,
+INSERT INTO outbox (mr_ref, sink_id, connection_id, route_id, action, dest_channel, payload,
     state, attempts, next_attempt_at, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, 'pending', 0, $7, $7, $7);
+VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', 0, $8, $8, $8);
 
 -- name: NotifyOutbox :exec
 -- NotifyOutbox wakes listening workers once the enqueuing transaction
@@ -34,7 +34,7 @@ WHERE id = (
     FOR UPDATE SKIP LOCKED
     LIMIT 1
 )
-RETURNING id, mr_ref, sink_id, connection_id, action, dest_channel, payload,
+RETURNING id, mr_ref, sink_id, connection_id, route_id, action, dest_channel, payload,
     attempts, notice_posted, root_refreshed;
 
 -- name: ReapLeases :exec

@@ -7,6 +7,7 @@ package sqlcgen
 
 import (
 	"context"
+	"database/sql"
 )
 
 const routeTemplateDelete = `-- name: RouteTemplateDelete :execrows
@@ -75,4 +76,50 @@ func (q *Queries) RouteTemplateSet(ctx context.Context, arg RouteTemplateSetPara
 		arg.Text,
 	)
 	return err
+}
+
+const routeTemplatesFor = `-- name: RouteTemplatesFor :many
+SELECT r.id AS route_id, t.kind, t.data_version, t.text
+FROM routes r
+LEFT JOIN route_templates t ON t.route_id = r.id
+WHERE r.id = $1
+ORDER BY t.kind
+`
+
+type RouteTemplatesForRow struct {
+	RouteID     int64
+	Kind        sql.NullString
+	DataVersion sql.NullInt32
+	Text        sql.NullString
+}
+
+// RouteTemplatesFor reads the templates of a route for delivery: one row
+// per template, or one row without a template when the route has none of
+// its own. No row means that the route is gone.
+func (q *Queries) RouteTemplatesFor(ctx context.Context, id int64) ([]RouteTemplatesForRow, error) {
+	rows, err := q.db.QueryContext(ctx, routeTemplatesFor, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RouteTemplatesForRow
+	for rows.Next() {
+		var i RouteTemplatesForRow
+		if err := rows.Scan(
+			&i.RouteID,
+			&i.Kind,
+			&i.DataVersion,
+			&i.Text,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

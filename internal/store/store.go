@@ -25,6 +25,7 @@ type Job struct {
 	MRRef        string
 	SinkID       int64
 	ConnectionID int64
+	RouteID      int64 // the route whose templates write the message, 0 for none
 	Action       string
 	DestChannel  string
 	Payload      []byte // normalized event.Event JSON, with this sink's plan
@@ -36,14 +37,21 @@ type Job struct {
 	RootRefreshed bool
 }
 
+// nullableID stores an id that 0 marks as absent.
+func nullableID(id int64) sql.NullInt64 {
+	return sql.NullInt64{Int64: id, Valid: id != 0}
+}
+
 // Delivery is one sink an accepted event goes to, as ingest resolved it from
 // the routes (SYSREQ-046): the sink, the chat connection that delivers to
-// it, its channel, and the plan for that sink, which the route's muted
-// replies shaped (SYSREQ-047).
+// it, its channel, the plan for that sink, which the route's muted replies
+// shaped (SYSREQ-047), and the route whose templates write its message
+// (SYSREQ-049).
 type Delivery struct {
 	SinkID       int64
 	ConnectionID int64
 	ChannelID    string
+	RouteID      int64
 	Plan         *event.Plan
 }
 
@@ -75,6 +83,7 @@ type Thread struct {
 	ChannelID  string
 	RootPostID string
 	Open       bool
+	RouteID    int64 // the route whose templates wrote the root, 0 for none
 }
 
 // SettlementKind enumerates how the worker settled a claimed job.
@@ -312,6 +321,7 @@ func enqueue(ctx context.Context, q *sqlcgen.Queries, ev *event.Event, d Deliver
 		MrRef:         ev.MRRef,
 		SinkID:        d.SinkID,
 		ConnectionID:  d.ConnectionID,
+		RouteID:       nullableID(d.RouteID),
 		Action:        ev.Action,
 		DestChannel:   d.ChannelID,
 		Payload:       payload,
@@ -382,6 +392,7 @@ func (p *Postgres) ClaimDue(ctx context.Context, now time.Time, lease time.Durat
 		MRRef:         row.MrRef,
 		SinkID:        row.SinkID,
 		ConnectionID:  row.ConnectionID,
+		RouteID:       row.RouteID.Int64,
 		Action:        row.Action,
 		DestChannel:   row.DestChannel,
 		Payload:       row.Payload,
@@ -452,17 +463,20 @@ func (p *Postgres) Thread(ctx context.Context, mrRef string, sinkID int64) (*Thr
 		ChannelID:  row.ChannelID,
 		RootPostID: row.RootPostID,
 		Open:       row.State == "open",
+		RouteID:    row.RouteID.Int64,
 	}, nil
 }
 
-// OpenThread records the root post mapping of a merge request in one sink.
-// It returns ErrNotFound when the sink was removed meanwhile.
-func (p *Postgres) OpenThread(ctx context.Context, mrRef string, sinkID int64, channelID, rootPostID string, now time.Time) error {
+// OpenThread records the root post mapping of a merge request in one sink,
+// with the route whose templates wrote the root, or 0 for none. It returns
+// ErrNotFound when the sink was removed meanwhile.
+func (p *Postgres) OpenThread(ctx context.Context, mrRef string, sinkID int64, channelID, rootPostID string, routeID int64, now time.Time) error {
 	err := p.base.ThreadOpen(ctx, sqlcgen.ThreadOpenParams{
 		MrRef:      mrRef,
 		SinkID:     sinkID,
 		ChannelID:  channelID,
 		RootPostID: rootPostID,
+		RouteID:    nullableID(routeID),
 		CreatedAt:  now,
 	})
 	if errors.Is(referenceProblem(err, nil), ErrInUse) {

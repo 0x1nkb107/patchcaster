@@ -28,6 +28,9 @@ The owner wants teams to decide how messages look (2026-10-15). Once Routing Man
 - Templates can call only the documented functions, and none of them reads files, the network or the database.
 - A rendered message larger than the sink platform accepts is refused at validation, not at delivery.
 - Built-in templates ship with the binary and apply wherever a route has none of its own.
+- Of the routes that reach one sink, the one with the narrowest source writes the sink's message with its templates: a repository before a group, a deeper group before a shallower one, a group before the instance, and the oldest route among equal ones (owner decision 2026-10-20).
+- A thread keeps the route of its root while that route exists, so that its notices and its root refreshes keep one look. A change to that route's templates reaches the root at its next refresh.
+- A stored template that fails at delivery gives way to the built-in one for that message, which is counted (owner decision 2026-10-20).
 
 ## Verification Plan
 

@@ -31,7 +31,7 @@ WHERE id = (
     FOR UPDATE SKIP LOCKED
     LIMIT 1
 )
-RETURNING id, mr_ref, sink_id, connection_id, action, dest_channel, payload,
+RETURNING id, mr_ref, sink_id, connection_id, route_id, action, dest_channel, payload,
     attempts, notice_posted, root_refreshed
 `
 
@@ -45,6 +45,7 @@ type ClaimDueRow struct {
 	MrRef         string
 	SinkID        int64
 	ConnectionID  int64
+	RouteID       sql.NullInt64
 	Action        string
 	DestChannel   string
 	Payload       json.RawMessage
@@ -67,6 +68,7 @@ func (q *Queries) ClaimDue(ctx context.Context, arg ClaimDueParams) (ClaimDueRow
 		&i.MrRef,
 		&i.SinkID,
 		&i.ConnectionID,
+		&i.RouteID,
 		&i.Action,
 		&i.DestChannel,
 		&i.Payload,
@@ -78,15 +80,16 @@ func (q *Queries) ClaimDue(ctx context.Context, arg ClaimDueParams) (ClaimDueRow
 }
 
 const insertOutbox = `-- name: InsertOutbox :exec
-INSERT INTO outbox (mr_ref, sink_id, connection_id, action, dest_channel, payload,
+INSERT INTO outbox (mr_ref, sink_id, connection_id, route_id, action, dest_channel, payload,
     state, attempts, next_attempt_at, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, 'pending', 0, $7, $7, $7)
+VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', 0, $8, $8, $8)
 `
 
 type InsertOutboxParams struct {
 	MrRef         string
 	SinkID        int64
 	ConnectionID  int64
+	RouteID       sql.NullInt64
 	Action        string
 	DestChannel   string
 	Payload       json.RawMessage
@@ -99,6 +102,7 @@ func (q *Queries) InsertOutbox(ctx context.Context, arg InsertOutboxParams) erro
 		arg.MrRef,
 		arg.SinkID,
 		arg.ConnectionID,
+		arg.RouteID,
 		arg.Action,
 		arg.DestChannel,
 		arg.Payload,

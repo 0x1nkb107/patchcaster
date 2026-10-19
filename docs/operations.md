@@ -54,7 +54,7 @@ Teams decide who may route what. Instance Admins create teams at `/api/v1/teams`
 
 - A **source** selects the repositories of a forge connection, at `/api/v1/sources`: the whole instance, a group with everything below it, or one repository.
 - A **sink** names a channel of a chat connection, at `/api/v1/sinks`. PatchCaster checks that the connection's bot can post there before it stores the sink, and names the reason when it cannot, such as a bot that is not a member of the channel.
-- A **route**, at `/api/v1/routes`, forwards a team's source into one of the team's sinks. A team's Routing Managers manage its routes themselves, and an Instance Admin may manage any. A route may mute reply kinds: `comment`, `review`, `pipeline`, `push`, `merge` and `close`. Muted replies are not posted, but the thread's root post still shows every change.
+- A **route**, at `/api/v1/routes`, forwards a team's source into one of the team's sinks. A team's Routing Managers manage its routes themselves, and an Instance Admin may manage any. A route may mute reply kinds: `comment`, `review`, `pipeline`, `push`, `merge` and `close`. Muted replies are not posted, but the thread's root post still shows every change. A route may also replace the built-in [message templates](templates.md#templates-of-a-route) with its own.
 
 Routing Managers see only their teams and what those own. Naming another team's source or sink answers `403`. What a route uses stays until the route is removed: a source, a sink or a team with routes cannot be removed, and a team cannot give up a source or sink its routes use. A connection that sources or sinks use cannot be removed either.
 
@@ -102,6 +102,7 @@ The metrics follow a delivery from ingest to post. They name connections and sin
 | `messages_posted_total` | `connection`, `sink` | messages Mattermost accepted |
 | `messages_skipped_total` | `cause`: `no_mapping`, `thread_closed`, `duplicate_open`, `sink_gone`; `connection`, `sink` | queued messages deliberately not posted |
 | `messages_parked_total` | `cause`: `attempt_budget`, `thread_gone`, `render_failed`, `payload_undecodable`; `connection`, `sink` | messages given up on (see below) |
+| `template_fallbacks_total` | `kind`, `connection`, `sink` | messages written with the built-in template because the route's own failed |
 | `mattermost_attempts_total` | `outcome`: `sent`, `retryable`, `ratelimited`, `thread_gone`, `transport`; `connection`, `sink` | Mattermost API attempts |
 | `mattermost_attempt_duration_seconds` | `connection` | histogram of attempt durations |
 

@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/patchcaster-app/patchcaster/internal/event"
@@ -232,7 +233,8 @@ func onConnection(ev *event.Event, connectionID int64) {
 // deliveries resolves the sinks the event reaches through the routes of the
 // sources whose scope holds its repository (SYSREQ-046). A sink that
 // several routes reach gets the event once, and its reply unless every one
-// of those routes mutes it (SYSREQ-047).
+// of those routes mutes it (SYSREQ-047). The route with the narrowest source
+// writes its message with its templates (SYSREQ-049).
 func (h *Handler) deliveries(ctx context.Context, ev *event.Event) ([]store.Delivery, error) {
 	destinations, err := h.Store.Destinations(ctx, ev.ConnectionID, ev.ProjectPath)
 	if err != nil {
@@ -240,6 +242,7 @@ func (h *Handler) deliveries(ctx context.Context, ev *event.Event) ([]store.Deli
 	}
 	var deliveries []store.Delivery
 	mutedBySink := map[int64][]string{}
+	writerOfSink := map[int64]store.Destination{}
 	for _, d := range destinations {
 		muted, seen := mutedBySink[d.SinkID]
 		if !seen {
@@ -249,14 +252,48 @@ func (h *Handler) deliveries(ctx context.Context, ev *event.Event) ([]store.Deli
 				ChannelID:    d.ChannelID,
 			})
 			mutedBySink[d.SinkID] = d.MutedReplies
+			writerOfSink[d.SinkID] = d
 			continue
 		}
 		mutedBySink[d.SinkID] = mutedByAll(muted, d.MutedReplies)
+		if isNarrower(d, writerOfSink[d.SinkID]) {
+			writerOfSink[d.SinkID] = d
+		}
 	}
 	for i := range deliveries {
-		deliveries[i].Plan = plan.ForSink(ev.Plan, mutedBySink[deliveries[i].SinkID])
+		sinkID := deliveries[i].SinkID
+		deliveries[i].Plan = plan.ForSink(ev.Plan, mutedBySink[sinkID])
+		deliveries[i].RouteID = writerOfSink[sinkID].RouteID
 	}
 	return deliveries, nil
+}
+
+// scopeKindBreadth orders the kinds of source scopes from narrow to broad.
+var scopeKindBreadth = map[string]int{
+	"repository": 0,
+	"group":      1,
+	"instance":   2,
+}
+
+// isNarrower reports whether the source of route a is narrower than that of
+// route b (owner decision 2026-10-20): a repository is narrower than a
+// group, a group narrower than the instance, and a group narrower than the
+// groups above it. Routes of equal sources are never narrower than one
+// another, so the first route, the oldest, keeps a sink's message.
+func isNarrower(a, b store.Destination) bool {
+	aBreadth, bBreadth := scopeKindBreadth[a.ScopeKind], scopeKindBreadth[b.ScopeKind]
+	if aBreadth != bBreadth {
+		return aBreadth < bBreadth
+	}
+	return pathDepth(a.ScopePath) > pathDepth(b.ScopePath)
+}
+
+// pathDepth counts the segments of a scope's path.
+func pathDepth(path string) int {
+	if path == "" {
+		return 0
+	}
+	return strings.Count(path, "/") + 1
 }
 
 // mutedByAll keeps the reply kinds that both routes mute.

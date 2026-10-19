@@ -12,7 +12,8 @@ import (
 )
 
 const destinations = `-- name: Destinations :many
-SELECT r.sink_id, k.connection_id AS sink_connection_id, k.channel_id, r.muted_replies
+SELECT r.id AS route_id, r.sink_id, k.connection_id AS sink_connection_id, k.channel_id, r.muted_replies,
+    s.scope_kind, s.scope_path
 FROM sources s
 JOIN routes r ON r.source_id = s.id
 JOIN sinks k ON k.id = r.sink_id
@@ -29,16 +30,20 @@ type DestinationsParams struct {
 }
 
 type DestinationsRow struct {
+	RouteID          int64
 	SinkID           int64
 	SinkConnectionID int64
 	ChannelID        string
 	MutedReplies     json.RawMessage
+	ScopeKind        string
+	ScopePath        string
 }
 
 // Destinations lists the routes an event of a forge connection reaches:
 // those of every source of the connection whose scope holds the event's
-// repository, with the sink each route delivers to (SYSREQ-044,
-// SYSREQ-046). Paths match exactly, and a group holds everything below it.
+// repository, with the sink each route delivers to and the scope of its
+// source (SYSREQ-044, SYSREQ-046). Paths match exactly, and a group holds
+// everything below it.
 func (q *Queries) Destinations(ctx context.Context, arg DestinationsParams) ([]DestinationsRow, error) {
 	rows, err := q.db.QueryContext(ctx, destinations, arg.ConnectionID, arg.Repository)
 	if err != nil {
@@ -49,10 +54,13 @@ func (q *Queries) Destinations(ctx context.Context, arg DestinationsParams) ([]D
 	for rows.Next() {
 		var i DestinationsRow
 		if err := rows.Scan(
+			&i.RouteID,
 			&i.SinkID,
 			&i.SinkConnectionID,
 			&i.ChannelID,
 			&i.MutedReplies,
+			&i.ScopeKind,
+			&i.ScopePath,
 		); err != nil {
 			return nil, err
 		}

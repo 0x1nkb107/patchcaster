@@ -9,13 +9,16 @@ import (
 )
 
 // Destination is one route an event reaches: the sink it delivers to, the
-// chat connection and channel of that sink, and the replies the route mutes
-// (SYSREQ-046, SYSREQ-047).
+// chat connection and channel of that sink, the replies the route mutes
+// (SYSREQ-046, SYSREQ-047), and the scope of the route's source.
 type Destination struct {
+	RouteID      int64
 	SinkID       int64
 	ConnectionID int64
 	ChannelID    string
 	MutedReplies []string
+	ScopeKind    string
+	ScopePath    string
 }
 
 // Destinations lists the routes that an event of the forge connection with
@@ -34,9 +37,12 @@ func (p *Postgres) Destinations(ctx context.Context, connectionID int64, reposit
 	destinations := make([]Destination, 0, len(rows))
 	for _, row := range rows {
 		d := Destination{
+			RouteID:      row.RouteID,
 			SinkID:       row.SinkID,
 			ConnectionID: row.SinkConnectionID,
 			ChannelID:    row.ChannelID,
+			ScopeKind:    row.ScopeKind,
+			ScopePath:    row.ScopePath,
 		}
 		if err := json.Unmarshal(row.MutedReplies, &d.MutedReplies); err != nil {
 			return nil, fmt.Errorf("decode muted replies of a route to sink %d: %w", row.SinkID, err)

@@ -115,6 +115,10 @@ type Metrics struct {
 	Notices      *prometheus.CounterVec
 	PushAttrMiss *prometheus.CounterVec
 
+	// TemplateFallbacks counts messages that a route's own template failed
+	// to write, so that the built-in template wrote them (SYSREQ-049).
+	TemplateFallbacks *prometheus.CounterVec
+
 	// ListenerUp is 1 while a confirmed session listens for new outbox rows
 	// and 0 while the worker relies on polling alone (ADR-019).
 	ListenerUp prometheus.Gauge
@@ -174,6 +178,10 @@ func New() *Metrics {
 			Name: "patchcaster_push_attribution_misses_total",
 			Help: "Push deliveries that matched no open merge request, by forge connection.",
 		}, []string{labelConnection}),
+		TemplateFallbacks: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "patchcaster_template_fallbacks_total",
+			Help: "Messages written with the built-in template because the route's own failed, by kind, chat connection and sink.",
+		}, []string{"kind", labelConnection, labelSink}),
 		ListenerUp: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: "patchcaster_outbox_listener_up",
 			Help: "1 while the worker is woken for new messages, 0 while it only polls.",
@@ -182,7 +190,7 @@ func New() *Metrics {
 	reg.MustRegister(
 		m.Received, m.Rejected, m.Suppressed, m.Discarded, m.Skipped,
 		m.Parked, m.Posted, m.MMAttempts, m.MMDuration,
-		m.StateApplied, m.Notices, m.PushAttrMiss,
+		m.StateApplied, m.Notices, m.PushAttrMiss, m.TemplateFallbacks,
 		m.ListenerUp,
 	)
 	return m
@@ -217,6 +225,12 @@ func (m *Metrics) CountStateApplied(kind string, c Connection) {
 // request.
 func (m *Metrics) CountPushAttributionMiss(c Connection) {
 	m.PushAttrMiss.WithLabelValues(c.label).Inc()
+}
+
+// CountTemplateFallback counts a message of kind for s that a route's own
+// template failed to write, so that the built-in template wrote it.
+func (m *Metrics) CountTemplateFallback(kind string, s Sink) {
+	m.TemplateFallbacks.WithLabelValues(kind, s.connection, s.sink).Inc()
 }
 
 // CountSkipped counts a message for s skipped for cause.

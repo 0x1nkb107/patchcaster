@@ -306,9 +306,9 @@ func TestPostgres_ThreadLifecycle(t *testing.T) {
 	require.NoError(t, err)
 	assert.Nil(t, th, "unknown MRs have no mapping (SYSREQ-007 input)")
 
-	require.NoError(t, st.OpenThread(ctx, "42", sink.ID, "chan-1", "root-a", now))
+	require.NoError(t, st.OpenThread(ctx, "42", sink.ID, "chan-1", "root-a", 0, now))
 	// re-opening is a no-op, not an error and not an overwrite
-	require.NoError(t, st.OpenThread(ctx, "42", sink.ID, "chan-1", "root-b", now))
+	require.NoError(t, st.OpenThread(ctx, "42", sink.ID, "chan-1", "root-b", 0, now))
 
 	th, err = st.Thread(ctx, "42", sink.ID)
 	require.NoError(t, err)
@@ -329,14 +329,14 @@ func TestPostgres_ThreadsArePerSink(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now().UTC()
 	first, second := newSink(t, st, "chan-a"), newSink(t, st, "chan-b")
-	require.NoError(t, st.OpenThread(ctx, "42", first.ID, "chan-a", "root-a", now))
-	require.NoError(t, st.OpenThread(ctx, "42", second.ID, "chan-b", "root-b", now))
+	require.NoError(t, st.OpenThread(ctx, "42", first.ID, "chan-a", "root-a", 0, now))
+	require.NoError(t, st.OpenThread(ctx, "42", second.ID, "chan-b", "root-b", 0, now))
 
 	// act
 	require.NoError(t, st.CloseThread(ctx, "42", first.ID, now))
 	firstThread, _ := st.Thread(ctx, "42", first.ID)
 	secondThread, _ := st.Thread(ctx, "42", second.ID)
-	goneErr := st.OpenThread(ctx, "43", 9999, "chan-x", "root-x", now)
+	goneErr := st.OpenThread(ctx, "43", 9999, "chan-x", "root-x", 0, now)
 
 	// assert
 	assert.False(t, firstThread.Open)

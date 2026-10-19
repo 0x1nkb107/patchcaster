@@ -11,6 +11,7 @@ import (
 
 	"github.com/patchcaster-app/patchcaster/internal/event"
 	"github.com/patchcaster-app/patchcaster/internal/mattermost"
+	"github.com/patchcaster-app/patchcaster/internal/message"
 	"github.com/patchcaster-app/patchcaster/internal/metrics"
 	"github.com/patchcaster-app/patchcaster/internal/plan"
 	"github.com/patchcaster-app/patchcaster/internal/store"
@@ -54,10 +55,11 @@ type Store interface {
 	ClaimDue(ctx context.Context, now time.Time, lease time.Duration) (*store.Job, error)
 	Settle(ctx context.Context, jobID int64, now time.Time, s store.Settlement) error
 	Thread(ctx context.Context, mrRef string, sinkID int64) (*store.Thread, error)
-	OpenThread(ctx context.Context, mrRef string, sinkID int64, channelID, rootPostID string, now time.Time) error
+	OpenThread(ctx context.Context, mrRef string, sinkID int64, channelID, rootPostID string, routeID int64, now time.Time) error
 	CloseThread(ctx context.Context, mrRef string, sinkID int64, now time.Time) error
 	CloseState(ctx context.Context, mrRef string, now time.Time) error
 	State(ctx context.Context, mrRef string) (*store.State, error)
+	RouteTemplatesFor(ctx context.Context, routeID int64) ([]store.RouteTemplate, bool, error)
 	MarkNoticePosted(ctx context.Context, jobID int64, now time.Time) error
 	MarkRootRefreshed(ctx context.Context, jobID int64, now time.Time) error
 	ReapLeases(ctx context.Context, now time.Time) error
@@ -237,7 +239,13 @@ func (w *Worker) process(ctx context.Context, job *store.Job) {
 		w.settle(ctx, job, store.Retried(job.Attempts, w.now().Add(storeFaultDelay), err.Error()))
 		return
 	}
-	d := delivery{job: job, ev: ev, poster: poster, log: log, sink: sinkOf(job)}
+	templates, err := w.templatesOf(ctx, job, thread)
+	if err != nil {
+		log.Error("route templates lookup failed", "err", err)
+		w.settle(ctx, job, store.Retried(job.Attempts, w.now().Add(storeFaultDelay), err.Error()))
+		return
+	}
+	d := delivery{job: job, ev: ev, poster: poster, log: log, sink: sinkOf(job), templates: templates}
 	if ev.Plan.CreateRoot {
 		w.deliverRoot(ctx, d, thread)
 		return
@@ -245,13 +253,70 @@ func (w *Worker) process(ctx context.Context, job *store.Job) {
 	w.deliverUpdate(ctx, d, thread)
 }
 
-// delivery is one claimed job on its way to its sink.
+// delivery is one claimed job on its way to its sink, with the templates
+// that write its messages.
 type delivery struct {
-	job    *store.Job
-	ev     *event.Event
-	poster Poster
-	log    *slog.Logger
-	sink   metrics.Sink
+	job       *store.Job
+	ev        *event.Event
+	poster    Poster
+	log       *slog.Logger
+	sink      metrics.Sink
+	templates routeTemplates
+}
+
+// routeTemplates are the templates of the route that writes a delivery's
+// messages, by kind. A kind without one, or a delivery without a route,
+// uses the built-in template.
+type routeTemplates struct {
+	routeID int64
+	byKind  map[message.Kind]store.RouteTemplate
+}
+
+// templatesOf loads the templates that write a job's messages
+// (SYSREQ-049): those of the route the thread started with while that
+// route exists, so that a thread keeps one look, else those of the route
+// the job was queued with, the narrowest of its sink's routes at
+// acceptance, else none.
+func (w *Worker) templatesOf(ctx context.Context, job *store.Job, thread *store.Thread) (routeTemplates, error) {
+	var candidates []int64
+	if thread != nil && thread.RouteID != 0 {
+		candidates = append(candidates, thread.RouteID)
+	}
+	if job.RouteID != 0 {
+		candidates = append(candidates, job.RouteID)
+	}
+	for _, routeID := range candidates {
+		stored, exists, err := w.store.RouteTemplatesFor(ctx, routeID)
+		if err != nil {
+			return routeTemplates{}, err
+		}
+		if !exists {
+			continue
+		}
+		templates := routeTemplates{routeID: routeID, byKind: map[message.Kind]store.RouteTemplate{}}
+		for _, template := range stored {
+			templates.byKind[message.Kind(template.Kind)] = template
+		}
+		return templates, nil
+	}
+	return routeTemplates{}, nil
+}
+
+// render writes a message of kind with the route's template of that kind,
+// or with the built-in one when the route has none. A route's template
+// that fails falls back to the built-in one, with a warning and a count
+// (owner decision 2026-10-20), so that the message still goes out.
+func (w *Worker) render(d delivery, kind message.Kind, facts message.Facts) (string, error) {
+	stored, isCustom := d.templates.byKind[kind]
+	if isCustom {
+		rendered, err := w.renderer.Stored(stored, facts)
+		if err == nil {
+			return rendered, nil
+		}
+		d.log.Warn("route template failed, writing with the built-in one", "route", d.templates.routeID, "kind", kind, "err", err)
+		w.metrics.CountTemplateFallback(string(kind), d.sink)
+	}
+	return w.renderer.Builtin(kind, facts)
 }
 
 // sinkOf names the sink of a job for the delivery metrics.
@@ -295,7 +360,7 @@ func (w *Worker) deliverRoot(ctx context.Context, d delivery, thread *store.Thre
 		board = headerFromEvent(ev) // row predates migration 0002: header only
 	}
 
-	message, err := w.renderer.Root(board)
+	rendered, err := w.render(d, message.Root, message.Facts{Board: board})
 	if err != nil {
 		log.Error("render failed, parking", "err", err)
 		w.settle(ctx, job, store.Parked("render_failed", job.Attempts+1, err.Error()))
@@ -303,7 +368,7 @@ func (w *Worker) deliverRoot(ctx context.Context, d delivery, thread *store.Thre
 		return
 	}
 
-	postID, err := w.post(ctx, d, job.DestChannel, message, "")
+	postID, err := w.post(ctx, d, job.DestChannel, rendered, "")
 	if err != nil {
 		w.deferOrFail(ctx, d, err)
 		return
@@ -312,7 +377,7 @@ func (w *Worker) deliverRoot(ctx context.Context, d delivery, thread *store.Thre
 	// The post is accepted; recording the mapping is the known at-least-once
 	// window. On failure we leave the row claimed and let the lease reaper
 	// requeue it — a rare duplicate root beats a lost thread mapping.
-	err = w.store.OpenThread(ctx, ev.MRRef, job.SinkID, job.DestChannel, postID, w.now())
+	err = w.store.OpenThread(ctx, ev.MRRef, job.SinkID, job.DestChannel, postID, d.templates.routeID, w.now())
 	if errors.Is(err, store.ErrNotFound) {
 		w.skipGoneSink(ctx, job, log)
 		return
@@ -356,14 +421,14 @@ func (w *Worker) deliverUpdate(ctx context.Context, d delivery, thread *store.Th
 		if board == nil {
 			board = headerFromEvent(ev) // row predates migration 0002: header only
 		}
-		message, err := w.renderer.Notice(ev.Plan.Notice, board, ev)
+		rendered, err := w.renderNotice(d, board)
 		if err != nil {
 			log.Error("notice render failed, parking", "notice", ev.Plan.Notice, "err", err)
 			w.settle(ctx, job, store.Parked("render_failed", job.Attempts+1, err.Error()))
 			w.metrics.CountParked("render_failed", d.sink)
 			return
 		}
-		if _, err := w.post(ctx, d, thread.ChannelID, message, thread.RootPostID); err != nil {
+		if _, err := w.post(ctx, d, thread.ChannelID, rendered, thread.RootPostID); err != nil {
 			if w.parkIfRootGone(ctx, d, err) {
 				return
 			}
@@ -418,6 +483,15 @@ func (w *Worker) deliverUpdate(ctx context.Context, d delivery, thread *store.Th
 	w.settle(ctx, job, store.Sent())
 }
 
+// renderNotice writes the notice that a delivery's plan names.
+func (w *Worker) renderNotice(d delivery, board *store.State) (string, error) {
+	kind, err := noticeKind(d.ev.Plan.Notice)
+	if err != nil {
+		return "", err
+	}
+	return w.render(d, kind, message.Facts{Board: board, Event: d.ev})
+}
+
 // Sentinels steering deliverUpdate's refresh phase: errSettledHere means the
 // job was already settled (parked/closed) inside refreshRoot; errStoreFault
 // retries without burning the attempt budget; errNoBoard skips the refresh
@@ -439,14 +513,14 @@ func (w *Worker) refreshRoot(ctx context.Context, d delivery, thread *store.Thre
 	if board == nil {
 		return errNoBoard
 	}
-	message, err := w.renderer.Root(board)
+	rendered, err := w.render(d, message.Root, message.Facts{Board: board})
 	if err != nil {
 		log.Error("root render failed, parking", "err", err)
 		w.settle(ctx, job, store.Parked("render_failed", job.Attempts+1, err.Error()))
 		w.metrics.CountParked("render_failed", d.sink)
 		return errSettledHere
 	}
-	if err := w.updatePost(ctx, d, thread.RootPostID, message); err != nil {
+	if err := w.updatePost(ctx, d, thread.RootPostID, rendered); err != nil {
 		if w.parkIfRootGone(ctx, d, err) {
 			return errSettledHere
 		}
@@ -502,9 +576,9 @@ func headerFromEvent(ev *event.Event) *store.State {
 }
 
 // post performs one create attempt at the sink's platform, with metrics.
-func (w *Worker) post(ctx context.Context, d delivery, channelID, message, rootID string) (string, error) {
+func (w *Worker) post(ctx context.Context, d delivery, channelID, text, rootID string) (string, error) {
 	start := time.Now()
-	postID, err := d.poster.Post(ctx, channelID, message, rootID)
+	postID, err := d.poster.Post(ctx, channelID, text, rootID)
 	w.recordAttempt(ctx, d, start, err)
 	if err != nil {
 		return "", err
@@ -515,9 +589,9 @@ func (w *Worker) post(ctx context.Context, d delivery, channelID, message, rootI
 
 // updatePost performs one update attempt at the sink's platform, with
 // metrics.
-func (w *Worker) updatePost(ctx context.Context, d delivery, postID, message string) error {
+func (w *Worker) updatePost(ctx context.Context, d delivery, postID, text string) error {
 	start := time.Now()
-	err := d.poster.Update(ctx, postID, message)
+	err := d.poster.Update(ctx, postID, text)
 	w.recordAttempt(ctx, d, start, err)
 	return err
 }

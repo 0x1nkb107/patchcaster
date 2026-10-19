@@ -1,6 +1,6 @@
 # Message templates
 
-Every message that PatchCaster posts comes from a template: the root message that starts the thread of a merge request, and each notice in that thread. This page describes how templates are written, what they can read, and the checks a template has to pass.
+Every message that PatchCaster posts comes from a template: the root message that starts the thread of a merge request, and each notice in that thread. Built-in templates ship with PatchCaster, and a route may replace any of them with its own. This page describes how templates are written, what they can read, the checks a template has to pass, and how a route uses them.
 
 ## Messages
 
@@ -73,6 +73,21 @@ The samples include the longest values a forge sends: titles, usernames and bran
 ## Versions
 
 A template records the version of the data model it was written for. Later releases may add a new version, but they keep rendering every template in the version it was written for.
+
+## Templates of a route
+
+A route's Routing Managers, or an Instance Admin, give the route a template of its own for one kind of message at a time, through the management API:
+
+- `PUT /api/v1/routes/{id}/templates/{kind}` with `{"version": 1, "text": "..."}` stores the template. `If-Match` holds the route's ETag, and the answer carries the route's new one. A template that fails its [checks](#checks) answers `422`, naming the line and the cause in the error of the field `text`.
+- `GET` on the same path reads the template, and `DELETE` returns the kind to its built-in template.
+- The route's `custom_templates` lists the kinds it has templates of its own for.
+- `POST /api/v1/templates/preview` with `{"kind": "root", "version": 1, "text": "..."}` shows a draft as it would reach Mattermost for each sample, without storing it.
+
+A change applies to the next message, and a thread's root shows it at its next refresh. The audit log shows each template before and after its change.
+
+When several routes reach one sink, the route with the narrowest source writes the sink's messages: a repository before a group, a deeper group before a shallower one, and a group before the whole instance. Among equally narrow routes, the oldest one writes. A thread keeps the route that wrote its root for as long as that route exists, so its messages keep one look.
+
+A template that passed its checks can still fail on a merge request that no sample resembled. PatchCaster then writes that message with the built-in template, logs a warning that names the route and the kind, and counts it in `patchcaster_template_fallbacks_total`.
 
 ## Built-in templates
 

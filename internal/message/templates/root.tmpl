@@ -1,0 +1,5 @@
+> {{mention "here"}} :bell: \
+> **!{{.MergeRequest.Number}} {{.MergeRequest.Title}}** \
+> by {{.MergeRequest.Author}} • {{.MergeRequest.Project}} • {{code .MergeRequest.SourceBranch}} ➜ {{code .MergeRequest.TargetBranch}} \
+> <{{.MergeRequest.URL}}>{{with .Status.Line}} \
+> {{.}}{{end}}

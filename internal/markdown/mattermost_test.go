@@ -80,6 +80,7 @@ func TestMattermostRendersMentions(t *testing.T) {
 		want     string
 	}{
 		{"alone", here(t), "@here"},
+		{"everyone", "@\uE000channel\uE001", "@channel"},
 		{"before a space", here(t) + " :bell:", "@here :bell:"},
 		{"before a letter", here(t) + "x", "@here\u2060x"},
 		{"before an emoji code", here(t) + ":bell:", "@here\u2060:bell:"},
@@ -95,12 +96,12 @@ func TestMattermostRendersMentions(t *testing.T) {
 }
 
 func TestMentionMarkupNamesKnownTargetsOnly(t *testing.T) {
-	_, ok := MentionMarkup("channel")
+	_, ok := MentionMarkup("room")
 	assert.False(t, ok)
 }
 
 func TestUnknownMentionMarkupStaysText(t *testing.T) {
-	got := Mattermost(Parse("@\uE000channel\uE001 and @\uE000here"))
+	got := Mattermost(Parse("@\uE000room\uE001 and @\uE000here"))
 
-	assert.Equal(t, "@\u2060channel and @\u2060here", got)
+	assert.Equal(t, "@\u2060room and @\u2060here", got)
 }

@@ -31,6 +31,13 @@ func withoutMentionMarkup(code string) string {
 	return strings.NewReplacer(string(mentionOpen), "", string(mentionClose), "").Replace(code)
 }
 
+// MattermostMaxRunes is the longest message, in characters, that every
+// Mattermost server in use accepts: the limit of a server whose message
+// column holds 65,535 bytes, four bytes per character. Current servers
+// accept more (determineMaxPostSize in
+// server/channels/store/sqlstore/post_store.go of mattermost/mattermost).
+const MattermostMaxRunes = 16383
+
 // Mattermost renders doc as the Markdown that Mattermost shows (ADR-037).
 // Text shows as it is, so only the document's own nodes add structure. A
 // mention node is the only thing that pings, and only links and autolinks

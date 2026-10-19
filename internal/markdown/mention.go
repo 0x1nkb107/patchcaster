@@ -20,12 +20,18 @@ const (
 // MentionTarget names who a mention pings.
 type MentionTarget string
 
-// MentionHere pings the people in the channel who are online.
-const MentionHere MentionTarget = "here"
+// The targets a mention may name.
+const (
+	// MentionHere pings the people in the channel who are online.
+	MentionHere MentionTarget = "here"
+	// MentionChannel pings everyone in the channel.
+	MentionChannel MentionTarget = "channel"
+)
 
 // mentionTargets lists the targets a mention may name.
 var mentionTargets = map[MentionTarget]bool{
-	MentionHere: true,
+	MentionHere:    true,
+	MentionChannel: true,
 }
 
 // MentionMarkup returns the markup that the parser reads as a mention of

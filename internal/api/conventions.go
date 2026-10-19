@@ -85,9 +85,9 @@ func storeProblem(err error) error {
 	case errors.Is(err, store.ErrVersionMismatch):
 		return newProblem(http.StatusPreconditionFailed, "the resource changed since it was read: read it again and repeat the change")
 	case errors.Is(err, store.ErrLastAdministrator):
-		return newProblem(http.StatusConflict, "the instance needs at least one administrator")
+		return newProblem(http.StatusConflict, "the instance needs at least one Instance Admin")
 	case errors.Is(err, store.ErrAdministratorExists):
-		return newProblem(http.StatusConflict, "the setup is complete: an administrator exists")
+		return newProblem(http.StatusConflict, "the setup is complete: an Instance Admin exists")
 	case errors.Is(err, store.ErrNameTaken):
 		return fieldProblem(http.StatusConflict, "another item has this name", "name", "is taken")
 	case errors.Is(err, store.ErrSetupLinkSpent):

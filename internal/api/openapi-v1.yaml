@@ -37,8 +37,8 @@ paths:
       description: >-
         Takes the setup link's token from the bootstrap command, checks that
         the provider answers, and stores it. The response names the login
-        that makes the person logging in the first administrator. Fails once
-        an administrator exists.
+        that makes the person logging in the first Instance Admin. Fails once
+        an Instance Admin exists.
       security: []
       requestBody:
         required: true
@@ -81,7 +81,7 @@ paths:
   /api/v1/persons:
     get:
       operationId: listPersons
-      summary: List people, for administrators.
+      summary: List people, for Instance Admins.
       parameters:
         - $ref: "#/components/parameters/Cursor"
         - $ref: "#/components/parameters/Limit"
@@ -97,7 +97,7 @@ paths:
   /api/v1/persons/{id}:
     patch:
       operationId: updatePerson
-      summary: Change a person's role, for administrators.
+      summary: Change a person's role, for Instance Admins.
       parameters:
         - name: id
           in: path
@@ -127,7 +127,7 @@ paths:
   /api/v1/persons/{id}/revoke-access:
     post:
       operationId: revokeAccess
-      summary: Revoke all tokens and end all sessions of a person, for administrators.
+      summary: Revoke all tokens and end all sessions of a person, for Instance Admins.
       description: >-
         Takes effect at once. The person can log in again, unless the identity
         provider refuses them.
@@ -210,7 +210,7 @@ paths:
   /api/v1/connections:
     get:
       operationId: listConnections
-      summary: List the forge and chat connections, for administrators.
+      summary: List the forge and chat connections, for Instance Admins.
       parameters:
         - $ref: "#/components/parameters/Cursor"
         - $ref: "#/components/parameters/Limit"
@@ -225,7 +225,7 @@ paths:
           $ref: "#/components/responses/Problem"
     post:
       operationId: createConnection
-      summary: Connect a forge or a chat platform, for administrators.
+      summary: Connect a forge or a chat platform, for Instance Admins.
       description: >-
         A credential is checked against the platform before it is stored, and
         the account it acts as is shown. A chat connection needs its bot's
@@ -249,7 +249,7 @@ paths:
   /api/v1/connections/{id}:
     get:
       operationId: getConnection
-      summary: Read a connection, without its credential, for administrators.
+      summary: Read a connection, without its credential, for Instance Admins.
       parameters:
         - name: id
           in: path
@@ -271,7 +271,7 @@ paths:
           $ref: "#/components/responses/Problem"
     put:
       operationId: updateConnection
-      summary: Change a connection, for administrators.
+      summary: Change a connection, for Instance Admins.
       description: >-
         Its kind stays. A new credential, or a new base URL with the stored
         credential, is checked against the platform first.
@@ -303,7 +303,7 @@ paths:
           $ref: "#/components/responses/Problem"
     delete:
       operationId: deleteConnection
-      summary: Remove a connection and its signing tokens, for administrators.
+      summary: Remove a connection and its signing tokens, for Instance Admins.
       parameters:
         - name: id
           in: path
@@ -341,7 +341,7 @@ paths:
           $ref: "#/components/responses/Problem"
     post:
       operationId: addSigningToken
-      summary: Add a webhook signing token to a forge connection, for administrators.
+      summary: Add a webhook signing token to a forge connection, for Instance Admins.
       description: >-
         Any of a connection's signing tokens may sign a delivery, so a token
         rotates without downtime: add the new one, switch the hook over, then
@@ -371,7 +371,7 @@ paths:
   /api/v1/connections/{id}/signing-tokens/{token_id}:
     delete:
       operationId: removeSigningToken
-      summary: Remove a webhook signing token, for administrators.
+      summary: Remove a webhook signing token, for Instance Admins.
       description: >-
         Deliveries signed with it are refused from then on. Like a revocation,
         it needs no If-Match.
@@ -396,7 +396,7 @@ paths:
   /api/v1/teams:
     get:
       operationId: listTeams
-      summary: List teams. Administrators see all of them, operators the ones they operate.
+      summary: List teams. Instance Admins see all of them, Routing Managers the ones they manage.
       parameters:
         - $ref: "#/components/parameters/Cursor"
         - $ref: "#/components/parameters/Limit"
@@ -411,9 +411,9 @@ paths:
           $ref: "#/components/responses/Problem"
     post:
       operationId: createTeam
-      summary: Create a team, for administrators.
+      summary: Create a team, for Instance Admins.
       description: >-
-        A new team has no operators, sources or sinks. Give it them with a change.
+        A new team has no Routing Managers, sources or sinks. Give it them with a change.
       requestBody:
         required: true
         content:
@@ -432,7 +432,7 @@ paths:
   /api/v1/teams/{id}:
     get:
       operationId: getTeam
-      summary: Read a team. Operators read only the teams they operate.
+      summary: Read a team. Routing Managers read only the teams they manage.
       parameters:
         - name: id
           in: path
@@ -454,9 +454,9 @@ paths:
           $ref: "#/components/responses/Problem"
     put:
       operationId: updateTeam
-      summary: Change a team, for administrators.
+      summary: Change a team, for Instance Admins.
       description: >-
-        Renames the team and sets its operators, sources and sinks. A source or sink that one of the team's routes uses cannot leave it.
+        Renames the team and sets its Routing Managers, sources and sinks. A source or sink that one of the team's routes uses cannot leave it.
       parameters:
         - name: id
           in: path
@@ -485,7 +485,7 @@ paths:
           $ref: "#/components/responses/Problem"
     delete:
       operationId: deleteTeam
-      summary: Remove a team, for administrators.
+      summary: Remove a team, for Instance Admins.
       description: >-
         A team with routes cannot go. Remove its routes first.
       parameters:
@@ -504,7 +504,7 @@ paths:
   /api/v1/sources:
     get:
       operationId: listSources
-      summary: List sources. Administrators see all of them, operators those of the teams they operate.
+      summary: List sources. Instance Admins see all of them, Routing Managers those of the teams they manage.
       parameters:
         - $ref: "#/components/parameters/Cursor"
         - $ref: "#/components/parameters/Limit"
@@ -519,7 +519,7 @@ paths:
           $ref: "#/components/responses/Problem"
     post:
       operationId: createSource
-      summary: Create a source of a forge connection, for administrators.
+      summary: Create a source of a forge connection, for Instance Admins.
       description: >-
         A source selects the repositories of its connection by scope: the whole instance, a group, or one repository. Assign it to teams with a team change.
       requestBody:
@@ -540,7 +540,7 @@ paths:
   /api/v1/sources/{id}:
     get:
       operationId: getSource
-      summary: Read a source. Operators read only those of the teams they operate.
+      summary: Read a source. Routing Managers read only those of the teams they manage.
       parameters:
         - name: id
           in: path
@@ -562,7 +562,7 @@ paths:
           $ref: "#/components/responses/Problem"
     put:
       operationId: updateSource
-      summary: Change a source's name or scope, for administrators.
+      summary: Change a source's name or scope, for Instance Admins.
       description: >-
         Its connection stays.
       parameters:
@@ -593,7 +593,7 @@ paths:
           $ref: "#/components/responses/Problem"
     delete:
       operationId: deleteSource
-      summary: Remove a source, for administrators.
+      summary: Remove a source, for Instance Admins.
       description: >-
         A source a route uses cannot go. It leaves its teams with it.
       parameters:
@@ -612,7 +612,7 @@ paths:
   /api/v1/sinks:
     get:
       operationId: listSinks
-      summary: List sinks. Administrators see all of them, operators those of the teams they operate.
+      summary: List sinks. Instance Admins see all of them, Routing Managers those of the teams they manage.
       parameters:
         - $ref: "#/components/parameters/Cursor"
         - $ref: "#/components/parameters/Limit"
@@ -627,7 +627,7 @@ paths:
           $ref: "#/components/responses/Problem"
     post:
       operationId: createSink
-      summary: Create a sink in a channel of a chat connection, for administrators.
+      summary: Create a sink in a channel of a chat connection, for Instance Admins.
       description: >-
         PatchCaster first checks that the connection's bot can post into the channel, and refuses the sink with the reason when it cannot. Assign it to teams with a team change.
       requestBody:
@@ -648,7 +648,7 @@ paths:
   /api/v1/sinks/{id}:
     get:
       operationId: getSink
-      summary: Read a sink. Operators read only those of the teams they operate.
+      summary: Read a sink. Routing Managers read only those of the teams they manage.
       parameters:
         - name: id
           in: path
@@ -670,7 +670,7 @@ paths:
           $ref: "#/components/responses/Problem"
     put:
       operationId: updateSink
-      summary: Change a sink's name or channel, for administrators.
+      summary: Change a sink's name or channel, for Instance Admins.
       description: >-
         A new channel is checked like a new sink. Its connection stays.
       parameters:
@@ -701,7 +701,7 @@ paths:
           $ref: "#/components/responses/Problem"
     delete:
       operationId: deleteSink
-      summary: Remove a sink, for administrators.
+      summary: Remove a sink, for Instance Admins.
       description: >-
         A sink a route uses cannot go. It leaves its teams with it.
       parameters:
@@ -720,7 +720,7 @@ paths:
   /api/v1/routes:
     get:
       operationId: listRoutes
-      summary: List routes. Administrators see all of them, operators those of the teams they operate.
+      summary: List routes. Instance Admins see all of them, Routing Managers those of the teams they manage.
       parameters:
         - name: team_id
           in: query
@@ -741,7 +741,7 @@ paths:
           $ref: "#/components/responses/Problem"
     post:
       operationId: createRoute
-      summary: Create a route from a team's source into one of its sinks, for the team's operators and administrators.
+      summary: Create a route from a team's source into one of its sinks, for the team's Routing Managers and Instance Admins.
       description: >-
         A route forwards every merge request of the source into the sink. Muted replies are not posted, but the board in the sink still shows every change.
       requestBody:
@@ -762,7 +762,7 @@ paths:
   /api/v1/routes/{id}:
     get:
       operationId: getRoute
-      summary: Read a route. Operators read only those of the teams they operate.
+      summary: Read a route. Routing Managers read only those of the teams they manage.
       parameters:
         - name: id
           in: path
@@ -784,7 +784,7 @@ paths:
           $ref: "#/components/responses/Problem"
     put:
       operationId: updateRoute
-      summary: Change which replies a route mutes, for the team's operators and administrators.
+      summary: Change which replies a route mutes, for the team's Routing Managers and Instance Admins.
       description: >-
         Its team, source and sink stay. To route elsewhere, create another route.
       parameters:
@@ -815,7 +815,7 @@ paths:
           $ref: "#/components/responses/Problem"
     delete:
       operationId: deleteRoute
-      summary: Remove a route, for the team's operators and administrators.
+      summary: Remove a route, for the team's Routing Managers and Instance Admins.
       description: >-
         Messages the route already queued are still delivered.
       parameters:
@@ -834,7 +834,7 @@ paths:
   /api/v1/settings/login:
     get:
       operationId: getLoginSettings
-      summary: Read the identity provider settings, for administrators.
+      summary: Read the identity provider settings, for Instance Admins.
       responses:
         "200":
           description: The settings, without the client secret.
@@ -849,7 +849,7 @@ paths:
           $ref: "#/components/responses/Problem"
     put:
       operationId: putLoginSettings
-      summary: Change the identity provider settings, for administrators.
+      summary: Change the identity provider settings, for Instance Admins.
       parameters:
         - $ref: "#/components/parameters/IfMatch"
       requestBody:
@@ -873,7 +873,7 @@ paths:
   /api/v1/audit:
     get:
       operationId: listAudit
-      summary: Read the audit log, newest first, for administrators.
+      summary: Read the audit log, newest first, for Instance Admins.
       parameters:
         - $ref: "#/components/parameters/Cursor"
         - $ref: "#/components/parameters/Limit"
@@ -966,7 +966,7 @@ components:
       properties:
         login_url:
           type: string
-          description: Log in here to become the first administrator.
+          description: Log in here to become the first Instance Admin.
     Person:
       type: object
       required: [id, issuer, subject, display_name, email, administrator, etag]
@@ -987,6 +987,7 @@ components:
           type: string
         administrator:
           type: boolean
+          description: Whether the person is an Instance Admin, who configures the instance and its access.
     PersonPage:
       type: object
       required: [items]
@@ -1004,6 +1005,7 @@ components:
       properties:
         administrator:
           type: boolean
+          description: Makes the person an Instance Admin, or takes the role away. Routing Managers are assigned per team.
     LoginSettings:
       type: object
       required: [issuer, client_id, groups_claim, allowed_groups]
@@ -1637,7 +1639,7 @@ components:
       properties:
         setup_required:
           type: boolean
-          description: True until the first administrator has logged in.
+          description: True until the first Instance Admin has logged in.
         version:
           type: string
           description: The build version, "dev" for source builds.

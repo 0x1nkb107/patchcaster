@@ -11,13 +11,13 @@ import * as zod from 'zod';
  * @summary Describe this instance.
  */
 export const GetInstanceResponse = zod.object({
-  "setup_required": zod.boolean().describe('True until the first administrator has logged in.'),
+  "setup_required": zod.boolean().describe('True until the first Instance Admin has logged in.'),
   "version": zod.string().describe('The build version, "dev" for source builds.')
 })
 
 
 /**
- * Takes the setup link's token from the bootstrap command, checks that the provider answers, and stores it. The response names the login that makes the person logging in the first administrator. Fails once an administrator exists.
+ * Takes the setup link's token from the bootstrap command, checks that the provider answers, and stores it. The response names the login that makes the person logging in the first Instance Admin. Fails once an Instance Admin exists.
  * @summary Configure the identity provider during the first setup.
  */
 
@@ -36,7 +36,7 @@ export const SetUpBody = zod.object({
 })
 
 export const SetUpResponse = zod.object({
-  "login_url": zod.string().describe('Log in here to become the first administrator.')
+  "login_url": zod.string().describe('Log in here to become the first Instance Admin.')
 })
 
 
@@ -50,7 +50,7 @@ export const GetSessionResponse = zod.object({
   "subject": zod.string(),
   "display_name": zod.string(),
   "email": zod.string(),
-  "administrator": zod.boolean()
+  "administrator": zod.boolean().describe('Whether the person is an Instance Admin, who configures the instance and its access.')
 })
 
 
@@ -61,7 +61,7 @@ export const EndSessionResponse = zod.void()
 
 
 /**
- * @summary List people, for administrators.
+ * @summary List people, for Instance Admins.
  */
 export const listPersonsQueryLimitDefault = 50;
 export const listPersonsQueryLimitMax = 200;
@@ -81,14 +81,14 @@ export const ListPersonsResponse = zod.object({
   "subject": zod.string(),
   "display_name": zod.string(),
   "email": zod.string(),
-  "administrator": zod.boolean()
+  "administrator": zod.boolean().describe('Whether the person is an Instance Admin, who configures the instance and its access.')
 })),
   "next_cursor": zod.string().optional().describe('Absent on the last page.')
 })
 
 
 /**
- * @summary Change a person's role, for administrators.
+ * @summary Change a person's role, for Instance Admins.
  */
 export const UpdatePersonParams = zod.object({
   "id": zod.int()
@@ -99,7 +99,7 @@ export const UpdatePersonHeader = zod.object({
 })
 
 export const UpdatePersonBody = zod.object({
-  "administrator": zod.boolean()
+  "administrator": zod.boolean().describe('Makes the person an Instance Admin, or takes the role away. Routing Managers are assigned per team.')
 })
 
 export const UpdatePersonResponse = zod.object({
@@ -109,13 +109,13 @@ export const UpdatePersonResponse = zod.object({
   "subject": zod.string(),
   "display_name": zod.string(),
   "email": zod.string(),
-  "administrator": zod.boolean()
+  "administrator": zod.boolean().describe('Whether the person is an Instance Admin, who configures the instance and its access.')
 })
 
 
 /**
  * Takes effect at once. The person can log in again, unless the identity provider refuses them.
- * @summary Revoke all tokens and end all sessions of a person, for administrators.
+ * @summary Revoke all tokens and end all sessions of a person, for Instance Admins.
  */
 export const RevokeAccessParams = zod.object({
   "id": zod.int()
@@ -191,7 +191,7 @@ export const RevokeTokenResponse = zod.void()
 
 
 /**
- * @summary List the forge and chat connections, for administrators.
+ * @summary List the forge and chat connections, for Instance Admins.
  */
 export const listConnectionsQueryLimitDefault = 50;
 export const listConnectionsQueryLimitMax = 200;
@@ -230,7 +230,7 @@ export const ListConnectionsResponse = zod.object({
 
 /**
  * A credential is checked against the platform before it is stored, and the account it acts as is shown. A chat connection needs its bot's token. A forge connection without one receives webhooks, but cannot register them.
- * @summary Connect a forge or a chat platform, for administrators.
+ * @summary Connect a forge or a chat platform, for Instance Admins.
  */
 export const createConnectionBodyNameMax = 100;
 
@@ -268,7 +268,7 @@ export const CreateConnectionResponse = zod.object({
 
 
 /**
- * @summary Read a connection, without its credential, for administrators.
+ * @summary Read a connection, without its credential, for Instance Admins.
  */
 export const GetConnectionParams = zod.object({
   "id": zod.int()
@@ -298,7 +298,7 @@ export const GetConnectionResponse = zod.object({
 
 /**
  * Its kind stays. A new credential, or a new base URL with the stored credential, is checked against the platform first.
- * @summary Change a connection, for administrators.
+ * @summary Change a connection, for Instance Admins.
  */
 export const UpdateConnectionParams = zod.object({
   "id": zod.int()
@@ -343,7 +343,7 @@ export const UpdateConnectionResponse = zod.object({
 
 
 /**
- * @summary Remove a connection and its signing tokens, for administrators.
+ * @summary Remove a connection and its signing tokens, for Instance Admins.
  */
 export const DeleteConnectionParams = zod.object({
   "id": zod.int()
@@ -385,7 +385,7 @@ export const ListSigningTokensResponse = zod.object({
 
 /**
  * Any of a connection's signing tokens may sign a delivery, so a token rotates without downtime: add the new one, switch the hook over, then remove the old one.
- * @summary Add a webhook signing token to a forge connection, for administrators.
+ * @summary Add a webhook signing token to a forge connection, for Instance Admins.
  */
 export const AddSigningTokenParams = zod.object({
   "id": zod.int()
@@ -410,7 +410,7 @@ export const AddSigningTokenResponse = zod.object({
 
 /**
  * Deliveries signed with it are refused from then on. Like a revocation, it needs no If-Match.
- * @summary Remove a webhook signing token, for administrators.
+ * @summary Remove a webhook signing token, for Instance Admins.
  */
 export const RemoveSigningTokenParams = zod.object({
   "id": zod.int(),
@@ -421,7 +421,7 @@ export const RemoveSigningTokenResponse = zod.void()
 
 
 /**
- * @summary List teams. Administrators see all of them, operators the ones they operate.
+ * @summary List teams. Instance Admins see all of them, Routing Managers the ones they manage.
  */
 export const listTeamsQueryLimitDefault = 50;
 export const listTeamsQueryLimitMax = 200;
@@ -447,8 +447,8 @@ export const ListTeamsResponse = zod.object({
 
 
 /**
- * A new team has no operators, sources or sinks. Give it them with a change.
- * @summary Create a team, for administrators.
+ * A new team has no Routing Managers, sources or sinks. Give it them with a change.
+ * @summary Create a team, for Instance Admins.
  */
 export const createTeamBodyNameMax = 100;
 
@@ -469,7 +469,7 @@ export const CreateTeamResponse = zod.object({
 
 
 /**
- * @summary Read a team. Operators read only the teams they operate.
+ * @summary Read a team. Routing Managers read only the teams they manage.
  */
 export const GetTeamParams = zod.object({
   "id": zod.int()
@@ -486,8 +486,8 @@ export const GetTeamResponse = zod.object({
 
 
 /**
- * Renames the team and sets its operators, sources and sinks. A source or sink that one of the team's routes uses cannot leave it.
- * @summary Change a team, for administrators.
+ * Renames the team and sets its Routing Managers, sources and sinks. A source or sink that one of the team's routes uses cannot leave it.
+ * @summary Change a team, for Instance Admins.
  */
 export const UpdateTeamParams = zod.object({
   "id": zod.int()
@@ -520,7 +520,7 @@ export const UpdateTeamResponse = zod.object({
 
 /**
  * A team with routes cannot go. Remove its routes first.
- * @summary Remove a team, for administrators.
+ * @summary Remove a team, for Instance Admins.
  */
 export const DeleteTeamParams = zod.object({
   "id": zod.int()
@@ -534,7 +534,7 @@ export const DeleteTeamResponse = zod.void()
 
 
 /**
- * @summary List sources. Administrators see all of them, operators those of the teams they operate.
+ * @summary List sources. Instance Admins see all of them, Routing Managers those of the teams they manage.
  */
 export const listSourcesQueryLimitDefault = 50;
 export const listSourcesQueryLimitMax = 200;
@@ -573,7 +573,7 @@ export const ListSourcesResponse = zod.object({
 
 /**
  * A source selects the repositories of its connection by scope: the whole instance, a group, or one repository. Assign it to teams with a team change.
- * @summary Create a source of a forge connection, for administrators.
+ * @summary Create a source of a forge connection, for Instance Admins.
  */
 export const createSourceBodyNameMax = 100;
 
@@ -611,7 +611,7 @@ export const CreateSourceResponse = zod.object({
 
 
 /**
- * @summary Read a source. Operators read only those of the teams they operate.
+ * @summary Read a source. Routing Managers read only those of the teams they manage.
  */
 export const GetSourceParams = zod.object({
   "id": zod.int()
@@ -641,7 +641,7 @@ export const GetSourceResponse = zod.object({
 
 /**
  * Its connection stays.
- * @summary Change a source's name or scope, for administrators.
+ * @summary Change a source's name or scope, for Instance Admins.
  */
 export const UpdateSourceParams = zod.object({
   "id": zod.int()
@@ -687,7 +687,7 @@ export const UpdateSourceResponse = zod.object({
 
 /**
  * A source a route uses cannot go. It leaves its teams with it.
- * @summary Remove a source, for administrators.
+ * @summary Remove a source, for Instance Admins.
  */
 export const DeleteSourceParams = zod.object({
   "id": zod.int()
@@ -701,7 +701,7 @@ export const DeleteSourceResponse = zod.void()
 
 
 /**
- * @summary List sinks. Administrators see all of them, operators those of the teams they operate.
+ * @summary List sinks. Instance Admins see all of them, Routing Managers those of the teams they manage.
  */
 export const listSinksQueryLimitDefault = 50;
 export const listSinksQueryLimitMax = 200;
@@ -736,7 +736,7 @@ export const ListSinksResponse = zod.object({
 
 /**
  * PatchCaster first checks that the connection's bot can post into the channel, and refuses the sink with the reason when it cannot. Assign it to teams with a team change.
- * @summary Create a sink in a channel of a chat connection, for administrators.
+ * @summary Create a sink in a channel of a chat connection, for Instance Admins.
  */
 export const createSinkBodyNameMax = 100;
 
@@ -768,7 +768,7 @@ export const CreateSinkResponse = zod.object({
 
 
 /**
- * @summary Read a sink. Operators read only those of the teams they operate.
+ * @summary Read a sink. Routing Managers read only those of the teams they manage.
  */
 export const GetSinkParams = zod.object({
   "id": zod.int()
@@ -794,7 +794,7 @@ export const GetSinkResponse = zod.object({
 
 /**
  * A new channel is checked like a new sink. Its connection stays.
- * @summary Change a sink's name or channel, for administrators.
+ * @summary Change a sink's name or channel, for Instance Admins.
  */
 export const UpdateSinkParams = zod.object({
   "id": zod.int()
@@ -834,7 +834,7 @@ export const UpdateSinkResponse = zod.object({
 
 /**
  * A sink a route uses cannot go. It leaves its teams with it.
- * @summary Remove a sink, for administrators.
+ * @summary Remove a sink, for Instance Admins.
  */
 export const DeleteSinkParams = zod.object({
   "id": zod.int()
@@ -848,7 +848,7 @@ export const DeleteSinkResponse = zod.void()
 
 
 /**
- * @summary List routes. Administrators see all of them, operators those of the teams they operate.
+ * @summary List routes. Instance Admins see all of them, Routing Managers those of the teams they manage.
  */
 export const listRoutesQueryLimitDefault = 50;
 export const listRoutesQueryLimitMax = 200;
@@ -876,7 +876,7 @@ export const ListRoutesResponse = zod.object({
 
 /**
  * A route forwards every merge request of the source into the sink. Muted replies are not posted, but the board in the sink still shows every change.
- * @summary Create a route from a team's source into one of its sinks, for the team's operators and administrators.
+ * @summary Create a route from a team's source into one of its sinks, for the team's Routing Managers and Instance Admins.
  */
 export const CreateRouteBody = zod.object({
   "team_id": zod.int(),
@@ -896,7 +896,7 @@ export const CreateRouteResponse = zod.object({
 
 
 /**
- * @summary Read a route. Operators read only those of the teams they operate.
+ * @summary Read a route. Routing Managers read only those of the teams they manage.
  */
 export const GetRouteParams = zod.object({
   "id": zod.int()
@@ -914,7 +914,7 @@ export const GetRouteResponse = zod.object({
 
 /**
  * Its team, source and sink stay. To route elsewhere, create another route.
- * @summary Change which replies a route mutes, for the team's operators and administrators.
+ * @summary Change which replies a route mutes, for the team's Routing Managers and Instance Admins.
  */
 export const UpdateRouteParams = zod.object({
   "id": zod.int()
@@ -940,7 +940,7 @@ export const UpdateRouteResponse = zod.object({
 
 /**
  * Messages the route already queued are still delivered.
- * @summary Remove a route, for the team's operators and administrators.
+ * @summary Remove a route, for the team's Routing Managers and Instance Admins.
  */
 export const DeleteRouteParams = zod.object({
   "id": zod.int()
@@ -954,7 +954,7 @@ export const DeleteRouteResponse = zod.void()
 
 
 /**
- * @summary Read the identity provider settings, for administrators.
+ * @summary Read the identity provider settings, for Instance Admins.
  */
 export const GetLoginSettingsResponse = zod.object({
   "issuer": zod.string(),
@@ -965,7 +965,7 @@ export const GetLoginSettingsResponse = zod.object({
 
 
 /**
- * @summary Change the identity provider settings, for administrators.
+ * @summary Change the identity provider settings, for Instance Admins.
  */
 export const PutLoginSettingsHeader = zod.object({
   "If-Match": zod.string().describe('The ETag of the resource as last read. A change without it, or with an old one, is refused.')
@@ -993,7 +993,7 @@ export const PutLoginSettingsResponse = zod.object({
 
 
 /**
- * @summary Read the audit log, newest first, for administrators.
+ * @summary Read the audit log, newest first, for Instance Admins.
  */
 export const listAuditQueryLimitDefault = 50;
 export const listAuditQueryLimitMax = 200;

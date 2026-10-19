@@ -41,7 +41,7 @@ func (s *Service) mayReadTeam(ctx context.Context, teamID int64) error {
 		return err
 	}
 	if !manages {
-		return newProblem(http.StatusForbidden, "only the team's operators and administrators may see it")
+		return newProblem(http.StatusForbidden, "only the team's Routing Managers and Instance Admins may see it")
 	}
 	return nil
 }
@@ -53,7 +53,7 @@ func (s *Service) mayManageRoutes(ctx context.Context, teamID int64) error {
 		return err
 	}
 	if !manages {
-		return newProblem(http.StatusForbidden, "only the team's operators and administrators may change its routes")
+		return newProblem(http.StatusForbidden, "only the team's Routing Managers and Instance Admins may change its routes")
 	}
 	return nil
 }
@@ -74,7 +74,7 @@ func (s *Service) mayReadOwned(ctx context.Context, teams []int64) error {
 			return nil
 		}
 	}
-	return newProblem(http.StatusForbidden, "only the operators of a team that owns it and administrators may see it")
+	return newProblem(http.StatusForbidden, "only the Routing Managers of a team that owns it and Instance Admins may see it")
 }
 
 // ownedBy refuses a source or sink that the team does not own, naming the

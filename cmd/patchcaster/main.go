@@ -30,8 +30,8 @@ var version = "dev"
 type CLI struct {
 	Serve     ServeCmd     `cmd:"" default:"withargs" help:"Run the webhook relay."`
 	Migrate   MigrateCmd   `cmd:"" help:"Apply database migrations and exit."`
-	Bootstrap BootstrapCmd `cmd:"" help:"Issue the one-time setup link that creates the first administrator."`
-	Admin     AdminCmd     `cmd:"" help:"Restore administrator access."`
+	Bootstrap BootstrapCmd `cmd:"" help:"Issue the one-time setup link that creates the first Instance Admin."`
+	Admin     AdminCmd     `cmd:"" help:"Restore Instance Admin access."`
 	Secrets   SecretsCmd   `cmd:"" help:"Manage the secrets PatchCaster stores."`
 
 	Version kong.VersionFlag `help:"Show the build version and exit."`

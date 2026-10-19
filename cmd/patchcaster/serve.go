@@ -44,7 +44,7 @@ type ServeCmd struct {
 
 // serveSchema asserts the semantic constraints on kong-parsed values
 // (ADR-012). Keys are ServeCmd field names; Validate renders them
-// back into operator-facing flag names.
+// back into the flag names of the command line.
 var serveSchema = z.Struct(z.Shape{
 	"LogLevel":      z.String().OneOf([]string{"debug", "info", "warn", "error"}),
 	"DrainTimeout":  positiveDuration(),
@@ -76,7 +76,7 @@ func positiveDuration() *z.Custom[time.Duration] {
 	}, z.Message("must be a positive duration"))
 }
 
-// flagNames renders schema field paths as the flags operators typed.
+// flagNames renders schema field paths as the flags people type.
 var flagNames = map[string]string{
 	"LogLevel":      "--log-level",
 	"DrainTimeout":  "--drain-timeout",

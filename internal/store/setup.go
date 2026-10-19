@@ -16,7 +16,7 @@ var (
 	ErrSetupLinkSpent = errors.New("the setup link is used, expired or unknown")
 	// ErrAdministratorExists reports a setup step after the setup is
 	// complete: once an administrator exists, the setup is closed.
-	ErrAdministratorExists = errors.New("an administrator exists")
+	ErrAdministratorExists = errors.New("an Instance Admin exists")
 )
 
 // setupClosed returns ErrAdministratorExists once an administrator exists.

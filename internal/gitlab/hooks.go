@@ -10,9 +10,9 @@ import (
 // HookKind names where a hook lives.
 type HookKind string
 
-// The kinds of hooks. A system hook needs an administrator token, a group
-// hook GitLab Premium and the group's Owner role, and a project hook the
-// project's Maintainer role.
+// The kinds of hooks. A system hook needs a GitLab administrator's
+// token, a group hook GitLab Premium and the group's Owner role, and a
+// project hook the project's Maintainer role.
 const (
 	SystemHook  HookKind = "system"
 	GroupHook   HookKind = "group"

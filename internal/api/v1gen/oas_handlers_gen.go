@@ -144,7 +144,7 @@ func (s *Server) handleAddSigningTokenRequest(args [1]string, argsEscaped bool, 
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    AddSigningTokenOperation,
-			OperationSummary: "Add a webhook signing token to a forge connection, for administrators.",
+			OperationSummary: "Add a webhook signing token to a forge connection, for Instance Admins.",
 			OperationID:      "addSigningToken",
 			Body:             request,
 			RawBody:          rawBody,
@@ -311,7 +311,7 @@ func (s *Server) handleCreateConnectionRequest(args [0]string, argsEscaped bool,
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    CreateConnectionOperation,
-			OperationSummary: "Connect a forge or a chat platform, for administrators.",
+			OperationSummary: "Connect a forge or a chat platform, for Instance Admins.",
 			OperationID:      "createConnection",
 			Body:             request,
 			RawBody:          rawBody,
@@ -472,7 +472,7 @@ func (s *Server) handleCreateRouteRequest(args [0]string, argsEscaped bool, w ht
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    CreateRouteOperation,
-			OperationSummary: "Create a route from a team's source into one of its sinks, for the team's operators and administrators.",
+			OperationSummary: "Create a route from a team's source into one of its sinks, for the team's Routing Managers and Instance Admins.",
 			OperationID:      "createRoute",
 			Body:             request,
 			RawBody:          rawBody,
@@ -633,7 +633,7 @@ func (s *Server) handleCreateSinkRequest(args [0]string, argsEscaped bool, w htt
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    CreateSinkOperation,
-			OperationSummary: "Create a sink in a channel of a chat connection, for administrators.",
+			OperationSummary: "Create a sink in a channel of a chat connection, for Instance Admins.",
 			OperationID:      "createSink",
 			Body:             request,
 			RawBody:          rawBody,
@@ -794,7 +794,7 @@ func (s *Server) handleCreateSourceRequest(args [0]string, argsEscaped bool, w h
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    CreateSourceOperation,
-			OperationSummary: "Create a source of a forge connection, for administrators.",
+			OperationSummary: "Create a source of a forge connection, for Instance Admins.",
 			OperationID:      "createSource",
 			Body:             request,
 			RawBody:          rawBody,
@@ -851,7 +851,7 @@ func (s *Server) handleCreateSourceRequest(args [0]string, argsEscaped bool, w h
 
 // handleCreateTeamRequest handles createTeam operation.
 //
-// A new team has no operators, sources or sinks. Give it them with a change.
+// A new team has no Routing Managers, sources or sinks. Give it them with a change.
 //
 // POST /api/v1/teams
 func (s *Server) handleCreateTeamRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -954,7 +954,7 @@ func (s *Server) handleCreateTeamRequest(args [0]string, argsEscaped bool, w htt
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    CreateTeamOperation,
-			OperationSummary: "Create a team, for administrators.",
+			OperationSummary: "Create a team, for Instance Admins.",
 			OperationID:      "createTeam",
 			Body:             request,
 			RawBody:          rawBody,
@@ -1152,7 +1152,7 @@ func (s *Server) handleCreateTokenRequest(args [0]string, argsEscaped bool, w ht
 
 // handleDeleteConnectionRequest handles deleteConnection operation.
 //
-// Remove a connection and its signing tokens, for administrators.
+// Remove a connection and its signing tokens, for Instance Admins.
 //
 // DELETE /api/v1/connections/{id}
 func (s *Server) handleDeleteConnectionRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -1250,7 +1250,7 @@ func (s *Server) handleDeleteConnectionRequest(args [1]string, argsEscaped bool,
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    DeleteConnectionOperation,
-			OperationSummary: "Remove a connection and its signing tokens, for administrators.",
+			OperationSummary: "Remove a connection and its signing tokens, for Instance Admins.",
 			OperationID:      "deleteConnection",
 			Body:             nil,
 			RawBody:          rawBody,
@@ -1414,7 +1414,7 @@ func (s *Server) handleDeleteRouteRequest(args [1]string, argsEscaped bool, w ht
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    DeleteRouteOperation,
-			OperationSummary: "Remove a route, for the team's operators and administrators.",
+			OperationSummary: "Remove a route, for the team's Routing Managers and Instance Admins.",
 			OperationID:      "deleteRoute",
 			Body:             nil,
 			RawBody:          rawBody,
@@ -1578,7 +1578,7 @@ func (s *Server) handleDeleteSinkRequest(args [1]string, argsEscaped bool, w htt
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    DeleteSinkOperation,
-			OperationSummary: "Remove a sink, for administrators.",
+			OperationSummary: "Remove a sink, for Instance Admins.",
 			OperationID:      "deleteSink",
 			Body:             nil,
 			RawBody:          rawBody,
@@ -1742,7 +1742,7 @@ func (s *Server) handleDeleteSourceRequest(args [1]string, argsEscaped bool, w h
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    DeleteSourceOperation,
-			OperationSummary: "Remove a source, for administrators.",
+			OperationSummary: "Remove a source, for Instance Admins.",
 			OperationID:      "deleteSource",
 			Body:             nil,
 			RawBody:          rawBody,
@@ -1906,7 +1906,7 @@ func (s *Server) handleDeleteTeamRequest(args [1]string, argsEscaped bool, w htt
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    DeleteTeamOperation,
-			OperationSummary: "Remove a team, for administrators.",
+			OperationSummary: "Remove a team, for Instance Admins.",
 			OperationID:      "deleteTeam",
 			Body:             nil,
 			RawBody:          rawBody,
@@ -2098,7 +2098,7 @@ func (s *Server) handleEndSessionRequest(args [0]string, argsEscaped bool, w htt
 
 // handleGetConnectionRequest handles getConnection operation.
 //
-// Read a connection, without its credential, for administrators.
+// Read a connection, without its credential, for Instance Admins.
 //
 // GET /api/v1/connections/{id}
 func (s *Server) handleGetConnectionRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -2196,7 +2196,7 @@ func (s *Server) handleGetConnectionRequest(args [1]string, argsEscaped bool, w 
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    GetConnectionOperation,
-			OperationSummary: "Read a connection, without its credential, for administrators.",
+			OperationSummary: "Read a connection, without its credential, for Instance Admins.",
 			OperationID:      "getConnection",
 			Body:             nil,
 			RawBody:          rawBody,
@@ -2334,7 +2334,7 @@ func (s *Server) handleGetInstanceRequest(args [0]string, argsEscaped bool, w ht
 
 // handleGetLoginSettingsRequest handles getLoginSettings operation.
 //
-// Read the identity provider settings, for administrators.
+// Read the identity provider settings, for Instance Admins.
 //
 // GET /api/v1/settings/login
 func (s *Server) handleGetLoginSettingsRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -2422,7 +2422,7 @@ func (s *Server) handleGetLoginSettingsRequest(args [0]string, argsEscaped bool,
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    GetLoginSettingsOperation,
-			OperationSummary: "Read the identity provider settings, for administrators.",
+			OperationSummary: "Read the identity provider settings, for Instance Admins.",
 			OperationID:      "getLoginSettings",
 			Body:             nil,
 			RawBody:          rawBody,
@@ -2479,7 +2479,7 @@ func (s *Server) handleGetLoginSettingsRequest(args [0]string, argsEscaped bool,
 
 // handleGetRouteRequest handles getRoute operation.
 //
-// Read a route. Operators read only those of the teams they operate.
+// Read a route. Routing Managers read only those of the teams they manage.
 //
 // GET /api/v1/routes/{id}
 func (s *Server) handleGetRouteRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -2577,7 +2577,7 @@ func (s *Server) handleGetRouteRequest(args [1]string, argsEscaped bool, w http.
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    GetRouteOperation,
-			OperationSummary: "Read a route. Operators read only those of the teams they operate.",
+			OperationSummary: "Read a route. Routing Managers read only those of the teams they manage.",
 			OperationID:      "getRoute",
 			Body:             nil,
 			RawBody:          rawBody,
@@ -2784,7 +2784,7 @@ func (s *Server) handleGetSessionRequest(args [0]string, argsEscaped bool, w htt
 
 // handleGetSinkRequest handles getSink operation.
 //
-// Read a sink. Operators read only those of the teams they operate.
+// Read a sink. Routing Managers read only those of the teams they manage.
 //
 // GET /api/v1/sinks/{id}
 func (s *Server) handleGetSinkRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -2882,7 +2882,7 @@ func (s *Server) handleGetSinkRequest(args [1]string, argsEscaped bool, w http.R
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    GetSinkOperation,
-			OperationSummary: "Read a sink. Operators read only those of the teams they operate.",
+			OperationSummary: "Read a sink. Routing Managers read only those of the teams they manage.",
 			OperationID:      "getSink",
 			Body:             nil,
 			RawBody:          rawBody,
@@ -2944,7 +2944,7 @@ func (s *Server) handleGetSinkRequest(args [1]string, argsEscaped bool, w http.R
 
 // handleGetSourceRequest handles getSource operation.
 //
-// Read a source. Operators read only those of the teams they operate.
+// Read a source. Routing Managers read only those of the teams they manage.
 //
 // GET /api/v1/sources/{id}
 func (s *Server) handleGetSourceRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -3042,7 +3042,7 @@ func (s *Server) handleGetSourceRequest(args [1]string, argsEscaped bool, w http
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    GetSourceOperation,
-			OperationSummary: "Read a source. Operators read only those of the teams they operate.",
+			OperationSummary: "Read a source. Routing Managers read only those of the teams they manage.",
 			OperationID:      "getSource",
 			Body:             nil,
 			RawBody:          rawBody,
@@ -3104,7 +3104,7 @@ func (s *Server) handleGetSourceRequest(args [1]string, argsEscaped bool, w http
 
 // handleGetTeamRequest handles getTeam operation.
 //
-// Read a team. Operators read only the teams they operate.
+// Read a team. Routing Managers read only the teams they manage.
 //
 // GET /api/v1/teams/{id}
 func (s *Server) handleGetTeamRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -3202,7 +3202,7 @@ func (s *Server) handleGetTeamRequest(args [1]string, argsEscaped bool, w http.R
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    GetTeamOperation,
-			OperationSummary: "Read a team. Operators read only the teams they operate.",
+			OperationSummary: "Read a team. Routing Managers read only the teams they manage.",
 			OperationID:      "getTeam",
 			Body:             nil,
 			RawBody:          rawBody,
@@ -3264,7 +3264,7 @@ func (s *Server) handleGetTeamRequest(args [1]string, argsEscaped bool, w http.R
 
 // handleListAuditRequest handles listAudit operation.
 //
-// Read the audit log, newest first, for administrators.
+// Read the audit log, newest first, for Instance Admins.
 //
 // GET /api/v1/audit
 func (s *Server) handleListAuditRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -3362,7 +3362,7 @@ func (s *Server) handleListAuditRequest(args [0]string, argsEscaped bool, w http
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    ListAuditOperation,
-			OperationSummary: "Read the audit log, newest first, for administrators.",
+			OperationSummary: "Read the audit log, newest first, for Instance Admins.",
 			OperationID:      "listAudit",
 			Body:             nil,
 			RawBody:          rawBody,
@@ -3428,7 +3428,7 @@ func (s *Server) handleListAuditRequest(args [0]string, argsEscaped bool, w http
 
 // handleListConnectionsRequest handles listConnections operation.
 //
-// List the forge and chat connections, for administrators.
+// List the forge and chat connections, for Instance Admins.
 //
 // GET /api/v1/connections
 func (s *Server) handleListConnectionsRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -3526,7 +3526,7 @@ func (s *Server) handleListConnectionsRequest(args [0]string, argsEscaped bool, 
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    ListConnectionsOperation,
-			OperationSummary: "List the forge and chat connections, for administrators.",
+			OperationSummary: "List the forge and chat connections, for Instance Admins.",
 			OperationID:      "listConnections",
 			Body:             nil,
 			RawBody:          rawBody,
@@ -3592,7 +3592,7 @@ func (s *Server) handleListConnectionsRequest(args [0]string, argsEscaped bool, 
 
 // handleListPersonsRequest handles listPersons operation.
 //
-// List people, for administrators.
+// List people, for Instance Admins.
 //
 // GET /api/v1/persons
 func (s *Server) handleListPersonsRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -3690,7 +3690,7 @@ func (s *Server) handleListPersonsRequest(args [0]string, argsEscaped bool, w ht
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    ListPersonsOperation,
-			OperationSummary: "List people, for administrators.",
+			OperationSummary: "List people, for Instance Admins.",
 			OperationID:      "listPersons",
 			Body:             nil,
 			RawBody:          rawBody,
@@ -3756,7 +3756,7 @@ func (s *Server) handleListPersonsRequest(args [0]string, argsEscaped bool, w ht
 
 // handleListRoutesRequest handles listRoutes operation.
 //
-// List routes. Administrators see all of them, operators those of the teams they operate.
+// List routes. Instance Admins see all of them, Routing Managers those of the teams they manage.
 //
 // GET /api/v1/routes
 func (s *Server) handleListRoutesRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -3854,7 +3854,7 @@ func (s *Server) handleListRoutesRequest(args [0]string, argsEscaped bool, w htt
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    ListRoutesOperation,
-			OperationSummary: "List routes. Administrators see all of them, operators those of the teams they operate.",
+			OperationSummary: "List routes. Instance Admins see all of them, Routing Managers those of the teams they manage.",
 			OperationID:      "listRoutes",
 			Body:             nil,
 			RawBody:          rawBody,
@@ -4092,7 +4092,7 @@ func (s *Server) handleListSigningTokensRequest(args [1]string, argsEscaped bool
 
 // handleListSinksRequest handles listSinks operation.
 //
-// List sinks. Administrators see all of them, operators those of the teams they operate.
+// List sinks. Instance Admins see all of them, Routing Managers those of the teams they manage.
 //
 // GET /api/v1/sinks
 func (s *Server) handleListSinksRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -4190,7 +4190,7 @@ func (s *Server) handleListSinksRequest(args [0]string, argsEscaped bool, w http
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    ListSinksOperation,
-			OperationSummary: "List sinks. Administrators see all of them, operators those of the teams they operate.",
+			OperationSummary: "List sinks. Instance Admins see all of them, Routing Managers those of the teams they manage.",
 			OperationID:      "listSinks",
 			Body:             nil,
 			RawBody:          rawBody,
@@ -4256,7 +4256,7 @@ func (s *Server) handleListSinksRequest(args [0]string, argsEscaped bool, w http
 
 // handleListSourcesRequest handles listSources operation.
 //
-// List sources. Administrators see all of them, operators those of the teams they operate.
+// List sources. Instance Admins see all of them, Routing Managers those of the teams they manage.
 //
 // GET /api/v1/sources
 func (s *Server) handleListSourcesRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -4354,7 +4354,7 @@ func (s *Server) handleListSourcesRequest(args [0]string, argsEscaped bool, w ht
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    ListSourcesOperation,
-			OperationSummary: "List sources. Administrators see all of them, operators those of the teams they operate.",
+			OperationSummary: "List sources. Instance Admins see all of them, Routing Managers those of the teams they manage.",
 			OperationID:      "listSources",
 			Body:             nil,
 			RawBody:          rawBody,
@@ -4420,7 +4420,7 @@ func (s *Server) handleListSourcesRequest(args [0]string, argsEscaped bool, w ht
 
 // handleListTeamsRequest handles listTeams operation.
 //
-// List teams. Administrators see all of them, operators the ones they operate.
+// List teams. Instance Admins see all of them, Routing Managers the ones they manage.
 //
 // GET /api/v1/teams
 func (s *Server) handleListTeamsRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -4518,7 +4518,7 @@ func (s *Server) handleListTeamsRequest(args [0]string, argsEscaped bool, w http
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    ListTeamsOperation,
-			OperationSummary: "List teams. Administrators see all of them, operators the ones they operate.",
+			OperationSummary: "List teams. Instance Admins see all of them, Routing Managers the ones they manage.",
 			OperationID:      "listTeams",
 			Body:             nil,
 			RawBody:          rawBody,
@@ -4729,7 +4729,7 @@ func (s *Server) handleListTokensRequest(args [0]string, argsEscaped bool, w htt
 
 // handlePutLoginSettingsRequest handles putLoginSettings operation.
 //
-// Change the identity provider settings, for administrators.
+// Change the identity provider settings, for Instance Admins.
 //
 // PUT /api/v1/settings/login
 func (s *Server) handlePutLoginSettingsRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -4842,7 +4842,7 @@ func (s *Server) handlePutLoginSettingsRequest(args [0]string, argsEscaped bool,
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    PutLoginSettingsOperation,
-			OperationSummary: "Change the identity provider settings, for administrators.",
+			OperationSummary: "Change the identity provider settings, for Instance Admins.",
 			OperationID:      "putLoginSettings",
 			Body:             request,
 			RawBody:          rawBody,
@@ -5002,7 +5002,7 @@ func (s *Server) handleRemoveSigningTokenRequest(args [2]string, argsEscaped boo
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    RemoveSigningTokenOperation,
-			OperationSummary: "Remove a webhook signing token, for administrators.",
+			OperationSummary: "Remove a webhook signing token, for Instance Admins.",
 			OperationID:      "removeSigningToken",
 			Body:             nil,
 			RawBody:          rawBody,
@@ -5166,7 +5166,7 @@ func (s *Server) handleRevokeAccessRequest(args [1]string, argsEscaped bool, w h
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    RevokeAccessOperation,
-			OperationSummary: "Revoke all tokens and end all sessions of a person, for administrators.",
+			OperationSummary: "Revoke all tokens and end all sessions of a person, for Instance Admins.",
 			OperationID:      "revokeAccess",
 			Body:             nil,
 			RawBody:          rawBody,
@@ -5370,8 +5370,8 @@ func (s *Server) handleRevokeTokenRequest(args [1]string, argsEscaped bool, w ht
 // handleSetUpRequest handles setUp operation.
 //
 // Takes the setup link's token from the bootstrap command, checks that the provider answers, and
-// stores it. The response names the login that makes the person logging in the first administrator.
-// Fails once an administrator exists.
+// stores it. The response names the login that makes the person logging in the first Instance Admin.
+// Fails once an Instance Admin exists.
 //
 // POST /api/v1/setup
 func (s *Server) handleSetUpRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -5580,7 +5580,7 @@ func (s *Server) handleUpdateConnectionRequest(args [1]string, argsEscaped bool,
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    UpdateConnectionOperation,
-			OperationSummary: "Change a connection, for administrators.",
+			OperationSummary: "Change a connection, for Instance Admins.",
 			OperationID:      "updateConnection",
 			Body:             request,
 			RawBody:          rawBody,
@@ -5646,7 +5646,7 @@ func (s *Server) handleUpdateConnectionRequest(args [1]string, argsEscaped bool,
 
 // handleUpdatePersonRequest handles updatePerson operation.
 //
-// Change a person's role, for administrators.
+// Change a person's role, for Instance Admins.
 //
 // PATCH /api/v1/persons/{id}
 func (s *Server) handleUpdatePersonRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -5759,7 +5759,7 @@ func (s *Server) handleUpdatePersonRequest(args [1]string, argsEscaped bool, w h
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    UpdatePersonOperation,
-			OperationSummary: "Change a person's role, for administrators.",
+			OperationSummary: "Change a person's role, for Instance Admins.",
 			OperationID:      "updatePerson",
 			Body:             request,
 			RawBody:          rawBody,
@@ -5938,7 +5938,7 @@ func (s *Server) handleUpdateRouteRequest(args [1]string, argsEscaped bool, w ht
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    UpdateRouteOperation,
-			OperationSummary: "Change which replies a route mutes, for the team's operators and administrators.",
+			OperationSummary: "Change which replies a route mutes, for the team's Routing Managers and Instance Admins.",
 			OperationID:      "updateRoute",
 			Body:             request,
 			RawBody:          rawBody,
@@ -6117,7 +6117,7 @@ func (s *Server) handleUpdateSinkRequest(args [1]string, argsEscaped bool, w htt
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    UpdateSinkOperation,
-			OperationSummary: "Change a sink's name or channel, for administrators.",
+			OperationSummary: "Change a sink's name or channel, for Instance Admins.",
 			OperationID:      "updateSink",
 			Body:             request,
 			RawBody:          rawBody,
@@ -6296,7 +6296,7 @@ func (s *Server) handleUpdateSourceRequest(args [1]string, argsEscaped bool, w h
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    UpdateSourceOperation,
-			OperationSummary: "Change a source's name or scope, for administrators.",
+			OperationSummary: "Change a source's name or scope, for Instance Admins.",
 			OperationID:      "updateSource",
 			Body:             request,
 			RawBody:          rawBody,
@@ -6362,8 +6362,8 @@ func (s *Server) handleUpdateSourceRequest(args [1]string, argsEscaped bool, w h
 
 // handleUpdateTeamRequest handles updateTeam operation.
 //
-// Renames the team and sets its operators, sources and sinks. A source or sink that one of the team's
-// routes uses cannot leave it.
+// Renames the team and sets its Routing Managers, sources and sinks. A source or sink that one of the
+// team's routes uses cannot leave it.
 //
 // PUT /api/v1/teams/{id}
 func (s *Server) handleUpdateTeamRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -6476,7 +6476,7 @@ func (s *Server) handleUpdateTeamRequest(args [1]string, argsEscaped bool, w htt
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    UpdateTeamOperation,
-			OperationSummary: "Change a team, for administrators.",
+			OperationSummary: "Change a team, for Instance Admins.",
 			OperationID:      "updateTeam",
 			Body:             request,
 			RawBody:          rawBody,

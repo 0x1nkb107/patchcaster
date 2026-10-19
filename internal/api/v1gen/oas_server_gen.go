@@ -46,7 +46,7 @@ type Handler interface {
 	CreateSource(ctx context.Context, req *SourceRequest) (*Source, error)
 	// CreateTeam implements createTeam operation.
 	//
-	// A new team has no operators, sources or sinks. Give it them with a change.
+	// A new team has no Routing Managers, sources or sinks. Give it them with a change.
 	//
 	// POST /api/v1/teams
 	CreateTeam(ctx context.Context, req *TeamRequest) (*Team, error)
@@ -58,7 +58,7 @@ type Handler interface {
 	CreateToken(ctx context.Context, req *ApiTokenRequest) (*CreatedApiToken, error)
 	// DeleteConnection implements deleteConnection operation.
 	//
-	// Remove a connection and its signing tokens, for administrators.
+	// Remove a connection and its signing tokens, for Instance Admins.
 	//
 	// DELETE /api/v1/connections/{id}
 	DeleteConnection(ctx context.Context, params DeleteConnectionParams) error
@@ -94,7 +94,7 @@ type Handler interface {
 	EndSession(ctx context.Context) error
 	// GetConnection implements getConnection operation.
 	//
-	// Read a connection, without its credential, for administrators.
+	// Read a connection, without its credential, for Instance Admins.
 	//
 	// GET /api/v1/connections/{id}
 	GetConnection(ctx context.Context, params GetConnectionParams) (*ConnectionHeaders, error)
@@ -106,13 +106,13 @@ type Handler interface {
 	GetInstance(ctx context.Context) (*Instance, error)
 	// GetLoginSettings implements getLoginSettings operation.
 	//
-	// Read the identity provider settings, for administrators.
+	// Read the identity provider settings, for Instance Admins.
 	//
 	// GET /api/v1/settings/login
 	GetLoginSettings(ctx context.Context) (*LoginSettingsHeaders, error)
 	// GetRoute implements getRoute operation.
 	//
-	// Read a route. Operators read only those of the teams they operate.
+	// Read a route. Routing Managers read only those of the teams they manage.
 	//
 	// GET /api/v1/routes/{id}
 	GetRoute(ctx context.Context, params GetRouteParams) (*TeamRouteHeaders, error)
@@ -124,43 +124,43 @@ type Handler interface {
 	GetSession(ctx context.Context) (*Person, error)
 	// GetSink implements getSink operation.
 	//
-	// Read a sink. Operators read only those of the teams they operate.
+	// Read a sink. Routing Managers read only those of the teams they manage.
 	//
 	// GET /api/v1/sinks/{id}
 	GetSink(ctx context.Context, params GetSinkParams) (*SinkHeaders, error)
 	// GetSource implements getSource operation.
 	//
-	// Read a source. Operators read only those of the teams they operate.
+	// Read a source. Routing Managers read only those of the teams they manage.
 	//
 	// GET /api/v1/sources/{id}
 	GetSource(ctx context.Context, params GetSourceParams) (*SourceHeaders, error)
 	// GetTeam implements getTeam operation.
 	//
-	// Read a team. Operators read only the teams they operate.
+	// Read a team. Routing Managers read only the teams they manage.
 	//
 	// GET /api/v1/teams/{id}
 	GetTeam(ctx context.Context, params GetTeamParams) (*TeamHeaders, error)
 	// ListAudit implements listAudit operation.
 	//
-	// Read the audit log, newest first, for administrators.
+	// Read the audit log, newest first, for Instance Admins.
 	//
 	// GET /api/v1/audit
 	ListAudit(ctx context.Context, params ListAuditParams) (*AuditPage, error)
 	// ListConnections implements listConnections operation.
 	//
-	// List the forge and chat connections, for administrators.
+	// List the forge and chat connections, for Instance Admins.
 	//
 	// GET /api/v1/connections
 	ListConnections(ctx context.Context, params ListConnectionsParams) (*ConnectionPage, error)
 	// ListPersons implements listPersons operation.
 	//
-	// List people, for administrators.
+	// List people, for Instance Admins.
 	//
 	// GET /api/v1/persons
 	ListPersons(ctx context.Context, params ListPersonsParams) (*PersonPage, error)
 	// ListRoutes implements listRoutes operation.
 	//
-	// List routes. Administrators see all of them, operators those of the teams they operate.
+	// List routes. Instance Admins see all of them, Routing Managers those of the teams they manage.
 	//
 	// GET /api/v1/routes
 	ListRoutes(ctx context.Context, params ListRoutesParams) (*RoutePage, error)
@@ -172,19 +172,19 @@ type Handler interface {
 	ListSigningTokens(ctx context.Context, params ListSigningTokensParams) (*SigningTokenPage, error)
 	// ListSinks implements listSinks operation.
 	//
-	// List sinks. Administrators see all of them, operators those of the teams they operate.
+	// List sinks. Instance Admins see all of them, Routing Managers those of the teams they manage.
 	//
 	// GET /api/v1/sinks
 	ListSinks(ctx context.Context, params ListSinksParams) (*SinkPage, error)
 	// ListSources implements listSources operation.
 	//
-	// List sources. Administrators see all of them, operators those of the teams they operate.
+	// List sources. Instance Admins see all of them, Routing Managers those of the teams they manage.
 	//
 	// GET /api/v1/sources
 	ListSources(ctx context.Context, params ListSourcesParams) (*SourcePage, error)
 	// ListTeams implements listTeams operation.
 	//
-	// List teams. Administrators see all of them, operators the ones they operate.
+	// List teams. Instance Admins see all of them, Routing Managers the ones they manage.
 	//
 	// GET /api/v1/teams
 	ListTeams(ctx context.Context, params ListTeamsParams) (*TeamPage, error)
@@ -196,7 +196,7 @@ type Handler interface {
 	ListTokens(ctx context.Context, params ListTokensParams) (*ApiTokenPage, error)
 	// PutLoginSettings implements putLoginSettings operation.
 	//
-	// Change the identity provider settings, for administrators.
+	// Change the identity provider settings, for Instance Admins.
 	//
 	// PUT /api/v1/settings/login
 	PutLoginSettings(ctx context.Context, req *LoginSettingsUpdate, params PutLoginSettingsParams) (*LoginSettingsHeaders, error)
@@ -221,8 +221,8 @@ type Handler interface {
 	// SetUp implements setUp operation.
 	//
 	// Takes the setup link's token from the bootstrap command, checks that the provider answers, and
-	// stores it. The response names the login that makes the person logging in the first administrator.
-	// Fails once an administrator exists.
+	// stores it. The response names the login that makes the person logging in the first Instance Admin.
+	// Fails once an Instance Admin exists.
 	//
 	// POST /api/v1/setup
 	SetUp(ctx context.Context, req *SetupRequest) (*SetupStarted, error)
@@ -235,7 +235,7 @@ type Handler interface {
 	UpdateConnection(ctx context.Context, req *ConnectionUpdate, params UpdateConnectionParams) (*ConnectionHeaders, error)
 	// UpdatePerson implements updatePerson operation.
 	//
-	// Change a person's role, for administrators.
+	// Change a person's role, for Instance Admins.
 	//
 	// PATCH /api/v1/persons/{id}
 	UpdatePerson(ctx context.Context, req *PersonUpdate, params UpdatePersonParams) (*PersonHeaders, error)
@@ -259,8 +259,8 @@ type Handler interface {
 	UpdateSource(ctx context.Context, req *SourceUpdate, params UpdateSourceParams) (*SourceHeaders, error)
 	// UpdateTeam implements updateTeam operation.
 	//
-	// Renames the team and sets its operators, sources and sinks. A source or sink that one of the team's
-	// routes uses cannot leave it.
+	// Renames the team and sets its Routing Managers, sources and sinks. A source or sink that one of the
+	// team's routes uses cannot leave it.
 	//
 	// PUT /api/v1/teams/{id}
 	UpdateTeam(ctx context.Context, req *TeamUpdate, params UpdateTeamParams) (*TeamHeaders, error)

@@ -80,7 +80,7 @@ func TestTheFirstAdministratorSetsUpTheInstance(t *testing.T) {
 	assert.False(t, after.SetupRequired)
 	requireProblem(t, reuseErr, http.StatusConflict)
 	assert.NotZero(t, code)
-	assert.Contains(t, out, "an administrator exists")
+	assert.Contains(t, out, "an Instance Admin exists")
 	assert.Subset(t, auditActions(t, admin), []string{"setup.complete", "login_settings.setup", "setup.link_issued"})
 }
 

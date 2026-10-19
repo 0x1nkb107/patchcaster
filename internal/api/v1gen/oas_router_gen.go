@@ -1023,7 +1023,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 					switch method {
 					case "GET":
 						r.name = ListAuditOperation
-						r.summary = "Read the audit log, newest first, for administrators."
+						r.summary = "Read the audit log, newest first, for Instance Admins."
 						r.operationID = "listAudit"
 						r.operationGroup = ""
 						r.pathPattern = "/api/v1/audit"
@@ -1047,7 +1047,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 					switch method {
 					case "GET":
 						r.name = ListConnectionsOperation
-						r.summary = "List the forge and chat connections, for administrators."
+						r.summary = "List the forge and chat connections, for Instance Admins."
 						r.operationID = "listConnections"
 						r.operationGroup = ""
 						r.pathPattern = "/api/v1/connections"
@@ -1056,7 +1056,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 						return r, true
 					case "POST":
 						r.name = CreateConnectionOperation
-						r.summary = "Connect a forge or a chat platform, for administrators."
+						r.summary = "Connect a forge or a chat platform, for Instance Admins."
 						r.operationID = "createConnection"
 						r.operationGroup = ""
 						r.pathPattern = "/api/v1/connections"
@@ -1089,7 +1089,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 						switch method {
 						case "DELETE":
 							r.name = DeleteConnectionOperation
-							r.summary = "Remove a connection and its signing tokens, for administrators."
+							r.summary = "Remove a connection and its signing tokens, for Instance Admins."
 							r.operationID = "deleteConnection"
 							r.operationGroup = ""
 							r.pathPattern = "/api/v1/connections/{id}"
@@ -1098,7 +1098,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 							return r, true
 						case "GET":
 							r.name = GetConnectionOperation
-							r.summary = "Read a connection, without its credential, for administrators."
+							r.summary = "Read a connection, without its credential, for Instance Admins."
 							r.operationID = "getConnection"
 							r.operationGroup = ""
 							r.pathPattern = "/api/v1/connections/{id}"
@@ -1107,7 +1107,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 							return r, true
 						case "PUT":
 							r.name = UpdateConnectionOperation
-							r.summary = "Change a connection, for administrators."
+							r.summary = "Change a connection, for Instance Admins."
 							r.operationID = "updateConnection"
 							r.operationGroup = ""
 							r.pathPattern = "/api/v1/connections/{id}"
@@ -1140,7 +1140,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 								return r, true
 							case "POST":
 								r.name = AddSigningTokenOperation
-								r.summary = "Add a webhook signing token to a forge connection, for administrators."
+								r.summary = "Add a webhook signing token to a forge connection, for Instance Admins."
 								r.operationID = "addSigningToken"
 								r.operationGroup = ""
 								r.pathPattern = "/api/v1/connections/{id}/signing-tokens"
@@ -1174,7 +1174,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 								switch method {
 								case "DELETE":
 									r.name = RemoveSigningTokenOperation
-									r.summary = "Remove a webhook signing token, for administrators."
+									r.summary = "Remove a webhook signing token, for Instance Admins."
 									r.operationID = "removeSigningToken"
 									r.operationGroup = ""
 									r.pathPattern = "/api/v1/connections/{id}/signing-tokens/{token_id}"
@@ -1229,7 +1229,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 					switch method {
 					case "GET":
 						r.name = ListPersonsOperation
-						r.summary = "List people, for administrators."
+						r.summary = "List people, for Instance Admins."
 						r.operationID = "listPersons"
 						r.operationGroup = ""
 						r.pathPattern = "/api/v1/persons"
@@ -1262,7 +1262,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 						switch method {
 						case "PATCH":
 							r.name = UpdatePersonOperation
-							r.summary = "Change a person's role, for administrators."
+							r.summary = "Change a person's role, for Instance Admins."
 							r.operationID = "updatePerson"
 							r.operationGroup = ""
 							r.pathPattern = "/api/v1/persons/{id}"
@@ -1287,7 +1287,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 							switch method {
 							case "POST":
 								r.name = RevokeAccessOperation
-								r.summary = "Revoke all tokens and end all sessions of a person, for administrators."
+								r.summary = "Revoke all tokens and end all sessions of a person, for Instance Admins."
 								r.operationID = "revokeAccess"
 								r.operationGroup = ""
 								r.pathPattern = "/api/v1/persons/{id}/revoke-access"
@@ -1315,7 +1315,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 					switch method {
 					case "GET":
 						r.name = ListRoutesOperation
-						r.summary = "List routes. Administrators see all of them, operators those of the teams they operate."
+						r.summary = "List routes. Instance Admins see all of them, Routing Managers those of the teams they manage."
 						r.operationID = "listRoutes"
 						r.operationGroup = ""
 						r.pathPattern = "/api/v1/routes"
@@ -1324,7 +1324,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 						return r, true
 					case "POST":
 						r.name = CreateRouteOperation
-						r.summary = "Create a route from a team's source into one of its sinks, for the team's operators and administrators."
+						r.summary = "Create a route from a team's source into one of its sinks, for the team's Routing Managers and Instance Admins."
 						r.operationID = "createRoute"
 						r.operationGroup = ""
 						r.pathPattern = "/api/v1/routes"
@@ -1358,7 +1358,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 						switch method {
 						case "DELETE":
 							r.name = DeleteRouteOperation
-							r.summary = "Remove a route, for the team's operators and administrators."
+							r.summary = "Remove a route, for the team's Routing Managers and Instance Admins."
 							r.operationID = "deleteRoute"
 							r.operationGroup = ""
 							r.pathPattern = "/api/v1/routes/{id}"
@@ -1367,7 +1367,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 							return r, true
 						case "GET":
 							r.name = GetRouteOperation
-							r.summary = "Read a route. Operators read only those of the teams they operate."
+							r.summary = "Read a route. Routing Managers read only those of the teams they manage."
 							r.operationID = "getRoute"
 							r.operationGroup = ""
 							r.pathPattern = "/api/v1/routes/{id}"
@@ -1376,7 +1376,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 							return r, true
 						case "PUT":
 							r.name = UpdateRouteOperation
-							r.summary = "Change which replies a route mutes, for the team's operators and administrators."
+							r.summary = "Change which replies a route mutes, for the team's Routing Managers and Instance Admins."
 							r.operationID = "updateRoute"
 							r.operationGroup = ""
 							r.pathPattern = "/api/v1/routes/{id}"
@@ -1473,7 +1473,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 								switch method {
 								case "GET":
 									r.name = GetLoginSettingsOperation
-									r.summary = "Read the identity provider settings, for administrators."
+									r.summary = "Read the identity provider settings, for Instance Admins."
 									r.operationID = "getLoginSettings"
 									r.operationGroup = ""
 									r.pathPattern = "/api/v1/settings/login"
@@ -1482,7 +1482,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 									return r, true
 								case "PUT":
 									r.name = PutLoginSettingsOperation
-									r.summary = "Change the identity provider settings, for administrators."
+									r.summary = "Change the identity provider settings, for Instance Admins."
 									r.operationID = "putLoginSettings"
 									r.operationGroup = ""
 									r.pathPattern = "/api/v1/settings/login"
@@ -1535,7 +1535,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 						switch method {
 						case "GET":
 							r.name = ListSinksOperation
-							r.summary = "List sinks. Administrators see all of them, operators those of the teams they operate."
+							r.summary = "List sinks. Instance Admins see all of them, Routing Managers those of the teams they manage."
 							r.operationID = "listSinks"
 							r.operationGroup = ""
 							r.pathPattern = "/api/v1/sinks"
@@ -1544,7 +1544,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 							return r, true
 						case "POST":
 							r.name = CreateSinkOperation
-							r.summary = "Create a sink in a channel of a chat connection, for administrators."
+							r.summary = "Create a sink in a channel of a chat connection, for Instance Admins."
 							r.operationID = "createSink"
 							r.operationGroup = ""
 							r.pathPattern = "/api/v1/sinks"
@@ -1578,7 +1578,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 							switch method {
 							case "DELETE":
 								r.name = DeleteSinkOperation
-								r.summary = "Remove a sink, for administrators."
+								r.summary = "Remove a sink, for Instance Admins."
 								r.operationID = "deleteSink"
 								r.operationGroup = ""
 								r.pathPattern = "/api/v1/sinks/{id}"
@@ -1587,7 +1587,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 								return r, true
 							case "GET":
 								r.name = GetSinkOperation
-								r.summary = "Read a sink. Operators read only those of the teams they operate."
+								r.summary = "Read a sink. Routing Managers read only those of the teams they manage."
 								r.operationID = "getSink"
 								r.operationGroup = ""
 								r.pathPattern = "/api/v1/sinks/{id}"
@@ -1596,7 +1596,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 								return r, true
 							case "PUT":
 								r.name = UpdateSinkOperation
-								r.summary = "Change a sink's name or channel, for administrators."
+								r.summary = "Change a sink's name or channel, for Instance Admins."
 								r.operationID = "updateSink"
 								r.operationGroup = ""
 								r.pathPattern = "/api/v1/sinks/{id}"
@@ -1622,7 +1622,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 						switch method {
 						case "GET":
 							r.name = ListSourcesOperation
-							r.summary = "List sources. Administrators see all of them, operators those of the teams they operate."
+							r.summary = "List sources. Instance Admins see all of them, Routing Managers those of the teams they manage."
 							r.operationID = "listSources"
 							r.operationGroup = ""
 							r.pathPattern = "/api/v1/sources"
@@ -1631,7 +1631,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 							return r, true
 						case "POST":
 							r.name = CreateSourceOperation
-							r.summary = "Create a source of a forge connection, for administrators."
+							r.summary = "Create a source of a forge connection, for Instance Admins."
 							r.operationID = "createSource"
 							r.operationGroup = ""
 							r.pathPattern = "/api/v1/sources"
@@ -1665,7 +1665,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 							switch method {
 							case "DELETE":
 								r.name = DeleteSourceOperation
-								r.summary = "Remove a source, for administrators."
+								r.summary = "Remove a source, for Instance Admins."
 								r.operationID = "deleteSource"
 								r.operationGroup = ""
 								r.pathPattern = "/api/v1/sources/{id}"
@@ -1674,7 +1674,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 								return r, true
 							case "GET":
 								r.name = GetSourceOperation
-								r.summary = "Read a source. Operators read only those of the teams they operate."
+								r.summary = "Read a source. Routing Managers read only those of the teams they manage."
 								r.operationID = "getSource"
 								r.operationGroup = ""
 								r.pathPattern = "/api/v1/sources/{id}"
@@ -1683,7 +1683,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 								return r, true
 							case "PUT":
 								r.name = UpdateSourceOperation
-								r.summary = "Change a source's name or scope, for administrators."
+								r.summary = "Change a source's name or scope, for Instance Admins."
 								r.operationID = "updateSource"
 								r.operationGroup = ""
 								r.pathPattern = "/api/v1/sources/{id}"
@@ -1723,7 +1723,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 						switch method {
 						case "GET":
 							r.name = ListTeamsOperation
-							r.summary = "List teams. Administrators see all of them, operators the ones they operate."
+							r.summary = "List teams. Instance Admins see all of them, Routing Managers the ones they manage."
 							r.operationID = "listTeams"
 							r.operationGroup = ""
 							r.pathPattern = "/api/v1/teams"
@@ -1732,7 +1732,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 							return r, true
 						case "POST":
 							r.name = CreateTeamOperation
-							r.summary = "Create a team, for administrators."
+							r.summary = "Create a team, for Instance Admins."
 							r.operationID = "createTeam"
 							r.operationGroup = ""
 							r.pathPattern = "/api/v1/teams"
@@ -1766,7 +1766,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 							switch method {
 							case "DELETE":
 								r.name = DeleteTeamOperation
-								r.summary = "Remove a team, for administrators."
+								r.summary = "Remove a team, for Instance Admins."
 								r.operationID = "deleteTeam"
 								r.operationGroup = ""
 								r.pathPattern = "/api/v1/teams/{id}"
@@ -1775,7 +1775,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 								return r, true
 							case "GET":
 								r.name = GetTeamOperation
-								r.summary = "Read a team. Operators read only the teams they operate."
+								r.summary = "Read a team. Routing Managers read only the teams they manage."
 								r.operationID = "getTeam"
 								r.operationGroup = ""
 								r.pathPattern = "/api/v1/teams/{id}"
@@ -1784,7 +1784,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 								return r, true
 							case "PUT":
 								r.name = UpdateTeamOperation
-								r.summary = "Change a team, for administrators."
+								r.summary = "Change a team, for Instance Admins."
 								r.operationID = "updateTeam"
 								r.operationGroup = ""
 								r.pathPattern = "/api/v1/teams/{id}"

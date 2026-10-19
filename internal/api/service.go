@@ -238,7 +238,7 @@ func actorOf(ctx context.Context) store.Actor {
 func administrator(ctx context.Context) (*store.Person, error) {
 	person := caller(ctx)
 	if person == nil || !person.Administrator {
-		return nil, newProblem(http.StatusForbidden, "only administrators may do this")
+		return nil, newProblem(http.StatusForbidden, "only Instance Admins may do this")
 	}
 	return person, nil
 }

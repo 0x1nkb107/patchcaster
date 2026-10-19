@@ -809,7 +809,7 @@ func (s *FieldError) SetMessages(val []string) {
 
 // Ref: #/components/schemas/Instance
 type Instance struct {
-	// True until the first administrator has logged in.
+	// True until the first Instance Admin has logged in.
 	SetupRequired bool `json:"setup_required"`
 	// The build version, "dev" for source builds.
 	Version string `json:"version"`
@@ -1248,13 +1248,14 @@ func (o OptString) Or(d string) string {
 // Ref: #/components/schemas/Person
 type Person struct {
 	// The person's current version, for If-Match on a change.
-	Etag          string `json:"etag"`
-	ID            int64  `json:"id"`
-	Issuer        string `json:"issuer"`
-	Subject       string `json:"subject"`
-	DisplayName   string `json:"display_name"`
-	Email         string `json:"email"`
-	Administrator bool   `json:"administrator"`
+	Etag        string `json:"etag"`
+	ID          int64  `json:"id"`
+	Issuer      string `json:"issuer"`
+	Subject     string `json:"subject"`
+	DisplayName string `json:"display_name"`
+	Email       string `json:"email"`
+	// Whether the person is an Instance Admin, who configures the instance and its access.
+	Administrator bool `json:"administrator"`
 }
 
 // GetEtag returns the value of Etag.
@@ -1382,6 +1383,7 @@ func (s *PersonPage) SetNextCursor(val OptString) {
 
 // Ref: #/components/schemas/PersonUpdate
 type PersonUpdate struct {
+	// Makes the person an Instance Admin, or takes the role away. Routing Managers are assigned per team.
 	Administrator bool `json:"administrator"`
 }
 
@@ -1758,7 +1760,7 @@ func (s *SetupRequest) SetAllowedGroups(val []string) {
 
 // Ref: #/components/schemas/SetupStarted
 type SetupStarted struct {
-	// Log in here to become the first administrator.
+	// Log in here to become the first Instance Admin.
 	LoginURL string `json:"login_url"`
 }
 

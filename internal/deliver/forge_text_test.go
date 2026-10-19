@@ -151,7 +151,7 @@ func TestRendererLetsNoForgeTextMention(t *testing.T) {
 	for _, attempt := range attempts {
 		t.Run(attempt, func(t *testing.T) {
 			root, rootErr := mustRenderer(t).Root(boardOf(attempt))
-			notice, noticeErr := mustRenderer(t).Notice(plan.Comment, &event.Event{MRRef: "1", Actor: attempt})
+			notice, noticeErr := mustRenderer(t).Notice(plan.Comment, boardOf(attempt), &event.Event{MRRef: "1", Actor: attempt})
 
 			require.NoError(t, rootErr)
 			require.NoError(t, noticeErr)
@@ -185,7 +185,7 @@ func FuzzForgeTextAddsNoStructure(f *testing.F) {
 	require.NoError(f, err)
 	quietRoot, err := renderer.Root(boardOf("x"))
 	require.NoError(f, err)
-	quietNotice, err := renderer.Notice(plan.Comment, &event.Event{MRRef: "1", Actor: "x"})
+	quietNotice, err := renderer.Notice(plan.Comment, boardOf("x"), &event.Event{MRRef: "1", Actor: "x"})
 	require.NoError(f, err)
 
 	f.Fuzz(func(t *testing.T, forgeText string) {
@@ -194,7 +194,7 @@ func FuzzForgeTextAddsNoStructure(f *testing.F) {
 		}
 		root, err := renderer.Root(boardOf(forgeText))
 		require.NoError(t, err)
-		notice, err := renderer.Notice(plan.Comment, &event.Event{MRRef: "1", Actor: forgeText})
+		notice, err := renderer.Notice(plan.Comment, boardOf(forgeText), &event.Event{MRRef: "1", Actor: forgeText})
 		require.NoError(t, err)
 
 		parsedRoot := readMessage(root)

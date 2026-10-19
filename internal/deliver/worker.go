@@ -347,7 +347,16 @@ func (w *Worker) deliverUpdate(ctx context.Context, d delivery, thread *store.Th
 
 	// Phase 1: notice reply.
 	if ev.Plan.Notice != "" && !job.NoticePosted {
-		message, err := w.renderer.Notice(ev.Plan.Notice, ev)
+		board, err := w.board(ctx, ev)
+		if err != nil {
+			log.Error("board state read failed", "err", err)
+			w.settle(ctx, job, store.Retried(job.Attempts, w.now().Add(storeFaultDelay), err.Error()))
+			return
+		}
+		if board == nil {
+			board = headerFromEvent(ev) // row predates migration 0002: header only
+		}
+		message, err := w.renderer.Notice(ev.Plan.Notice, board, ev)
 		if err != nil {
 			log.Error("notice render failed, parking", "notice", ev.Plan.Notice, "err", err)
 			w.settle(ctx, job, store.Parked("render_failed", job.Attempts+1, err.Error()))

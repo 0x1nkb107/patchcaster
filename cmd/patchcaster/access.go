@@ -64,8 +64,8 @@ type BootstrapCmd struct {
 }
 
 // errSetupClosed names the way back in once the setup is complete.
-var errSetupClosed = errors.New("an administrator exists, so the setup is closed: " +
-	"restore administrator access with patchcaster admin grant")
+var errSetupClosed = errors.New("an Instance Admin exists, so the setup is closed: " +
+	"restore Instance Admin access with patchcaster admin grant")
 
 // Validate rejects a malformed interface URL before anything connects. An
 // absent one passes, because kong reports the missing required flag itself.
@@ -107,7 +107,7 @@ func (c *BootstrapCmd) Run(ctx context.Context) error {
 
 // AdminCmd groups the recovery of administrator access (SYSREQ-038).
 type AdminCmd struct {
-	Grant AdminGrantCmd `cmd:"" help:"Make a person of the identity provider an administrator."`
+	Grant AdminGrantCmd `cmd:"" help:"Make a person of the identity provider an Instance Admin."`
 }
 
 // AdminGrantCmd gives the administrator role to an identity, whether or not
@@ -131,6 +131,6 @@ func (c *AdminGrantCmd) Run(ctx context.Context) error {
 	if err := st.GrantAdministrator(ctx, actor, c.Issuer, c.Subject, time.Now()); err != nil {
 		return err
 	}
-	newLogger("info").Info("administrator role granted", "issuer", c.Issuer, "subject", c.Subject)
+	newLogger("info").Info("Instance Admin role granted", "issuer", c.Issuer, "subject", c.Subject)
 	return nil
 }

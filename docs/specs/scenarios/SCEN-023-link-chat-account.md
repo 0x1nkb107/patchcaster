@@ -20,7 +20,7 @@ A chat account links only when the same person proves both sides: the chat accou
 
 ## Trigger
 
-In a direct chat with the bot, Alice sends `!patchcaster link`, or the trigger word an administrator chose for the connection. On Mattermost she would type `/patchcaster link`, the command the bot registered itself.
+In a direct chat with the bot, Alice sends `!patchcaster link`, or the trigger word an Instance Admin chose for the connection. On Mattermost she would type `/patchcaster link`, the command the bot registered itself.
 
 ## Step-by-Step Flow
 

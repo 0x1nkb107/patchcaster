@@ -1,8 +1,8 @@
 ---
 id: "ADR-038"
 type: architecture_decision_record
-name: "Operator templates over a versioned data model"
-description: "Operators write text/template templates against a documented data model whose versions they pin, with escaping, validation and preview built in."
+name: "Custom templates over a versioned data model"
+description: "Routing Managers write text/template templates against a documented data model whose versions they pin, with escaping, validation and preview built in."
 status: proposed
 deciders:
   - "Project owner"
@@ -10,11 +10,11 @@ justifies:
   - "SYSARCH-008"
 ---
 
-# ADR-038: Operator templates over a versioned data model
+# ADR-038: Custom templates over a versioned data model
 
 ## Context
 
-v0.1 renders built-in templates with `text/template` over an explicit view model (ADR-009, SYSREQ-025). Once operators write templates (UC-005), the view model becomes a public contract. Templates also become an input that reaches every member of a channel.
+v0.1 renders built-in templates with `text/template` over an explicit view model (ADR-009, SYSREQ-025). Once Routing Managers write templates (UC-005), the view model becomes a public contract. Templates also become an input that reaches every member of a channel.
 
 ## Decision
 
@@ -26,5 +26,5 @@ v0.1 renders built-in templates with `text/template` over an explicit view model
 
 ## Consequences
 
-- Good: operators shape their messages without being able to break delivery or the escaping.
+- Good: Routing Managers shape their messages without being able to break delivery or the escaping.
 - Bad: every data model version still in use must be maintained.

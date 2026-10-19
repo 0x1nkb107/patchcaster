@@ -21,7 +21,7 @@ Forges have no chat commands, but they are OAuth providers. The forge itself the
 
 ## Acceptance Criteria
 
-- An administrator registers one OAuth application per forge connection.
+- An Instance Admin registers one OAuth application per forge connection.
 - The authorization requests read access to the user's identity only.
 - A forge account already linked to someone else is refused.
 

@@ -24,7 +24,7 @@ satisfies:
 
 # System Architecture: Management surface
 
-Accepted in part on 2026-10-18, with increment 1 (SOL-001). Still planned, and not normative until their increment is accepted: operator templates (ADR-038), with increment 2, and identity links (ADR-039), with increment 5.
+Accepted in part on 2026-10-18, with increment 1 (SOL-001). Still planned, and not normative until their increment is accepted: custom templates (ADR-038), with increment 2, and identity links (ADR-039), with increment 5.
 
 Normative: the web interface and the management API are two presentations of one configuration service, which owns authorization, auditing and secret handling.
 
@@ -48,7 +48,7 @@ Components:
 Configuration model:
 
 - **Person**: OpenID Connect issuer and subject, role, mention opt-out.
-- **Team**: name, operators, and the sources and sinks assigned to it.
+- **Team**: name, Routing Managers, and the sources and sinks assigned to it.
 - **Connection**: platform kind (GitLab, Forgejo, Mattermost, Matrix), base URL, encrypted credentials, and for forges the webhook endpoint, secrets and OAuth application.
 - **Source**: forge connection, scope (instance, organization or group, repository), teams, hook registration state.
 - **Sink**: chat connection, channel or room, teams, deliverability state.

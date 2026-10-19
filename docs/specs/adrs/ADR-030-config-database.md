@@ -34,7 +34,7 @@ v0.1 is configured by flags, environment variables and a routing file (UC-002, S
 
 ## Consequences
 
-- Good: operators change routing themselves, and changes need no redeploy.
+- Good: Routing Managers change routing themselves, and changes need no redeploy.
 - Bad: the configuration is no longer visible in a Git diff by default. The audit log (SYSREQ-041) and API clients take over that role.
 - Bad: backups of the database now also back up the configuration, so they must be treated like it.
 - With its acceptance on 2026-10-18, ADR-012 validates only the startup settings, ADR-013 is superseded with the routing file, and UC-005 replaces UC-002.

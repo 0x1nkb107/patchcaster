@@ -26,7 +26,7 @@ func (s *Service) ListTeams(ctx context.Context, params v1gen.ListTeamsParams) (
 	return &v1gen.TeamPage{Items: items, NextCursor: next}, nil
 }
 
-// CreateTeam creates a team without operators, sources or sinks, for
+// CreateTeam creates a team without managers, sources or sinks, for
 // administrators.
 func (s *Service) CreateTeam(ctx context.Context, req *v1gen.TeamRequest) (*v1gen.Team, error) {
 	if _, err := administrator(ctx); err != nil {
@@ -52,7 +52,7 @@ func (s *Service) GetTeam(ctx context.Context, params v1gen.GetTeamParams) (*v1g
 	return teamHeaders(team), nil
 }
 
-// UpdateTeam renames a team and sets its operators, sources and sinks, for
+// UpdateTeam renames a team and sets its managers, sources and sinks, for
 // administrators.
 func (s *Service) UpdateTeam(ctx context.Context, req *v1gen.TeamUpdate, params v1gen.UpdateTeamParams) (*v1gen.TeamHeaders, error) {
 	if _, err := administrator(ctx); err != nil {
@@ -63,12 +63,12 @@ func (s *Service) UpdateTeam(ctx context.Context, req *v1gen.TeamUpdate, params 
 		return nil, err
 	}
 	updated, err := s.store.UpdateTeam(ctx, actorOf(ctx), store.Team{
-		ID:        params.ID,
-		Name:      req.Name,
-		Operators: req.Operators,
-		Sources:   req.Sources,
-		Sinks:     req.Sinks,
-		Version:   version,
+		ID:       params.ID,
+		Name:     req.Name,
+		Managers: req.Managers,
+		Sources:  req.Sources,
+		Sinks:    req.Sinks,
+		Version:  version,
 	}, s.now())
 	if err != nil {
 		return nil, storeProblem(err)
@@ -93,12 +93,12 @@ func (s *Service) DeleteTeam(ctx context.Context, params v1gen.DeleteTeamParams)
 
 func teamOf(t *store.Team) v1gen.Team {
 	return v1gen.Team{
-		ID:        t.ID,
-		Name:      t.Name,
-		Operators: nonNilIDs(t.Operators),
-		Sources:   nonNilIDs(t.Sources),
-		Sinks:     nonNilIDs(t.Sinks),
-		Etag:      etagOf(t.Version),
+		ID:       t.ID,
+		Name:     t.Name,
+		Managers: nonNilIDs(t.Managers),
+		Sources:  nonNilIDs(t.Sources),
+		Sinks:    nonNilIDs(t.Sinks),
+		Etag:     etagOf(t.Version),
 	}
 }
 

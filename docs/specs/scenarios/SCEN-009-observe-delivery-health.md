@@ -1,17 +1,17 @@
 ---
 id: "SCEN-009"
 type: scenario
-name: "Operators observe delivery health"
-description: "Metrics and logs let an operator answer how many events arrived, were posted, or were rejected."
+name: "The infrastructure team observes delivery health"
+description: "Metrics and logs let the infrastructure team answer how many events arrived, were posted, or were rejected."
 refines:
   - "UC-003"
 ---
 
-# Scenario: Operators observe delivery health
+# Scenario: The infrastructure team observes delivery health
 
 ## Overview
 
-An operator answers "how many events arrived, were rejected, were suppressed, were posted, and
+The infrastructure team answers "how many events arrived, were rejected, were suppressed, were posted, and
 why?" from metrics and logs alone.
 
 ## Initial State
@@ -20,7 +20,7 @@ why?" from metrics and logs alone.
 
 ## Trigger
 
-The operator scrapes the metrics endpoint and searches logs by a known `webhook-id`.
+The infrastructure team scrapes the metrics endpoint and searches logs by a known `webhook-id`.
 
 ## Step-by-Step Flow
 

@@ -2,7 +2,7 @@
 id: "SYSARCH-008"
 type: system_architecture
 name: "Routing and rendering core"
-description: "Accepted events fan out along routes into per-sink queues, and messages render from operator templates into Markdown, then into each platform's format."
+description: "Accepted events fan out along routes into per-sink queues, and messages render from custom templates into Markdown, then into each platform's format."
 satisfies:
   - "SYSREQ-046"
   - "SYSREQ-047"

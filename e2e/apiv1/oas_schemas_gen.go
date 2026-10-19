@@ -809,7 +809,7 @@ func (s *FieldError) SetMessages(val []string) {
 
 // Ref: #/components/schemas/Instance
 type Instance struct {
-	// True until the first administrator has logged in.
+	// True until the first Instance Admin has logged in.
 	SetupRequired bool `json:"setup_required"`
 	// The build version, "dev" for source builds.
 	Version string `json:"version"`
@@ -1248,13 +1248,14 @@ func (o OptString) Or(d string) string {
 // Ref: #/components/schemas/Person
 type Person struct {
 	// The person's current version, for If-Match on a change.
-	Etag          string `json:"etag"`
-	ID            int64  `json:"id"`
-	Issuer        string `json:"issuer"`
-	Subject       string `json:"subject"`
-	DisplayName   string `json:"display_name"`
-	Email         string `json:"email"`
-	Administrator bool   `json:"administrator"`
+	Etag        string `json:"etag"`
+	ID          int64  `json:"id"`
+	Issuer      string `json:"issuer"`
+	Subject     string `json:"subject"`
+	DisplayName string `json:"display_name"`
+	Email       string `json:"email"`
+	// Whether the person is an Instance Admin, who configures the instance and its access.
+	Administrator bool `json:"administrator"`
 }
 
 // GetEtag returns the value of Etag.
@@ -1382,6 +1383,7 @@ func (s *PersonPage) SetNextCursor(val OptString) {
 
 // Ref: #/components/schemas/PersonUpdate
 type PersonUpdate struct {
+	// Makes the person an Instance Admin, or takes the role away. Routing Managers are assigned per team.
 	Administrator bool `json:"administrator"`
 }
 
@@ -1758,7 +1760,7 @@ func (s *SetupRequest) SetAllowedGroups(val []string) {
 
 // Ref: #/components/schemas/SetupStarted
 type SetupStarted struct {
-	// Log in here to become the first administrator.
+	// Log in here to become the first Instance Admin.
 	LoginURL string `json:"login_url"`
 }
 
@@ -2548,8 +2550,8 @@ func (s *SourceUpdate) SetScope(val SourceScope) {
 type Team struct {
 	ID   int64  `json:"id"`
 	Name string `json:"name"`
-	// The ids of the people who operate the team.
-	Operators []int64 `json:"operators"`
+	// The ids of the team's Routing Managers, the people who route its sources into its sinks.
+	Managers []int64 `json:"managers"`
 	// The ids of the sources the team owns.
 	Sources []int64 `json:"sources"`
 	// The ids of the sinks the team owns.
@@ -2568,9 +2570,9 @@ func (s *Team) GetName() string {
 	return s.Name
 }
 
-// GetOperators returns the value of Operators.
-func (s *Team) GetOperators() []int64 {
-	return s.Operators
+// GetManagers returns the value of Managers.
+func (s *Team) GetManagers() []int64 {
+	return s.Managers
 }
 
 // GetSources returns the value of Sources.
@@ -2598,9 +2600,9 @@ func (s *Team) SetName(val string) {
 	s.Name = val
 }
 
-// SetOperators sets the value of Operators.
-func (s *Team) SetOperators(val []int64) {
-	s.Operators = val
+// SetManagers sets the value of Managers.
+func (s *Team) SetManagers(val []int64) {
+	s.Managers = val
 }
 
 // SetSources sets the value of Sources.
@@ -2786,10 +2788,10 @@ func (s *TeamRouteHeaders) SetResponse(val TeamRoute) {
 
 // Ref: #/components/schemas/TeamUpdate
 type TeamUpdate struct {
-	Name      string  `json:"name"`
-	Operators []int64 `json:"operators"`
-	Sources   []int64 `json:"sources"`
-	Sinks     []int64 `json:"sinks"`
+	Name     string  `json:"name"`
+	Managers []int64 `json:"managers"`
+	Sources  []int64 `json:"sources"`
+	Sinks    []int64 `json:"sinks"`
 }
 
 // GetName returns the value of Name.
@@ -2797,9 +2799,9 @@ func (s *TeamUpdate) GetName() string {
 	return s.Name
 }
 
-// GetOperators returns the value of Operators.
-func (s *TeamUpdate) GetOperators() []int64 {
-	return s.Operators
+// GetManagers returns the value of Managers.
+func (s *TeamUpdate) GetManagers() []int64 {
+	return s.Managers
 }
 
 // GetSources returns the value of Sources.
@@ -2817,9 +2819,9 @@ func (s *TeamUpdate) SetName(val string) {
 	s.Name = val
 }
 
-// SetOperators sets the value of Operators.
-func (s *TeamUpdate) SetOperators(val []int64) {
-	s.Operators = val
+// SetManagers sets the value of Managers.
+func (s *TeamUpdate) SetManagers(val []int64) {
+	s.Managers = val
 }
 
 // SetSources sets the value of Sources.

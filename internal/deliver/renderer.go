@@ -11,8 +11,8 @@ import (
 	"github.com/patchcaster-app/patchcaster/internal/store"
 )
 
-// Templates are embedded in the binary (SYSREQ-025); there is no operator-
-// supplied template path to load.
+// Templates are embedded in the binary (SYSREQ-025); there is no template
+// path for the infrastructure team to set.
 //
 //go:embed templates/*.tmpl
 var templateFS embed.FS

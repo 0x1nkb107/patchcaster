@@ -1529,13 +1529,13 @@ func (s *Team) Validate() error {
 
 	var failures []validate.FieldError
 	if err := func() error {
-		if s.Operators == nil {
+		if s.Managers == nil {
 			return errors.New("nil is invalid value")
 		}
 		return nil
 	}(); err != nil {
 		failures = append(failures, validate.FieldError{
-			Name:  "operators",
+			Name:  "managers",
 			Error: err,
 		})
 	}
@@ -1758,13 +1758,13 @@ func (s *TeamUpdate) Validate() error {
 		})
 	}
 	if err := func() error {
-		if s.Operators == nil {
+		if s.Managers == nil {
 			return errors.New("nil is invalid value")
 		}
 		return nil
 	}(); err != nil {
 		failures = append(failures, validate.FieldError{
-			Name:  "operators",
+			Name:  "managers",
 			Error: err,
 		})
 	}

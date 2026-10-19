@@ -12,12 +12,12 @@ refines:
 
 ## Actor(s)
 
-- User: an individual developer, with the fewest privileges.
+- Regular User: an individual developer, with the fewest privileges.
 
 ## Pre-conditions
 
 - The user can log in through the organization's identity provider.
-- An administrator connected the user's forge and chat platform.
+- An Instance Admin connected the user's forge and chat platform.
 
 ## Main Success Outcome
 

@@ -47,7 +47,7 @@ The HMAC key is the key the signing token carries. GitLab shows a token as `whse
 
 ### Negative Consequences
 
-- Self-managed GitLab 19.0 operators must have the `webhook_signing_token` feature flag on
+- GitLab administrators of self-managed 19.0 instances must have the `webhook_signing_token` feature flag on
   (it is on by default, removed in 19.1); document in deployment guide.
 
 ## Pros and Cons of the Options

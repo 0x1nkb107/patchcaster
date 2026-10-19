@@ -28,7 +28,7 @@ The endpoint and secret belong to the connection, and sources only select reposi
 - Registering a broader scope removes the narrower hooks it now covers. Removing it re-registers the narrower ones still needed.
 - An instance scope gets a hook for the events an instance-wide hook can deliver. On GitLab, a system hook delivers merge requests and pushes only, so the narrower scopes then keep hooks for comments and pipelines (owner decision 2026-10-18, ADR-045).
 - A hook the forge refuses, such as a group hook on a GitLab without Premium, shows with the forge's answer on the source it would serve.
-- Without API access, the connection shows its endpoint for manual registration, and an administrator adds the signing secret the forge generated for each hook registered by hand.
+- Without API access, the connection shows its endpoint for manual registration, and an Instance Admin adds the signing secret the forge generated for each hook registered by hand.
 - A connection may hold several secrets at once, so a secret can rotate without downtime.
 
 ## Verification Plan

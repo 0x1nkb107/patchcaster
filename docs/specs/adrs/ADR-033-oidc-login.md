@@ -2,7 +2,7 @@
 id: "ADR-033"
 type: architecture_decision_record
 name: "Generic OpenID Connect login with a bootstrap link and a recovery command"
-description: "People log in through the organization's OpenID Connect provider. A one-time setup link creates the first administrator, and a recovery command restores access."
+description: "People log in through the organization's OpenID Connect provider. A one-time setup link creates the first Instance Admin, and a recovery command restores access."
 status: accepted
 deciders:
   - "Project owner"
@@ -25,9 +25,9 @@ The owner chose generic OpenID Connect for login (2026-10-15). An IT department 
 
 - Login uses the authorization code flow with PKCE through the relying party of `github.com/zitadel/oidc/v3`, built on `golang.org/x/oauth2`. PatchCaster keeps no passwords.
 - The relying party keeps the flow's state and PKCE verifier in short-lived encrypted cookies. Their hash and encryption keys are derived from the instance key with HKDF from the standard library, so a login started before a restart or rollout still completes after it.
-- A person is identified by issuer and subject. The first login creates the person with the role User.
-- Administrators may limit login to members of named groups (owner decision 2026-10-16). Providers carry group membership in different ID token claims, so administrators name the claim as well as the allowed groups. Without a limit, anyone the provider authenticates may log in. Membership is checked at every login.
-- API tokens live at most 90 days. An administrator can revoke all tokens and end all sessions of a person at once.
+- A person is identified by issuer and subject. The first login creates the person with the role Regular User.
+- Instance Admins may limit login to members of named groups (owner decision 2026-10-16). Providers carry group membership in different ID token claims, so Instance Admins name the claim as well as the allowed groups. Without a limit, anyone the provider authenticates may log in. Membership is checked at every login.
+- API tokens live at most 90 days. An Instance Admin can revoke all tokens and end all sessions of a person at once.
   - A token starts with `patchcaster_`, so that people and secret scanners recognize a leaked one, and carries 128 random bits. The database keeps only its SHA-256 hash.
   - The owner picks the lifetime in whole days, from 1 to 90, with 90 as the default (owner decision 2026-10-17).
   - Only a login creates, lists and revokes tokens, so that a leaked token cannot create its successor and outlive the 90 days (owner decision 2026-10-17).
@@ -36,15 +36,15 @@ The owner chose generic OpenID Connect for login (2026-10-15). An IT department 
 - Sessions are managed by `github.com/alexedwards/scs/v2`, with their data in PostgreSQL (owner decision 2026-10-15). Version v2.9.0 is MIT licensed. The session cookie is `Secure`, `HttpOnly` and `SameSite=Lax`. Sessions end after one hour without activity and twelve hours after login at the latest. The session token is renewed at login against session fixation, and logout destroys the session.
 - PatchCaster implements scs's three-method store interface itself, in its store package, over sqlc queries and a goose migration (owner decision 2026-10-16). scs's own `postgresstore` and `pgxstore` have no tagged releases, and their table would sit outside the migrations and the sqlc gate (ADR-010).
 - State-changing requests pass `net/http.CrossOriginProtection` from the standard library.
-- `patchcaster bootstrap` issues a single-use setup link valid for one hour while no administrator exists. Through it, the first administrator configures the provider and becomes administrator by logging in once.
+- `patchcaster bootstrap` issues a single-use setup link valid for one hour while no Instance Admin exists. Through it, the first Instance Admin configures the provider and becomes Instance Admin by logging in once.
   - The link carries its token in the URL fragment, which browsers never send to a server, so the token stays out of access logs. The database keeps only the token's SHA-256 hash.
   - The browser that sends the token with the provider settings must be the one that logs in: its session remembers the link, and a login in any other browser is refused while the setup is open.
   - Before the settings are stored, PatchCaster fetches the provider's discovery document and checks that it names the same issuer. The client credentials are first tested by the login.
-- `patchcaster admin grant` gives the administrator role to an issuer and subject. It needs the database credentials, which already give full control, so it opens no new door.
+- `patchcaster admin grant` gives the Instance Admin role to an issuer and subject. It needs the database credentials, which already give full control, so it opens no new door.
 
 ## Consequences
 
-- Good: the organization's identity provider keeps deciding who someone is. Offboarding there stops new logins at once. Open sessions end within twelve hours and tokens within 90 days, unless an administrator revokes them sooner.
+- Good: the organization's identity provider keeps deciding who someone is. Offboarding there stops new logins at once. Open sessions end within twelve hours and tokens within 90 days, unless an Instance Admin revokes them sooner.
 - Good: no default password ever exists.
 - Good: scs is small, handles token renewal and timeouts, and keeps sessions in the instance's own database.
 - Bad: an instance cannot be used without an identity provider, even for a quick trial. A trial needs a test provider.

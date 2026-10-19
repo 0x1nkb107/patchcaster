@@ -3,6 +3,7 @@
 	import { Badge } from '#lib/components/ui/badge/index.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import * as Card from '#lib/components/ui/card/index.js';
+	import { roleNames } from '#lib/roles.js';
 
 	import type { PageData } from './$types';
 
@@ -19,9 +20,9 @@
 			<Card.Title>Welcome, {data.person.display_name}</Card.Title>
 			<Card.Description>
 				Logged in as {data.person.subject}
-				<Badge variant="secondary" class="ml-2">
-					{data.person.administrator ? 'Administrator' : 'User'}
-				</Badge>
+				{#if data.role !== null}
+					<Badge variant="secondary" class="ml-2">{roleNames[data.role]}</Badge>
+				{/if}
 			</Card.Description>
 		</Card.Header>
 		<Card.Content>

@@ -19,7 +19,7 @@ Accepted in part on 2026-10-18, with increment 1 (SOL-001). Still planned, and n
 
 ## Rationale
 
-A sink that cannot be posted to would only show up as failed deliveries later. Checking at creation shows the problem to the administrator who can fix it.
+A sink that cannot be posted to would only show up as failed deliveries later. Checking at creation shows the problem to the Instance Admin who can fix it.
 
 ## Acceptance Criteria
 

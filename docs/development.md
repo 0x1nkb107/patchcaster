@@ -1,7 +1,7 @@
 # Developing PatchCaster
 
 How to build PatchCaster from source, try a change on your own machine, and
-run the same checks CI runs before the change goes upstream. Operators
+run the same checks CI runs before the change goes upstream. Infrastructure teams
 deploying a release want the [install guide](install.md) instead; the normative
 behaviour lives in the SARA graph under [`specs/`](specs/README.md).
 
@@ -133,11 +133,11 @@ just test-e2e        # CI "e2e": the real binary end to end
 
 Then, depending on what the change touches:
 
-* **Anything a user or operator would notice** (behaviour, configuration,
+* **Anything the people who use or run PatchCaster would notice** (behaviour, configuration,
   metrics, artifacts, documented procedures) and **updated dependencies**
   that ship in the binary or image: add a changelog fragment with
   `just change` and commit the new `.changes/unreleased/*.yaml` with the
-  change. Write it for operators, not developers. Refactors, tests, CI and
+  change. Write it for the people who use and run PatchCaster, not for developers. Refactors, tests, CI and
   development tool pins need none.
 * **SQL queries or migrations** (`internal/store/queries`, `internal/store/migrations`): run `just sqlc` and commit the regenerated `internal/store/sqlcgen`. Never edit the generated code by hand: CI runs `just sqlc-check` and fails when the committed code differs from what sqlc generates. Each query file holds the queries of one table, and a comment directly after a query's `-- name:` line becomes the doc comment of the generated method. v0.2's migrations keep their history in a table of their own, `patchcaster_migrations`. Until v0.2 is released they may still be rewritten, because no v0.2 database exists yet. Afterwards they only grow.
 * **Management API** (`internal/api/openapi-v1.yaml`): the description is the source. Run `just api` and commit the regenerated server in `internal/api/v1gen` and the e2e client in `e2e/apiv1`. Run `just web-api` too and commit the web interface's client in `web/src/lib/api/generated`. Never edit them by hand: CI runs `just api-check` and `just web-api-check`. Within `/api/v1/`, changes stay additive; a change that would break clients needs a new version.

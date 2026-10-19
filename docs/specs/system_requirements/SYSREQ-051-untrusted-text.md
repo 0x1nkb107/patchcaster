@@ -19,7 +19,7 @@ depends_on:
 
 ## Rationale
 
-Anyone who may open a merge request can choose its title. Once operators write templates, escaping cannot be left to each template author. It has to happen before the data reaches any template.
+Anyone who may open a merge request can choose its title. Once Routing Managers write templates, escaping cannot be left to each template author. It has to happen before the data reaches any template.
 
 ## Acceptance Criteria
 

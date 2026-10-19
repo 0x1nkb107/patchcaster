@@ -45,5 +45,5 @@ content, 2026-10-10; library choice per ADR-009).
 
 ## Notes
 
-Templates are embedded in the binary for v1; operator-overridable template files are a possible
+Templates are embedded in the binary for v1; template files that the infrastructure team overrides are a possible
 additive follow-up, not a v1 obligation *(assumed)*.

@@ -2,7 +2,7 @@
 id: "UC-003"
 type: use_case
 name: "Cloud native operation"
-description: "Platform operators run the bot as a containerized workload with health, metrics, logging, and shutdown behaviour that Kubernetes manages safely."
+description: "The infrastructure team runs the bot as a containerized workload with health, metrics, logging, and shutdown behaviour that Kubernetes manages safely."
 refines:
   - "SOL-001"
 ---
@@ -12,7 +12,7 @@ refines:
 ## Actor(s)
 
 - Kubernetes (or equivalent) orchestrator: probes, restarts, rollouts.
-- Platform operators: watch metrics and logs.
+- Infrastructure team: watches metrics and logs.
 
 ## Pre-conditions
 

@@ -14,13 +14,13 @@ WHERE s.id = $1;
 -- name: SourceList :many
 -- SourceList pages through the sources a person may see: every source for
 -- an administrator, whose visible_to is zero, or those of the teams they
--- operate.
+-- manage.
 SELECT s.id, s.connection_id, s.name, s.scope_kind, s.scope_path, s.version,
     (SELECT COALESCE(jsonb_agg(t.team_id ORDER BY t.team_id), '[]')::jsonb FROM team_sources t WHERE t.source_id = s.id) AS teams
 FROM sources s
 WHERE s.id > sqlc.arg(after_id)
   AND (sqlc.arg(visible_to)::bigint = 0
-       OR EXISTS (SELECT 1 FROM team_sources ts JOIN team_operators o ON o.team_id = ts.team_id
+       OR EXISTS (SELECT 1 FROM team_sources ts JOIN team_managers o ON o.team_id = ts.team_id
                   WHERE ts.source_id = s.id AND o.person_id = sqlc.arg(visible_to)::bigint))
 ORDER BY s.id
 LIMIT sqlc.arg(page_size);
@@ -58,7 +58,7 @@ SELECT k.id, k.connection_id, k.name, k.channel_id, k.channel_name, k.version,
 FROM sinks k
 WHERE k.id > sqlc.arg(after_id)
   AND (sqlc.arg(visible_to)::bigint = 0
-       OR EXISTS (SELECT 1 FROM team_sinks ts JOIN team_operators o ON o.team_id = ts.team_id
+       OR EXISTS (SELECT 1 FROM team_sinks ts JOIN team_managers o ON o.team_id = ts.team_id
                   WHERE ts.sink_id = k.id AND o.person_id = sqlc.arg(visible_to)::bigint))
 ORDER BY k.id
 LIMIT sqlc.arg(page_size);

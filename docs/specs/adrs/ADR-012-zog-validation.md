@@ -28,7 +28,7 @@ this validation layer.
   asserting an in-hand struct, not coercing raw input — Zog's `Validate` path
   fits exactly, and its `Parse`/coercion path must not be used (parsing-over-
   policing: kong is the single parse boundary).
-- Operator experience: reporting *every* invalid option in one exit message is
+- Experience of the infrastructure team: reporting *every* invalid option in one exit message is
   materially better for first deployment than the current first-error abort.
 - Dependency policy: Zog has zero transitive dependencies.
 - Boundary: webhook payload handling (`event.Parse`) stays hand-written — wire
@@ -63,7 +63,7 @@ secrets and the routing table left the command line for the database.)
 ### Positive Consequences
 
 - All configuration violations are reported together, each naming its flag —
-  strict improvement to SYSREQ-022's operator experience.
+  strict improvement to the infrastructure team's experience of SYSREQ-022.
 - Validation intent reads as a declarative table next to the kong tags it
   constrains, replacing a stack of if-statements.
 - Zero transitive dependencies; the validation vocabulary (schemas, issues)

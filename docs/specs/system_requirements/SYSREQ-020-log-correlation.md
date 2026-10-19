@@ -17,8 +17,8 @@ derives_from:
 ## Rationale
 
 Debugging one missing or duplicate message starts from the `webhook-id` in GitLab's delivery log.
-If every record carries it, one grep reconstructs the delivery's whole path; without it, operators
-guess by timestamp.
+If every record carries it, one grep reconstructs the delivery's whole path; without it, the
+infrastructure team guesses by timestamp.
 
 ## Acceptance Criteria
 

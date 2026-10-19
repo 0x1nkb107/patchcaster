@@ -13,7 +13,7 @@ import (
 
 // ErrLastAdministrator reports a change that would leave the instance
 // without an administrator.
-var ErrLastAdministrator = errors.New("the instance needs at least one administrator")
+var ErrLastAdministrator = errors.New("the instance needs at least one Instance Admin")
 
 // Person is someone who logged in through the identity provider, or whom the
 // recovery command named (SYSREQ-037, SYSREQ-038). A session counts only

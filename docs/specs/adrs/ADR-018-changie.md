@@ -16,7 +16,7 @@ justifies:
 
 Releases (ADR-015) carried release notes generated from commit subjects, grouped by their
 `feat`/`fix` prefixes. Commit messages are written for developers: they name ADRs and
-internals, and they include changes no operator notices (refactors, CI, tests). The repository
+internals, and they include changes no infrastructure team notices (refactors, CI, tests). The repository
 had no changelog file at all. On 2026-10-10 the owner directed that changie
 (<https://changie.dev>) maintain and produce the changelog, and that the changelog state it
 follows Keep a Changelog 1.1.0 and Semantic Versioning 2.0.0.
@@ -26,7 +26,7 @@ follows Keep a Changelog 1.1.0 and Semantic Versioning 2.0.0.
 - **Tool**: changie, pinned as a tools module (`tools/changie`) like every other tool and run
   through `go tool -modfile`; no ambient install.
 - **Fragments**: each user-visible change adds one YAML fragment under `.changes/unreleased/`
-  (`just change`), written for operators at the time the change is made. Kinds are Keep a
+  (`just change`), written for infrastructure teams at the time the change is made. Kinds are Keep a
   Changelog's Added, Changed, Deprecated, Removed, Fixed and Security, plus two the owner added:
   **Breaking** for user-facing changes that need action on upgrade, listed first in every
   release, and **Updated** for updated dependencies that ship in the binary or image.
@@ -54,7 +54,7 @@ follows Keep a Changelog 1.1.0 and Semantic Versioning 2.0.0.
 
 ## Consequences
 
-- Good: operators read notes written for them; the GitHub release body and `CHANGELOG.md` come
+- Good: infrastructure teams read notes written for them; the GitHub release body and `CHANGELOG.md` come
   from the same reviewed files.
 - Good: one file per change means parallel branches never conflict in the changelog; only the
   batch commit touches `CHANGELOG.md`.

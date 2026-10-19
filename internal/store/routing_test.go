@@ -14,7 +14,7 @@ import (
 var routingActor = store.Actor{Label: "ada"}
 
 // layout is a routing setup: two teams, each with its own source and sink,
-// and an operator for the first.
+// and a manager for the first.
 type layout struct {
 	payments, billing         *store.Team
 	paymentsRepo, billingRepo *store.Source
@@ -65,13 +65,13 @@ func createSink(t *testing.T, st *store.Postgres, chat *store.Connection, name, 
 	return sink
 }
 
-// createTeam creates a team and gives it operators, a source and a sink.
-func createTeam(t *testing.T, st *store.Postgres, name string, operators []int64, source *store.Source, sink *store.Sink) *store.Team {
+// createTeam creates a team and gives it managers, a source and a sink.
+func createTeam(t *testing.T, st *store.Postgres, name string, managers []int64, source *store.Source, sink *store.Sink) *store.Team {
 	t.Helper()
 	ctx := context.Background()
 	team, err := st.CreateTeam(ctx, routingActor, name, time.Now())
 	require.NoError(t, err)
-	team.Operators = operators
+	team.Managers = managers
 	team.Sources = []int64{source.ID}
 	team.Sinks = []int64{sink.ID}
 	team, err = st.UpdateTeam(ctx, routingActor, *team, time.Now())
@@ -104,17 +104,17 @@ func TestATeamOwnsWhatItIsGiven(t *testing.T) {
 
 	// act
 	read, err := st.Team(context.Background(), l.payments.ID)
-	operates, operatesErr := st.OperatesTeam(context.Background(), l.lead.ID, l.payments.ID)
-	operatesOther, _ := st.OperatesTeam(context.Background(), l.lead.ID, l.billing.ID)
+	manages, managesErr := st.ManagesTeam(context.Background(), l.lead.ID, l.payments.ID)
+	managesOther, _ := st.ManagesTeam(context.Background(), l.lead.ID, l.billing.ID)
 
 	// assert
 	require.NoError(t, err)
-	assert.Equal(t, []int64{l.lead.ID}, read.Operators)
+	assert.Equal(t, []int64{l.lead.ID}, read.Managers)
 	assert.Equal(t, []int64{l.paymentsRepo.ID}, read.Sources)
 	assert.Equal(t, []int64{l.paymentsRoom.ID}, read.Sinks)
-	require.NoError(t, operatesErr)
-	assert.True(t, operates)
-	assert.False(t, operatesOther)
+	require.NoError(t, managesErr)
+	assert.True(t, manages)
+	assert.False(t, managesOther)
 }
 
 func TestATeamRefusesUnknownMembers(t *testing.T) {
@@ -122,7 +122,7 @@ func TestATeamRefusesUnknownMembers(t *testing.T) {
 		field  string
 		change func(*store.Team)
 	}{
-		{"operators", func(team *store.Team) { team.Operators = []int64{9999} }},
+		{"managers", func(team *store.Team) { team.Managers = []int64{9999} }},
 		{"sources", func(team *store.Team) { team.Sources = []int64{9999} }},
 		{"sinks", func(team *store.Team) { team.Sinks = []int64{9999} }},
 	}
@@ -219,9 +219,9 @@ func TestUnusedItemsGo(t *testing.T) {
 	assert.Subset(t, auditActions(t, st), []string{"route.delete", "source.delete", "team.delete"})
 }
 
-// An operator sees the teams they operate and what those own; an
+// A manager sees the teams they manage and what those own; an
 // administrator sees everything (SYSREQ-039).
-func TestOperatorsSeeOnlyTheirTeams(t *testing.T) {
+func TestManagersSeeOnlyTheirTeams(t *testing.T) {
 	// arrange
 	st, _ := openTestStore(t)
 	ctx := context.Background()

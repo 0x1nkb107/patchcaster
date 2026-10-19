@@ -2,7 +2,7 @@
 id: "SCEN-022"
 type: scenario
 name: "Automation manages routes through the API"
-description: "A CI job applies a team's routes through the management API with an operator's token, within the operator's permissions."
+description: "A CI job applies a team's routes through the management API with a Routing Manager's token, within the Routing Manager's permissions."
 refines:
   - "UC-005"
 ---
@@ -15,7 +15,7 @@ The database is the source of truth, but teams that keep configuration in Git st
 
 ## Initial State
 
-- An operator created an API token for the team's automation.
+- A Routing Manager created an API token for the team's automation.
 - The instance publishes its OpenAPI description.
 
 ## Trigger
@@ -30,8 +30,8 @@ A CI job applies the routes kept in the team's repository.
 ## Expected Outcome
 
 - Everything the web interface can do, the API can do, with the same permissions.
-- Each change appears in the audit log under the operator and the token.
+- Each change appears in the audit log under the Routing Manager and the token.
 
 ## Exceptions & Edge Cases
 
-- A revoked or expired token answers `401`. A route outside the operator's teams answers `403`.
+- A revoked or expired token answers `401`. A route outside the Routing Manager's teams answers `403`.

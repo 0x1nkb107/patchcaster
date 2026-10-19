@@ -18,7 +18,7 @@ SYSREQ-044 requires PatchCaster to register, through the forge API, one hook for
 
 - A project hook needs the project's Maintainer role.
 - A group hook covers the group's projects and subgroups, but needs GitLab Premium and the group's Owner role.
-- A system hook covers the instance, but needs an administrator, and it delivers merge request and push events only: no comments and no pipelines.
+- A system hook covers the instance, but needs a GitLab administrator's token, and it delivers merge request and push events only: no comments and no pipelines.
 
 Since GitLab 19.0, all three accept a signing token in the form `whsec_` plus a base64 key, and GitLab never shows it again. A forge can be slow, down or refuse a hook, and several replicas of PatchCaster may run at once. On 2026-10-18 the owner decided to register hooks in the background, to serve an instance source with a system hook plus narrower hooks for comments and pipelines, and to show GitLab's refusal of a group hook instead of falling back to project hooks.
 

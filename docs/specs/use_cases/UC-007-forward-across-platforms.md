@@ -13,11 +13,11 @@ refines:
 ## Actor(s)
 
 - Engineering teams, who read the threads.
-- Administrators, who connect the platforms (UC-004).
+- Instance Admins, who connect the platforms (UC-004).
 
 ## Pre-conditions
 
-- The forge and chat connections exist, and an operator routed the sources into the sinks (UC-005).
+- The forge and chat connections exist, and a Routing Manager routed the sources into the sinks (UC-005).
 
 ## Main Success Outcome
 

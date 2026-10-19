@@ -16,7 +16,7 @@ derives_from:
 
 ## Rationale
 
-Operators diagnose with the funnel: received, rejected, suppressed, ignored, posted, and at what
+The infrastructure team diagnoses with the funnel: received, rejected, suppressed, ignored, posted, and at what
 cost. The same counters answer the solution KPIs (loss and latency) and alert on backlog growth.
 
 ## Acceptance Criteria

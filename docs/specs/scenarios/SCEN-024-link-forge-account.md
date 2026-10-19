@@ -16,7 +16,7 @@ Mentions need to know which forge user is which person. The forge itself proves 
 
 ## Initial State
 
-- Bob is logged in. An administrator registered an OAuth application for the Forgejo connection.
+- Bob is logged in. An Instance Admin registered an OAuth application for the Forgejo connection.
 
 ## Trigger
 

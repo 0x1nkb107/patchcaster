@@ -87,7 +87,7 @@ The binary embeds the web interface. The GitHub release carries an SBOM of the J
 
 On startup PatchCaster connects to PostgreSQL, applies any pending migrations, then listens. Once `GET :9090/readyz` answers 200:
 
-1. Run the [first setup](operations.md#first-setup) to connect the identity provider and become the first administrator.
+1. Run the [first setup](operations.md#first-setup) to connect the identity provider and become the first Instance Admin.
 2. [Connect](operations.md#connections) GitLab and Mattermost.
 3. Set up a [team](operations.md#teams-and-routes) with a source, a sink and a route between them.
 4. Give the GitLab connection an access token, and PatchCaster registers the hooks itself. Without one, [add the GitLab webhook](integrations/gitlab.md) at the connection's `webhook_url`.

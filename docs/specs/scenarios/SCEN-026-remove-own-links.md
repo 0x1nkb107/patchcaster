@@ -34,4 +34,4 @@ Alice opens her profile.
 
 ## Exceptions & Edge Cases
 
-- When someone leaves the organization, an administrator can remove their links and tokens. That too is audited.
+- When someone leaves the organization, an Instance Admin can remove their links and tokens. That too is audited.

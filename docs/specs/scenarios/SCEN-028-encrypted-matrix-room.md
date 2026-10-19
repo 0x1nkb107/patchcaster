@@ -39,4 +39,4 @@ A merge request opens. Later a new member joins the room, and PatchCaster restar
 
 - If the homeserver is unreachable, messages wait and retry like any sink's (SCEN-019).
 - A member's device that cannot receive keys cannot read the messages. The failure is logged per device.
-- If the bot's encryption state is lost, for example by restoring an old database backup, an administrator re-verifies the connection with the recovery key. The bot then appears as a new device.
+- If the bot's encryption state is lost, for example by restoring an old database backup, an Instance Admin re-verifies the connection with the recovery key. The bot then appears as a new device.

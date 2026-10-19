@@ -68,7 +68,7 @@ future engine change a package-internal affair.
 ### PostgreSQL only (chosen)
 
 - Good, because one dialect keeps query, migration, and CI cost at 1×.
-- Good, because operational HA is delegated to infrastructure operators already run.
+- Good, because operational HA is delegated to systems the infrastructure team already runs.
 - Bad, because zero-dependency local startup is lost.
 
 ### Dual backend

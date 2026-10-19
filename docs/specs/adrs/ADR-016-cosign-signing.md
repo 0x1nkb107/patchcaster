@@ -39,7 +39,7 @@ Sign releases with cosign in **keyless mode**, wired into the goreleaser pipelin
 - Fulcio/Rekor with the default public transparency log; no CA or log infrastructure is run.
 - Trust anchors on verification, not on a key: verifiers pin the certificate identity to this
   repository's release workflow and a `v*` tag, and the issuer to GitHub's OIDC provider. The
-  exact commands are documented for operators (`docs/install.md`).
+  exact commands are documented for the infrastructure team (`docs/install.md`).
 - Snapshots and dry runs skip signing (`--skip=sign`): keyless has no identity to ask outside
   Actions, and a snapshot that "signed" would be a lie.
 - If releases ever need to run outside GitHub Actions, the explicit fallback is a KMS-backed
@@ -56,6 +56,6 @@ Sign releases with cosign in **keyless mode**, wired into the goreleaser pipelin
   rule in SYSREQ-032.
 - Rekor entries for a public repository disclose tag timing to the public log; the releases
   are public already, so nothing new leaks.
-- Verification is now an operator-facing contract; breaking the workflow path (renaming the
+- Verification is now a contract with the infrastructure team; breaking the workflow path (renaming the
   file, changing the tag scheme) silently breaks every verifier, so those commands double as
   canaries in the release acceptance.

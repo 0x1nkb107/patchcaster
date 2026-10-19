@@ -1,14 +1,14 @@
 ---
 id: "SCEN-021"
 type: scenario
-name: "An operator customizes a template with a preview"
-description: "An operator rewrites a route's root template in Markdown, previews it for each sink platform, and saves it after validation."
+name: "A Routing Manager customizes a template with a preview"
+description: "A Routing Manager rewrites a route's root template in Markdown, previews it for each sink platform, and saves it after validation."
 status: proposed
 refines:
   - "UC-005"
 ---
 
-# Scenario: An operator customizes a template with a preview
+# Scenario: A Routing Manager customizes a template with a preview
 
 ## Overview
 
@@ -20,7 +20,7 @@ Teams want their own wording. Template changes must neither break delivery nor l
 
 ## Trigger
 
-The operator edits the route's root template.
+The Routing Manager edits the route's root template.
 
 ## Step-by-Step Flow
 
@@ -31,7 +31,7 @@ The operator edits the route's root template.
 
 ## Expected Outcome
 
-- The route's messages read the way the operator wrote them.
+- The route's messages read the way the Routing Manager wrote them.
 - A merge request title such as `@channel [click](https://example.com)` still appears literally, whatever the template does with it.
 
 ## Exceptions & Edge Cases

@@ -26,7 +26,7 @@ The owner decided that users start identity linking through the chat platform's 
   - It creates the command through `POST /api/v4/commands` in every team it belongs to, pointing at the connection's command endpoint, and seals the token Mattermost returns (ADR-035). Every command request must carry that token.
   - It checks its registrations when the connection starts, when a sink is added and periodically. It re-creates a command someone deleted, and removes its commands together with the connection.
   - This needs the `manage_slash_commands` permission in those teams, and a Mattermost server that allows custom slash commands and requests to PatchCaster's address.
-- On Matrix, clients treat unknown slash commands as typing errors, so the command is a message such as `!patchcaster link` in a direct chat with the bot, read from the sync stream. Administrators may override the trigger word per connection, and `!patchcaster` is the default (owner decision 2026-10-15). A command in a shared room is answered in a direct chat.
+- On Matrix, clients treat unknown slash commands as typing errors, so the command is a message such as `!patchcaster link` in a direct chat with the bot, read from the sync stream. Instance Admins may override the trigger word per connection, and `!patchcaster` is the default (owner decision 2026-10-15). A command in a shared room is answered in a direct chat.
 - Failed codes are rate-limited per chat account.
 
 ## Consequences

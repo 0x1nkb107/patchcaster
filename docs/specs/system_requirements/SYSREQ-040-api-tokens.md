@@ -24,7 +24,7 @@ Automation must not need a person's browser session, and a leaked token must be 
 - A token never exceeds its owner's current permissions, and losing a role limits the token at once.
 - A token lives at most 90 days.
 - A revoked or expired token answers `401` on its next use.
-- An administrator can revoke all tokens and end all sessions of a person at once.
+- An Instance Admin can revoke all tokens and end all sessions of a person at once.
 - Audit entries name the token as well as its owner (SYSREQ-041).
 
 ## Verification Plan

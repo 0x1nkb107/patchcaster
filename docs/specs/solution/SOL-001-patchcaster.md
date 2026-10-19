@@ -31,9 +31,11 @@ verification of every delivery using the signing tokens introduced in GitLab 19.
 ## Stakeholders
 
 - **Engineering teams**: subscribe to channel threads; judge noise vs. signal.
-- **Platform operators**: deploy and monitor the workload.
-- **PatchCaster administrators and team operators**: connect the platforms, set up teams, and route their sources into their sinks (UC-004, UC-005).
-- **GitLab instance administrators**: grant PatchCaster an access token, or register webhooks and signing tokens by hand.
+- **Instance Admins** (IT department): connect the platforms and the login, set up teams, and decide who may do what (UC-004).
+- **Routing Managers** (team leads): route their teams' sources into their sinks (UC-005).
+- **Regular Users** (individual developers): manage their own identity links and tokens (UC-006).
+- **Infrastructure team**: deploys and monitors the workload (UC-003).
+- **GitLab administrators**: grant PatchCaster an access token, or register webhooks and signing tokens by hand.
 - **Mattermost administrators**: provision the bot account and channel membership.
 
 ## Constraints
@@ -46,14 +48,14 @@ verification of every delivery using the signing tokens introduced in GitLab 19.
 
 ## Evolution
 
-On 2026-10-15 the owner decided to grow PatchCaster beyond one forge and one chat platform. The use cases UC-004 to UC-007 describe the direction. One instance serves one organization and connects one or more forges, starting with Forgejo, to one or more chat platforms, starting with Matrix including encrypted rooms. Sources, sinks and the routes between them live in the database and are managed through a web interface and an API with a published OpenAPI description. Administrators, operators and users share the work. The first increment, v0.2, brought the configuration database, the management API and the web interface's foundation for GitLab and Mattermost. The later increments stay proposed until they are built.
+On 2026-10-15 the owner decided to grow PatchCaster beyond one forge and one chat platform. The use cases UC-004 to UC-007 describe the direction. One instance serves one organization and connects one or more forges, starting with Forgejo, to one or more chat platforms, starting with Matrix including encrypted rooms. Sources, sinks and the routes between them live in the database and are managed through a web interface and an API with a published OpenAPI description. Instance Admins, Routing Managers and Regular Users share the work. The first increment, v0.2, brought the configuration database, the management API and the web interface's foundation for GitLab and Mattermost. The later increments stay proposed until they are built.
 
 ### Increments
 
 The owner decided on 2026-10-16 to build the evolution in five increments, each shipped as its own release, starting with v0.2. Each increment accepts its proposed items in the pull request that implements them. When an increment spans several pull requests, its items are accepted together in the last one, so that no accepted item rests on a proposed one. Scenarios that use Forgejo or Matrix as their example hold for GitLab and Mattermost from the first increment, and in full once those adapters exist.
 
 1. **Foundation (v0.2):** the neutral core and the configuration database behind the management API, for GitLab and Mattermost only, with built-in templates. Login, roles, teams, API tokens, the audit log, encrypted secrets and health metrics come with it, and so does the web interface's foundation with its setup, login, token and health pages. It accepts UC-004, UC-005's routing part, SCEN-013 to SCEN-020, SCEN-022, SCEN-029, SYSREQ-034 to SYSREQ-048, SYSREQ-062, SYSREQ-064, SYSARCH-006 to SYSARCH-008, ADR-029 to ADR-036 and ADR-042 to ADR-045, each for GitLab and Mattermost and without the parts that later increments bring. It was accepted on 2026-10-18.
-2. **Web interface and templates:** the full management interface, and operator templates with their preview, rendered through Markdown. It accepts SCEN-021, SYSREQ-049 to SYSREQ-051, ADR-037 and ADR-038, and the template parts of UC-005, SYSARCH-006 and SYSARCH-008.
+2. **Web interface and templates:** the full management interface, and custom templates with their preview, rendered through Markdown. It accepts SCEN-021, SYSREQ-049 to SYSREQ-051, ADR-037 and ADR-038, and the template parts of UC-005, SYSARCH-006 and SYSARCH-008.
 3. **Forgejo:** the Forgejo adapter. It accepts SCEN-027, SYSREQ-056 to SYSREQ-058 and ADR-041, and the Forgejo parts of SYSREQ-044 and SYSARCH-007.
 4. **Encrypted Matrix:** the Matrix adapter with encrypted rooms and its HTML renderer. It accepts UC-007, SCEN-028, SYSREQ-059 to SYSREQ-061 and ADR-040, and the Matrix parts of SCEN-014, SYSREQ-045, SYSREQ-064, SYSARCH-007 and ADR-035.
 5. **Identity linking and mentions:** chat and forge identity links, the chat commands, and mentions in threads. It accepts UC-006, SCEN-023 to SCEN-026, SYSREQ-052 to SYSREQ-055, SYSREQ-063 and ADR-039, and the parts on links, chat commands and mentions of SCEN-014, SYSREQ-036, SYSREQ-064 and SYSARCH-006 to SYSARCH-008.

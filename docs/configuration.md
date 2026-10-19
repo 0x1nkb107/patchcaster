@@ -37,7 +37,7 @@ unavailable (see [database connection](operations.md#database-connection)).
 Durations use Go syntax (`90s`, `15m`, `4h`) and must be positive.
 `--log-level` is one of `debug`, `info`, `warn` or `error`.
 
-Flags and environment variables hold only how PatchCaster starts and operates. What it connects to and routes, its connections, teams, sources, sinks and routes, lives in its database, and administrators manage it through the management API. See [connections](operations.md#connections) and [teams and routes](operations.md#teams-and-routes). A change there applies to the next event, without a restart.
+Flags and environment variables hold only how PatchCaster starts and operates. What it connects to and routes, its connections, teams, sources, sinks and routes, lives in its database, and Instance Admins manage it through the management API. See [connections](operations.md#connections) and [teams and routes](operations.md#teams-and-routes). A change there applies to the next event, without a restart.
 
 ## Interface URL
 
@@ -61,11 +61,11 @@ Applies the embedded database migrations and exits. It takes only
 
 ## `patchcaster bootstrap`
 
-Prints the one-time setup link of a new instance and exits. It takes `--database-url` and `--interface-url`, with the same environment variables as `serve`. The link works once, for one hour, and only while no administrator exists. See [first setup](operations.md#first-setup).
+Prints the one-time setup link of a new instance and exits. It takes `--database-url` and `--interface-url`, with the same environment variables as `serve`. The link works once, for one hour, and only while no Instance Admin exists. See [first setup](operations.md#first-setup).
 
 ## `patchcaster admin grant`
 
-Makes a person an administrator and exits, whether or not they ever logged in. It takes `--database-url` (`PATCHCASTER_DATABASE_URL`), and `--issuer` and `--subject`, which name the person exactly as their ID tokens do. See [restoring administrator access](operations.md#restoring-administrator-access).
+Makes a person an Instance Admin and exits, whether or not they ever logged in. It takes `--database-url` (`PATCHCASTER_DATABASE_URL`), and `--issuer` and `--subject`, which name the person exactly as their ID tokens do. See [restoring Instance Admin access](operations.md#restoring-instance-admin-access).
 
 ## `patchcaster secrets reseal`
 

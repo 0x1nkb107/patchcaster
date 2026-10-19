@@ -11,7 +11,7 @@ refines:
 
 ## Overview
 
-A GitLab instance administrator registers one system hook instead of per-project webhooks; the
+A GitLab administrator registers one system hook instead of per-project webhooks; the
 routes alone decide which repositories reach channels.
 
 ## Initial State
@@ -37,5 +37,5 @@ the system hook.
 
 ## Exceptions & Edge Cases
 
-- The shared signing token means one secret gates the whole instance's traffic; rotation is an
-  instance-admin operation.
+- The shared signing token means one secret gates the whole instance's traffic; rotation is a
+  GitLab administrator's task.

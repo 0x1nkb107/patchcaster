@@ -1,17 +1,17 @@
 ---
 id: "SCEN-018"
 type: scenario
-name: "An operator routes a source into a sink"
+name: "A Routing Manager routes a source into a sink"
 description: "A team lead connects the team's Forgejo source to the team's Matrix room. The next pull request opens a thread there."
 refines:
   - "UC-005"
 ---
 
-# Scenario: An operator routes a source into a sink
+# Scenario: A Routing Manager routes a source into a sink
 
 ## Overview
 
-Routing is the operator's everyday task. It needs no administrator and no redeploy.
+Routing is the Routing Manager's everyday task. It needs no Instance Admin and no redeploy.
 
 ## Initial State
 
@@ -19,12 +19,12 @@ Routing is the operator's everyday task. It needs no administrator and no redepl
 
 ## Trigger
 
-The team lead, as the team's operator, creates a route.
+The team lead, as the team's Routing Manager, creates a route.
 
 ## Step-by-Step Flow
 
-1. The operator picks the source and the sink from the team's lists.
-2. The operator keeps the default filter, which lets every event through, and the built-in templates.
+1. The Routing Manager picks the source and the sink from the team's lists.
+2. The Routing Manager keeps the default filter, which lets every event through, and the built-in templates.
 3. PatchCaster saves the route and records it in the audit log.
 
 ## Expected Outcome

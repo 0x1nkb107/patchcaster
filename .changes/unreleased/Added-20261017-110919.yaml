@@ -1,3 +1,3 @@
 kind: Added
-body: Authenticate automation with personal API tokens that act with their owner's permissions and live at most 90 days. Administrators can revoke all tokens and end all sessions of a person at once.
+body: Authenticate automation with personal API tokens that act with their owner's permissions and live at most 90 days. Instance Admins can revoke all tokens and end all sessions of a person at once.
 time: 2026-10-17T11:09:19.531394490+02:00

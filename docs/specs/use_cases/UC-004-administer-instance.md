@@ -2,7 +2,7 @@
 id: "UC-004"
 type: use_case
 name: "Instance administration"
-description: "The organization's IT department sets up and governs one PatchCaster instance: login, connections to forges and chat platforms, teams with their sources, sinks and operators."
+description: "The organization's IT department sets up and governs one PatchCaster instance: login, connections to forges and chat platforms, teams with their sources, sinks and Routing Managers."
 refines:
   - "SOL-001"
 ---
@@ -11,25 +11,25 @@ refines:
 
 ## Actor(s)
 
-- Administrator: the organization's IT department.
+- Instance Admin: the organization's IT department.
 - The person who deploys the instance, for the first start only.
 
 ## Pre-conditions
 
 - The instance runs with its database, its encryption key, its public base URL and its interface URL.
 - The organization has an OpenID Connect identity provider.
-- The administrators hold credentials for the forges and chat platforms the instance will use.
+- The Instance Admins hold credentials for the forges and chat platforms the instance will use.
 
 ## Main Success Outcome
 
-An administrator logs in through the organization's identity provider and connects the forges and chat platforms the organization uses. They create teams, give each team its sources and sinks, and name its operators. Afterwards they can trace every configuration change. None of this needs a redeploy.
+An Instance Admin logs in through the organization's identity provider and connects the forges and chat platforms the organization uses. They create teams, give each team its sources and sinks, and name its Routing Managers. Afterwards they can trace every configuration change. None of this needs a redeploy.
 
 ## Key Functional Scope
 
-- The first start issues a one-time setup link. The first administrator configures the identity provider and claims the role by logging in through it (SYSREQ-037, SYSREQ-038).
+- The first start issues a one-time setup link. The first Instance Admin configures the identity provider and claims the role by logging in through it (SYSREQ-037, SYSREQ-038).
 - Connections to forges and chat platforms, with credentials stored encrypted and never shown again (SYSREQ-042).
 - Sources and sinks, assigned to the teams that may use them (SYSREQ-044, SYSREQ-045).
-- Teams and their operators (SYSREQ-039).
+- Teams and their Routing Managers (SYSREQ-039).
 - An audit log of every configuration change (SYSREQ-041).
 - An upgrade from v0.1 starts from an empty database, and the service refuses a database that still holds v0.1 state (SYSREQ-043).
 

@@ -24,7 +24,7 @@ The owner requires encrypted rooms from the start (2026-10-15). An unverified de
 ## Acceptance Criteria
 
 - Room members' clients decrypt every message and show it as sent by a verified device.
-- The device is cross-signed with the account's recovery key, which an administrator enters once when connecting (SCEN-014).
+- The device is cross-signed with the account's recovery key, which an Instance Admin enters once when connecting (SCEN-014).
 - After a restart the bot keeps its device id and keys.
 - Devices that join a room receive the keys for messages sent after they joined.
 - Unencrypted rooms keep working with the same connection.

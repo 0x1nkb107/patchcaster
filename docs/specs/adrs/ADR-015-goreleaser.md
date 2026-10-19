@@ -15,7 +15,7 @@ justifies:
 ## Context
 
 `just container` produces throwaway images built from the working tree; nothing turns a tag into
-an artifact an operator can pull or roll back to (SYSREQ-031). SYSARCH-005 claims
+an artifact the infrastructure team can pull or roll back to (SYSREQ-031). SYSARCH-005 claims
 `linux/amd64` and `linux/arm64`, so publishing must cover both architectures, and the
 single-replica operational posture makes reproducibility of the published artifact a
 first-order concern, not a nicety.

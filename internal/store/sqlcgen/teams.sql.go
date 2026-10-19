@@ -22,7 +22,7 @@ type TeamCreateParams struct {
 	CreatedAt time.Time
 }
 
-// TeamCreate stores a new team without operators, sources or sinks.
+// TeamCreate stores a new team without managers, sources or sinks.
 func (q *Queries) TeamCreate(ctx context.Context, arg TeamCreateParams) (int64, error) {
 	row := q.db.QueryRowContext(ctx, teamCreate, arg.Name, arg.CreatedAt)
 	var id int64
@@ -51,7 +51,7 @@ func (q *Queries) TeamDelete(ctx context.Context, arg TeamDeleteParams) (int64, 
 
 const teamGet = `-- name: TeamGet :one
 SELECT t.id, t.name, t.version,
-    (SELECT COALESCE(jsonb_agg(o.person_id ORDER BY o.person_id), '[]')::jsonb FROM team_operators o WHERE o.team_id = t.id) AS operators,
+    (SELECT COALESCE(jsonb_agg(o.person_id ORDER BY o.person_id), '[]')::jsonb FROM team_managers o WHERE o.team_id = t.id) AS managers,
     (SELECT COALESCE(jsonb_agg(s.source_id ORDER BY s.source_id), '[]')::jsonb FROM team_sources s WHERE s.team_id = t.id) AS sources,
     (SELECT COALESCE(jsonb_agg(k.sink_id ORDER BY k.sink_id), '[]')::jsonb FROM team_sinks k WHERE k.team_id = t.id) AS sinks
 FROM teams t
@@ -59,15 +59,15 @@ WHERE t.id = $1
 `
 
 type TeamGetRow struct {
-	ID        int64
-	Name      string
-	Version   int64
-	Operators json.RawMessage
-	Sources   json.RawMessage
-	Sinks     json.RawMessage
+	ID       int64
+	Name     string
+	Version  int64
+	Managers json.RawMessage
+	Sources  json.RawMessage
+	Sinks    json.RawMessage
 }
 
-// TeamGet reads one team with the ids of its operators, sources and sinks.
+// TeamGet reads one team with the ids of its managers, sources and sinks.
 func (q *Queries) TeamGet(ctx context.Context, id int64) (TeamGetRow, error) {
 	row := q.db.QueryRowContext(ctx, teamGet, id)
 	var i TeamGetRow
@@ -75,7 +75,7 @@ func (q *Queries) TeamGet(ctx context.Context, id int64) (TeamGetRow, error) {
 		&i.ID,
 		&i.Name,
 		&i.Version,
-		&i.Operators,
+		&i.Managers,
 		&i.Sources,
 		&i.Sinks,
 	)
@@ -84,13 +84,13 @@ func (q *Queries) TeamGet(ctx context.Context, id int64) (TeamGetRow, error) {
 
 const teamList = `-- name: TeamList :many
 SELECT t.id, t.name, t.version,
-    (SELECT COALESCE(jsonb_agg(o.person_id ORDER BY o.person_id), '[]')::jsonb FROM team_operators o WHERE o.team_id = t.id) AS operators,
+    (SELECT COALESCE(jsonb_agg(o.person_id ORDER BY o.person_id), '[]')::jsonb FROM team_managers o WHERE o.team_id = t.id) AS managers,
     (SELECT COALESCE(jsonb_agg(s.source_id ORDER BY s.source_id), '[]')::jsonb FROM team_sources s WHERE s.team_id = t.id) AS sources,
     (SELECT COALESCE(jsonb_agg(k.sink_id ORDER BY k.sink_id), '[]')::jsonb FROM team_sinks k WHERE k.team_id = t.id) AS sinks
 FROM teams t
 WHERE t.id > $1
   AND ($2::bigint = 0
-       OR EXISTS (SELECT 1 FROM team_operators v WHERE v.team_id = t.id AND v.person_id = $2::bigint))
+       OR EXISTS (SELECT 1 FROM team_managers v WHERE v.team_id = t.id AND v.person_id = $2::bigint))
 ORDER BY t.id
 LIMIT $3
 `
@@ -102,16 +102,16 @@ type TeamListParams struct {
 }
 
 type TeamListRow struct {
-	ID        int64
-	Name      string
-	Version   int64
-	Operators json.RawMessage
-	Sources   json.RawMessage
-	Sinks     json.RawMessage
+	ID       int64
+	Name     string
+	Version  int64
+	Managers json.RawMessage
+	Sources  json.RawMessage
+	Sinks    json.RawMessage
 }
 
 // TeamList pages through the teams a person may see: every team for an
-// administrator, whose visible_to is zero, or the teams they operate.
+// administrator, whose visible_to is zero, or the teams they manage.
 func (q *Queries) TeamList(ctx context.Context, arg TeamListParams) ([]TeamListRow, error) {
 	rows, err := q.db.QueryContext(ctx, teamList, arg.AfterID, arg.VisibleTo, arg.PageSize)
 	if err != nil {
@@ -125,7 +125,7 @@ func (q *Queries) TeamList(ctx context.Context, arg TeamListParams) ([]TeamListR
 			&i.ID,
 			&i.Name,
 			&i.Version,
-			&i.Operators,
+			&i.Managers,
 			&i.Sources,
 			&i.Sinks,
 		); err != nil {
@@ -142,57 +142,57 @@ func (q *Queries) TeamList(ctx context.Context, arg TeamListParams) ([]TeamListR
 	return items, nil
 }
 
-const teamOperatedBy = `-- name: TeamOperatedBy :one
+const teamManagedBy = `-- name: TeamManagedBy :one
 SELECT EXISTS (
-    SELECT 1 FROM team_operators WHERE team_id = $1 AND person_id = $2
-)::boolean AS operates
+    SELECT 1 FROM team_managers WHERE team_id = $1 AND person_id = $2
+)::boolean AS manages
 `
 
-type TeamOperatedByParams struct {
+type TeamManagedByParams struct {
 	TeamID   int64
 	PersonID int64
 }
 
-// TeamOperatedBy reports whether a person operates a team (SYSREQ-039).
-func (q *Queries) TeamOperatedBy(ctx context.Context, arg TeamOperatedByParams) (bool, error) {
-	row := q.db.QueryRowContext(ctx, teamOperatedBy, arg.TeamID, arg.PersonID)
-	var operates bool
-	err := row.Scan(&operates)
-	return operates, err
+// TeamManagedBy reports whether a person manages a team (SYSREQ-039).
+func (q *Queries) TeamManagedBy(ctx context.Context, arg TeamManagedByParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, teamManagedBy, arg.TeamID, arg.PersonID)
+	var manages bool
+	err := row.Scan(&manages)
+	return manages, err
 }
 
-const teamOperatorsAdd = `-- name: TeamOperatorsAdd :exec
-INSERT INTO team_operators (team_id, person_id)
+const teamManagersAdd = `-- name: TeamManagersAdd :exec
+INSERT INTO team_managers (team_id, person_id)
 SELECT $1, jsonb_array_elements_text($2::jsonb)::bigint
 ON CONFLICT DO NOTHING
 `
 
-type TeamOperatorsAddParams struct {
+type TeamManagersAddParams struct {
 	TeamID int64
 	Add    json.RawMessage
 }
 
-// TeamOperatorsAdd adds the operators in the JSON array of person ids.
-func (q *Queries) TeamOperatorsAdd(ctx context.Context, arg TeamOperatorsAddParams) error {
-	_, err := q.db.ExecContext(ctx, teamOperatorsAdd, arg.TeamID, arg.Add)
+// TeamManagersAdd adds the managers in the JSON array of person ids.
+func (q *Queries) TeamManagersAdd(ctx context.Context, arg TeamManagersAddParams) error {
+	_, err := q.db.ExecContext(ctx, teamManagersAdd, arg.TeamID, arg.Add)
 	return err
 }
 
-const teamOperatorsKeep = `-- name: TeamOperatorsKeep :exec
-DELETE FROM team_operators
+const teamManagersKeep = `-- name: TeamManagersKeep :exec
+DELETE FROM team_managers
 WHERE team_id = $1
   AND person_id NOT IN (SELECT jsonb_array_elements_text($2::jsonb)::bigint)
 `
 
-type TeamOperatorsKeepParams struct {
+type TeamManagersKeepParams struct {
 	TeamID int64
 	Keep   json.RawMessage
 }
 
-// TeamOperatorsKeep removes the operators that are not in the JSON array of
+// TeamManagersKeep removes the managers that are not in the JSON array of
 // person ids.
-func (q *Queries) TeamOperatorsKeep(ctx context.Context, arg TeamOperatorsKeepParams) error {
-	_, err := q.db.ExecContext(ctx, teamOperatorsKeep, arg.TeamID, arg.Keep)
+func (q *Queries) TeamManagersKeep(ctx context.Context, arg TeamManagersKeepParams) error {
+	_, err := q.db.ExecContext(ctx, teamManagersKeep, arg.TeamID, arg.Keep)
 	return err
 }
 

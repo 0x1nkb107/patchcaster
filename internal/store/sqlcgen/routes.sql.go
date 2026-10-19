@@ -110,7 +110,7 @@ FROM routes r
 WHERE r.id > $1
   AND ($2::bigint = 0 OR r.team_id = $2::bigint)
   AND ($3::bigint = 0
-       OR EXISTS (SELECT 1 FROM team_operators o WHERE o.team_id = r.team_id AND o.person_id = $3::bigint))
+       OR EXISTS (SELECT 1 FROM team_managers o WHERE o.team_id = r.team_id AND o.person_id = $3::bigint))
 ORDER BY r.id
 LIMIT $4
 `
@@ -133,7 +133,7 @@ type RouteListRow struct {
 
 // RouteList pages through the routes a person may see: every route for an
 // administrator, whose visible_to is zero, or those of the teams they
-// operate. A team_id other than zero narrows the list to one team.
+// manage. A team_id other than zero narrows the list to one team.
 func (q *Queries) RouteList(ctx context.Context, arg RouteListParams) ([]RouteListRow, error) {
 	rows, err := q.db.QueryContext(ctx, routeList,
 		arg.AfterID,

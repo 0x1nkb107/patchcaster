@@ -38,7 +38,7 @@ var migrationsFS embed.FS
 // refused with ErrV01Database before anything is written.
 //
 // The session locker (goose's recommended Postgres coordination) serializes
-// concurrent runs: rolling-update overlap or an operator invoking
+// concurrent runs: rolling-update overlap or the infrastructure team invoking
 // "patchcaster migrate" while a pod starts would otherwise race identical DDL,
 // the loser aborting mid-transaction. If the lock connection dies, PostgreSQL
 // drops the advisory lock and rolls back the migration transaction, so the

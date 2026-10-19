@@ -1287,15 +1287,15 @@ components:
           description: The signing token exactly as the forge shows it, such as GitLab's whsec_ form.
     Team:
       type: object
-      required: [id, name, operators, sources, sinks, etag]
+      required: [id, name, managers, sources, sinks, etag]
       properties:
         id:
           type: integer
           format: int64
         name:
           type: string
-        operators:
-          description: The ids of the people who operate the team.
+        managers:
+          description: The ids of the team's Routing Managers, the people who route its sources into its sinks.
           type: array
           items:
             type: integer
@@ -1336,13 +1336,13 @@ components:
           maxLength: 100
     TeamUpdate:
       type: object
-      required: [name, operators, sources, sinks]
+      required: [name, managers, sources, sinks]
       properties:
         name:
           type: string
           minLength: 1
           maxLength: 100
-        operators:
+        managers:
           type: array
           items:
             type: integer

@@ -150,10 +150,10 @@ func TestADeliveryThroughARegisteredHookReachesEachMatchingSourceOnce(t *testing
 	team, err := admin.CreateTeam(ctx, &apiv1.TeamRequest{Name: "Hooked"})
 	require.NoError(t, err)
 	_, err = admin.UpdateTeam(ctx, &apiv1.TeamUpdate{
-		Name:      team.Name,
-		Operators: []int64{},
-		Sources:   []int64{group.ID, repo.ID},
-		Sinks:     []int64{r.sink.ID, other.ID},
+		Name:     team.Name,
+		Managers: []int64{},
+		Sources:  []int64{group.ID, repo.ID},
+		Sinks:    []int64{r.sink.ID, other.ID},
 	}, apiv1.UpdateTeamParams{ID: team.ID, IfMatch: team.Etag})
 	require.NoError(t, err)
 	for _, route := range []apiv1.RouteRequest{

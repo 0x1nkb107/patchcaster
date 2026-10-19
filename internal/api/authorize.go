@@ -8,13 +8,13 @@ import (
 
 // Every decision about who may do what with teams, sources, sinks and
 // routes lives here, so that the web interface and automation get the same
-// answers (SYSREQ-039, ADR-034). Administrators may do everything. An
-// operator reads their teams and what those own, and manages the routes of
-// their teams. A user manages neither.
+// answers (SYSREQ-039, ADR-034). Administrators may do everything. A
+// manager reads their teams and what those own, and manages the routes of
+// their teams. A regular does neither.
 
 // visibleTo returns whose view of the routing configuration the caller has:
 // zero for an administrator, who sees everything, or the caller's own id,
-// which shows the teams they operate.
+// which shows the teams they manage.
 func visibleTo(ctx context.Context) int64 {
 	person := caller(ctx)
 	if person.Administrator {
@@ -23,24 +23,24 @@ func visibleTo(ctx context.Context) int64 {
 	return person.ID
 }
 
-// operatesTeam reports whether the caller is an administrator or one of the
-// team's operators.
-func (s *Service) operatesTeam(ctx context.Context, teamID int64) (bool, error) {
+// managesTeam reports whether the caller is an administrator or one of the
+// team's managers.
+func (s *Service) managesTeam(ctx context.Context, teamID int64) (bool, error) {
 	person := caller(ctx)
 	if person.Administrator {
 		return true, nil
 	}
-	return s.store.OperatesTeam(ctx, person.ID, teamID)
+	return s.store.ManagesTeam(ctx, person.ID, teamID)
 }
 
 // mayReadTeam refuses a caller who neither administers the instance nor
-// operates the team.
+// manages the team.
 func (s *Service) mayReadTeam(ctx context.Context, teamID int64) error {
-	operates, err := s.operatesTeam(ctx, teamID)
+	manages, err := s.managesTeam(ctx, teamID)
 	if err != nil {
 		return err
 	}
-	if !operates {
+	if !manages {
 		return newProblem(http.StatusForbidden, "only the team's operators and administrators may see it")
 	}
 	return nil
@@ -48,11 +48,11 @@ func (s *Service) mayReadTeam(ctx context.Context, teamID int64) error {
 
 // mayManageRoutes refuses a caller who may not change the team's routes.
 func (s *Service) mayManageRoutes(ctx context.Context, teamID int64) error {
-	operates, err := s.operatesTeam(ctx, teamID)
+	manages, err := s.managesTeam(ctx, teamID)
 	if err != nil {
 		return err
 	}
-	if !operates {
+	if !manages {
 		return newProblem(http.StatusForbidden, "only the team's operators and administrators may change its routes")
 	}
 	return nil
@@ -66,11 +66,11 @@ func (s *Service) mayReadOwned(ctx context.Context, teams []int64) error {
 		return nil
 	}
 	for _, teamID := range teams {
-		operates, err := s.store.OperatesTeam(ctx, person.ID, teamID)
+		manages, err := s.store.ManagesTeam(ctx, person.ID, teamID)
 		if err != nil {
 			return err
 		}
-		if operates {
+		if manages {
 			return nil
 		}
 	}

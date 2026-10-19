@@ -206,7 +206,7 @@ func (f *fakeStore) DeleteTeam(context.Context, store.Actor, int64, int64, time.
 	return errNotInTest
 }
 
-func (f *fakeStore) OperatesTeam(context.Context, int64, int64) (bool, error) {
+func (f *fakeStore) ManagesTeam(context.Context, int64, int64) (bool, error) {
 	return false, errNotInTest
 }
 

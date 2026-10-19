@@ -153,7 +153,7 @@ SELECT k.id, k.connection_id, k.name, k.channel_id, k.channel_name, k.version,
 FROM sinks k
 WHERE k.id > $1
   AND ($2::bigint = 0
-       OR EXISTS (SELECT 1 FROM team_sinks ts JOIN team_operators o ON o.team_id = ts.team_id
+       OR EXISTS (SELECT 1 FROM team_sinks ts JOIN team_managers o ON o.team_id = ts.team_id
                   WHERE ts.sink_id = k.id AND o.person_id = $2::bigint))
 ORDER BY k.id
 LIMIT $3
@@ -326,7 +326,7 @@ SELECT s.id, s.connection_id, s.name, s.scope_kind, s.scope_path, s.version,
 FROM sources s
 WHERE s.id > $1
   AND ($2::bigint = 0
-       OR EXISTS (SELECT 1 FROM team_sources ts JOIN team_operators o ON o.team_id = ts.team_id
+       OR EXISTS (SELECT 1 FROM team_sources ts JOIN team_managers o ON o.team_id = ts.team_id
                   WHERE ts.source_id = s.id AND o.person_id = $2::bigint))
 ORDER BY s.id
 LIMIT $3
@@ -350,7 +350,7 @@ type SourceListRow struct {
 
 // SourceList pages through the sources a person may see: every source for
 // an administrator, whose visible_to is zero, or those of the teams they
-// operate.
+// manage.
 func (q *Queries) SourceList(ctx context.Context, arg SourceListParams) ([]SourceListRow, error) {
 	rows, err := q.db.QueryContext(ctx, sourceList, arg.AfterID, arg.VisibleTo, arg.PageSize)
 	if err != nil {

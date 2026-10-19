@@ -12,11 +12,11 @@ import (
 )
 
 // teamSetup is SCEN-015's result: the team "Payments" with carol as its
-// operator, owning a group source and a sink in the suite's channel. A
+// manager, owning a group source and a sink in the suite's channel. A
 // second team, "Billing", owns its own source and sink.
 type teamSetup struct {
 	platforms
-	operator     *browser
+	manager      *browser
 	payments     *apiv1.Team
 	billing      *apiv1.Team
 	paymentsRepo *apiv1.Source
@@ -32,7 +32,7 @@ func setUpTeams(t *testing.T) teamSetup {
 	forge := p.connectGitLab(t)
 	chat := p.connectMattermost(t)
 	s := teamSetup{platforms: p}
-	s.operator = logInAs(t, p.svc, p.provider, carol)
+	s.manager = logInAs(t, p.svc, p.provider, carol)
 	carolRead := personNamed(t, p.admin, "carol")
 	s.paymentsRepo = p.createSource(t, forge, "payments", apiv1.SourceScopeKindGroup, "payments")
 	s.billingRepo = p.createSource(t, forge, "billing", apiv1.SourceScopeKindRepository, "billing/api")
@@ -68,20 +68,20 @@ func (p platforms) createSink(t *testing.T, chat *apiv1.Connection, name, channe
 	return sink
 }
 
-// createTeam creates a team and gives it operators, a source and a sink.
-func (p platforms) createTeam(t *testing.T, name string, operators []int64, source *apiv1.Source, sink *apiv1.Sink) *apiv1.Team {
+// createTeam creates a team and gives it managers, a source and a sink.
+func (p platforms) createTeam(t *testing.T, name string, managers []int64, source *apiv1.Source, sink *apiv1.Sink) *apiv1.Team {
 	t.Helper()
 	ctx := context.Background()
 	created, err := p.admin.api(t).CreateTeam(ctx, &apiv1.TeamRequest{Name: name})
 	require.NoError(t, err)
-	if operators == nil {
-		operators = []int64{}
+	if managers == nil {
+		managers = []int64{}
 	}
 	updated, err := p.admin.api(t).UpdateTeam(ctx, &apiv1.TeamUpdate{
-		Name:      name,
-		Operators: operators,
-		Sources:   []int64{source.ID},
-		Sinks:     []int64{sink.ID},
+		Name:     name,
+		Managers: managers,
+		Sources:  []int64{source.ID},
+		Sinks:    []int64{sink.ID},
 	}, apiv1.UpdateTeamParams{ID: created.ID, IfMatch: created.Etag})
 	require.NoError(t, err)
 	return &updated.Response
@@ -98,7 +98,7 @@ func createRoute(t *testing.T, b *apiv1.Client, team *apiv1.Team, source *apiv1.
 }
 
 // An administrator sets up a team: a source, a sink the bot can post
-// into, and an operator (SCEN-015).
+// into, and a manager (SCEN-015).
 func TestAnAdministratorSetsUpATeam(t *testing.T) {
 	// arrange
 	ctx := context.Background()
@@ -120,7 +120,7 @@ func TestAnAdministratorSetsUpATeam(t *testing.T) {
 		Name:         "archive",
 		ChannelID:    archivedChannelID,
 	})
-	team, teamErr := s.operator.api(t).GetTeam(ctx, apiv1.GetTeamParams{ID: s.payments.ID})
+	team, teamErr := s.manager.api(t).GetTeam(ctx, apiv1.GetTeamParams{ID: s.payments.ID})
 
 	// assert
 	assert.Equal(t, "Channel "+channelID, s.paymentsRoom.ChannelName, "the sink shows the channel's name")
@@ -132,18 +132,18 @@ func TestAnAdministratorSetsUpATeam(t *testing.T) {
 	archived := requireProblem(t, archivedErr, http.StatusUnprocessableEntity)
 	require.Len(t, archived.Errors, 1)
 	assert.Equal(t, []string{"the channel is archived"}, archived.Errors[0].Messages)
-	require.NoError(t, teamErr, "the operator sees their team")
+	require.NoError(t, teamErr, "the manager sees their team")
 	assert.Equal(t, []int64{s.paymentsRepo.ID}, team.Response.Sources)
 	assert.Subset(t, auditActions(t, s.admin), []string{"team.create", "team.update", "source.create", "sink.create"})
 }
 
-// An operator routes their team's source into its sink, and mutes a reply
+// A manager routes their team's source into its sink, and mutes a reply
 // kind, without an administrator (SCEN-018).
-func TestAnOperatorRoutesTheirTeamsSource(t *testing.T) {
+func TestAManagerRoutesTheirTeamsSource(t *testing.T) {
 	// arrange
 	ctx := context.Background()
 	s := setUpTeams(t)
-	lead := s.operator.api(t)
+	lead := s.manager.api(t)
 
 	// act
 	sources, sourcesErr := lead.ListSources(ctx, apiv1.ListSourcesParams{})
@@ -156,7 +156,7 @@ func TestAnOperatorRoutesTheirTeamsSource(t *testing.T) {
 
 	// assert
 	require.NoError(t, sourcesErr)
-	require.Len(t, sources.Items, 1, "an operator sees only their team's sources")
+	require.Len(t, sources.Items, 1, "a manager sees only their team's sources")
 	assert.Equal(t, s.paymentsRepo.ID, sources.Items[0].ID)
 	require.NoError(t, sinksErr)
 	require.Len(t, sinks.Items, 1)
@@ -166,13 +166,13 @@ func TestAnOperatorRoutesTheirTeamsSource(t *testing.T) {
 	assert.Subset(t, auditActions(t, s.admin), []string{"route.create", "route.update"})
 }
 
-// An operator neither reads nor changes another team's routing, and a user
+// A manager neither reads nor changes another team's routing, and a regular
 // without a team routes nothing (SYSREQ-039).
 func TestRoutingStaysInsideTheTeam(t *testing.T) {
 	// arrange
 	ctx := context.Background()
 	s := setUpTeams(t)
-	lead := s.operator.api(t)
+	lead := s.manager.api(t)
 	billingRoute, err := createRoute(t, s.admin.api(t), s.billing, s.billingRepo, s.billingRoom)
 	require.NoError(t, err)
 	user := logInAs(t, s.svc, s.provider, bob).api(t)
@@ -209,7 +209,7 @@ func TestRoutingStaysInsideTheTeam(t *testing.T) {
 			_, err := lead.GetSource(ctx, apiv1.GetSourceParams{ID: s.billingRepo.ID})
 			return err
 		}},
-		{"a source created by an operator", func() error {
+		{"a source created by a manager", func() error {
 			_, err := lead.CreateSource(ctx, &apiv1.SourceRequest{
 				ConnectionID: s.paymentsRepo.ConnectionID,
 				Name:         "sneaky",
@@ -245,10 +245,10 @@ func TestARouteKeepsItsSourceAndSink(t *testing.T) {
 
 	// act
 	_, withoutSourceErr := s.admin.api(t).UpdateTeam(ctx, &apiv1.TeamUpdate{
-		Name:      team.Response.Name,
-		Operators: team.Response.Operators,
-		Sources:   []int64{},
-		Sinks:     team.Response.Sinks,
+		Name:     team.Response.Name,
+		Managers: team.Response.Managers,
+		Sources:  []int64{},
+		Sinks:    team.Response.Sinks,
 	}, apiv1.UpdateTeamParams{ID: team.Response.ID, IfMatch: team.Response.Etag})
 	deleteSourceErr := s.admin.api(t).DeleteSource(ctx, apiv1.DeleteSourceParams{ID: s.paymentsRepo.ID, IfMatch: s.paymentsRepo.Etag})
 	deleteTeamErr := s.admin.api(t).DeleteTeam(ctx, apiv1.DeleteTeamParams{ID: team.Response.ID, IfMatch: team.Response.Etag})
@@ -265,12 +265,12 @@ func TestARouteKeepsItsSourceAndSink(t *testing.T) {
 	assert.NoError(t, afterErr, "without its route the source goes")
 }
 
-// Automation manages its team's routes through an operator's token
+// Automation manages its team's routes through a manager's token
 // (SCEN-022).
-func TestAnOperatorsTokenManagesTheTeamsRoutes(t *testing.T) {
+func TestAManagersTokenManagesTheTeamsRoutes(t *testing.T) {
 	// arrange
 	s := setUpTeams(t)
-	ci := automation(t, s.svc, createToken(t, s.operator, "routes from git").Secret)
+	ci := automation(t, s.svc, createToken(t, s.manager, "routes from git").Secret)
 
 	// act
 	_, ownErr := createRoute(t, ci, s.payments, s.paymentsRepo, s.paymentsRoom)

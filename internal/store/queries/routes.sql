@@ -14,13 +14,13 @@ WHERE id = $1;
 -- name: RouteList :many
 -- RouteList pages through the routes a person may see: every route for an
 -- administrator, whose visible_to is zero, or those of the teams they
--- operate. A team_id other than zero narrows the list to one team.
+-- manage. A team_id other than zero narrows the list to one team.
 SELECT r.id, r.team_id, r.source_id, r.sink_id, r.muted_replies, r.version
 FROM routes r
 WHERE r.id > sqlc.arg(after_id)
   AND (sqlc.arg(team_id)::bigint = 0 OR r.team_id = sqlc.arg(team_id)::bigint)
   AND (sqlc.arg(visible_to)::bigint = 0
-       OR EXISTS (SELECT 1 FROM team_operators o WHERE o.team_id = r.team_id AND o.person_id = sqlc.arg(visible_to)::bigint))
+       OR EXISTS (SELECT 1 FROM team_managers o WHERE o.team_id = r.team_id AND o.person_id = sqlc.arg(visible_to)::bigint))
 ORDER BY r.id
 LIMIT sqlc.arg(page_size);
 

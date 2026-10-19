@@ -48,7 +48,7 @@ func (s *Service) ListRoutes(ctx context.Context, params v1gen.ListRoutesParams)
 }
 
 // CreateRoute routes a team's source into one of its sinks, for the team's
-// operators and administrators (SCEN-018).
+// managers and administrators (SCEN-018).
 func (s *Service) CreateRoute(ctx context.Context, req *v1gen.RouteRequest) (*v1gen.TeamRoute, error) {
 	if err := s.mayManageRoutes(ctx, req.TeamID); err != nil {
 		return nil, err
@@ -105,7 +105,7 @@ func (s *Service) GetRoute(ctx context.Context, params v1gen.GetRouteParams) (*v
 	return routeHeaders(route), nil
 }
 
-// UpdateRoute changes which replies a route mutes, for the team's operators
+// UpdateRoute changes which replies a route mutes, for the team's managers
 // and administrators.
 func (s *Service) UpdateRoute(ctx context.Context, req *v1gen.RouteUpdate, params v1gen.UpdateRouteParams) (*v1gen.TeamRouteHeaders, error) {
 	current, err := s.manageableRoute(ctx, params.ID)
@@ -127,7 +127,7 @@ func (s *Service) UpdateRoute(ctx context.Context, req *v1gen.RouteUpdate, param
 	return routeHeaders(updated), nil
 }
 
-// DeleteRoute removes a route, for the team's operators and administrators.
+// DeleteRoute removes a route, for the team's managers and administrators.
 func (s *Service) DeleteRoute(ctx context.Context, params v1gen.DeleteRouteParams) error {
 	current, err := s.manageableRoute(ctx, params.ID)
 	if err != nil {

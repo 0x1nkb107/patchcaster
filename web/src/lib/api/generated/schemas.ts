@@ -437,7 +437,7 @@ export const ListTeamsResponse = zod.object({
   "items": zod.array(zod.object({
   "id": zod.int(),
   "name": zod.string(),
-  "operators": zod.array(zod.int()).describe('The ids of the people who operate the team.'),
+  "managers": zod.array(zod.int()).describe('The ids of the team\'s Routing Managers, the people who route its sources into its sinks.'),
   "sources": zod.array(zod.int()).describe('The ids of the sources the team owns.'),
   "sinks": zod.array(zod.int()).describe('The ids of the sinks the team owns.'),
   "etag": zod.string().describe('The team\'s current version, for If-Match on a change.')
@@ -461,7 +461,7 @@ export const CreateTeamBody = zod.object({
 export const CreateTeamResponse = zod.object({
   "id": zod.int(),
   "name": zod.string(),
-  "operators": zod.array(zod.int()).describe('The ids of the people who operate the team.'),
+  "managers": zod.array(zod.int()).describe('The ids of the team\'s Routing Managers, the people who route its sources into its sinks.'),
   "sources": zod.array(zod.int()).describe('The ids of the sources the team owns.'),
   "sinks": zod.array(zod.int()).describe('The ids of the sinks the team owns.'),
   "etag": zod.string().describe('The team\'s current version, for If-Match on a change.')
@@ -478,7 +478,7 @@ export const GetTeamParams = zod.object({
 export const GetTeamResponse = zod.object({
   "id": zod.int(),
   "name": zod.string(),
-  "operators": zod.array(zod.int()).describe('The ids of the people who operate the team.'),
+  "managers": zod.array(zod.int()).describe('The ids of the team\'s Routing Managers, the people who route its sources into its sinks.'),
   "sources": zod.array(zod.int()).describe('The ids of the sources the team owns.'),
   "sinks": zod.array(zod.int()).describe('The ids of the sinks the team owns.'),
   "etag": zod.string().describe('The team\'s current version, for If-Match on a change.')
@@ -503,7 +503,7 @@ export const updateTeamBodyNameMax = 100;
 
 export const UpdateTeamBody = zod.object({
   "name": zod.string().min(1).max(updateTeamBodyNameMax),
-  "operators": zod.array(zod.int()),
+  "managers": zod.array(zod.int()),
   "sources": zod.array(zod.int()),
   "sinks": zod.array(zod.int())
 })
@@ -511,7 +511,7 @@ export const UpdateTeamBody = zod.object({
 export const UpdateTeamResponse = zod.object({
   "id": zod.int(),
   "name": zod.string(),
-  "operators": zod.array(zod.int()).describe('The ids of the people who operate the team.'),
+  "managers": zod.array(zod.int()).describe('The ids of the team\'s Routing Managers, the people who route its sources into its sinks.'),
   "sources": zod.array(zod.int()).describe('The ids of the sources the team owns.'),
   "sinks": zod.array(zod.int()).describe('The ids of the sinks the team owns.'),
   "etag": zod.string().describe('The team\'s current version, for If-Match on a change.')

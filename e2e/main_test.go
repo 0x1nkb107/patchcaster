@@ -1,7 +1,7 @@
 // Package e2e drives the real patchcaster binary end to end (ADR-025). It
 // builds the binary once, then starts, signals and restarts it as a separate
 // process against PostgreSQL, a fake Mattermost and signed GitLab webhooks,
-// so the tests exercise what operators run.
+// so the tests exercise what the infrastructure team runs.
 //
 // The suite is its own module, so its test dependencies stay out of the
 // product's go.mod and a root-level `go test ./...` never runs it. It starts
@@ -34,7 +34,7 @@ var binaryPath string
 var databaseURL string
 
 // databaseContainer is that container, for the tests that read the database
-// the way an operator's tools do.
+// the way the infrastructure team's tools do.
 var databaseContainer *postgres.PostgresContainer
 
 func TestMain(m *testing.M) {

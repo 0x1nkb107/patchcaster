@@ -53,22 +53,22 @@ func referenceProblem(err error, fields map[string]*FieldError) error {
 // teamReferences names the fields of a team change that its constraints
 // guard.
 var teamReferences = map[string]*FieldError{
-	"team_operators_person_id_fkey": {Field: "operators", Err: ErrUnknownReference},
+	"team_managers_person_id_fkey":  {Field: "managers", Err: ErrUnknownReference},
 	"team_sources_source_id_fkey":   {Field: "sources", Err: ErrUnknownReference},
 	"team_sinks_sink_id_fkey":       {Field: "sinks", Err: ErrUnknownReference},
 	"routes_team_id_source_id_fkey": {Field: "sources", Err: ErrInUse},
 	"routes_team_id_sink_id_fkey":   {Field: "sinks", Err: ErrInUse},
 }
 
-// Team scopes what its operators may route (ADR-034): the people who
-// operate it, and the sources and sinks it owns, by their ids.
+// Team scopes what its managers may route (ADR-034): the people who
+// manage it, and the sources and sinks it owns, by their ids.
 type Team struct {
-	ID        int64
-	Name      string
-	Operators []int64
-	Sources   []int64
-	Sinks     []int64
-	Version   int64
+	ID       int64
+	Name     string
+	Managers []int64
+	Sources  []int64
+	Sinks    []int64
+	Version  int64
 }
 
 // teamFrom reads a team row. Every team query returns the same columns, so
@@ -78,7 +78,7 @@ func teamFrom(row sqlcgen.TeamGetRow) (*Team, error) {
 	for _, list := range []struct {
 		into *[]int64
 		raw  json.RawMessage
-	}{{&team.Operators, row.Operators}, {&team.Sources, row.Sources}, {&team.Sinks, row.Sinks}} {
+	}{{&team.Managers, row.Managers}, {&team.Sources, row.Sources}, {&team.Sinks, row.Sinks}} {
 		if err := json.Unmarshal(list.raw, list.into); err != nil {
 			return nil, fmt.Errorf("decode members of team %d: %w", row.ID, err)
 		}
@@ -89,10 +89,10 @@ func teamFrom(row sqlcgen.TeamGetRow) (*Team, error) {
 // teamTarget is how the audit log shows a team.
 func teamTarget(t *Team) map[string]any {
 	return map[string]any{
-		"name":      t.Name,
-		"operators": idList(t.Operators),
-		"sources":   idList(t.Sources),
-		"sinks":     idList(t.Sinks),
+		"name":     t.Name,
+		"managers": idList(t.Managers),
+		"sources":  idList(t.Sources),
+		"sinks":    idList(t.Sinks),
 	}
 }
 
@@ -126,7 +126,7 @@ func readTeam(ctx context.Context, q *sqlcgen.Queries, id int64) (*Team, error) 
 	return teamFrom(row)
 }
 
-// CreateTeam stores a new team without operators, sources or sinks.
+// CreateTeam stores a new team without managers, sources or sinks.
 func (p *Postgres) CreateTeam(ctx context.Context, actor Actor, name string, now time.Time) (*Team, error) {
 	var created *Team
 	err := p.inTx(ctx, func(q *sqlcgen.Queries) error {
@@ -153,7 +153,7 @@ func (p *Postgres) Team(ctx context.Context, id int64) (*Team, error) {
 	return readTeam(ctx, p.base, id)
 }
 
-// Teams pages through the teams the person with visibleTo operates, or
+// Teams pages through the teams the person with visibleTo manages, or
 // through all teams when visibleTo is zero, as for an administrator.
 func (p *Postgres) Teams(ctx context.Context, visibleTo, afterID int64, limit int) ([]Team, error) {
 	rows, err := p.base.TeamList(ctx, sqlcgen.TeamListParams{
@@ -175,7 +175,7 @@ func (p *Postgres) Teams(ctx context.Context, visibleTo, afterID int64, limit in
 	return teams, nil
 }
 
-// UpdateTeam renames a team and sets its operators, sources and sinks, at
+// UpdateTeam renames a team and sets its managers, sources and sinks, at
 // the version in t, the one the caller read. A source or sink that one of
 // the team's routes uses cannot leave the team.
 func (p *Postgres) UpdateTeam(ctx context.Context, actor Actor, t Team, now time.Time) (*Team, error) {
@@ -215,15 +215,15 @@ func (p *Postgres) UpdateTeam(ctx context.Context, actor Actor, t Team, now time
 	return updated, err
 }
 
-// setTeamMembers makes the team's operators, sources and sinks the ones in
+// setTeamMembers makes the team's managers, sources and sinks the ones in
 // t: it removes the others first, then adds the new ones.
 func setTeamMembers(ctx context.Context, q *sqlcgen.Queries, t Team) error {
-	operators, sources, sinks := encodeIDs(t.Operators), encodeIDs(t.Sources), encodeIDs(t.Sinks)
-	if err := q.TeamOperatorsKeep(ctx, sqlcgen.TeamOperatorsKeepParams{TeamID: t.ID, Keep: operators}); err != nil {
-		return fmt.Errorf("remove operators of team %d: %w", t.ID, err)
+	managers, sources, sinks := encodeIDs(t.Managers), encodeIDs(t.Sources), encodeIDs(t.Sinks)
+	if err := q.TeamManagersKeep(ctx, sqlcgen.TeamManagersKeepParams{TeamID: t.ID, Keep: managers}); err != nil {
+		return fmt.Errorf("remove managers of team %d: %w", t.ID, err)
 	}
-	if err := q.TeamOperatorsAdd(ctx, sqlcgen.TeamOperatorsAddParams{TeamID: t.ID, Add: operators}); err != nil {
-		return fmt.Errorf("add operators to team %d: %w", t.ID, err)
+	if err := q.TeamManagersAdd(ctx, sqlcgen.TeamManagersAddParams{TeamID: t.ID, Add: managers}); err != nil {
+		return fmt.Errorf("add managers to team %d: %w", t.ID, err)
 	}
 	if err := q.TeamSourcesKeep(ctx, sqlcgen.TeamSourcesKeepParams{TeamID: t.ID, Keep: sources}); err != nil {
 		return fmt.Errorf("remove sources of team %d: %w", t.ID, err)
@@ -264,11 +264,11 @@ func (p *Postgres) DeleteTeam(ctx context.Context, actor Actor, id, version int6
 	})
 }
 
-// OperatesTeam reports whether a person operates a team (SYSREQ-039).
-func (p *Postgres) OperatesTeam(ctx context.Context, personID, teamID int64) (bool, error) {
-	operates, err := p.base.TeamOperatedBy(ctx, sqlcgen.TeamOperatedByParams{TeamID: teamID, PersonID: personID})
+// ManagesTeam reports whether a person manages a team (SYSREQ-039).
+func (p *Postgres) ManagesTeam(ctx context.Context, personID, teamID int64) (bool, error) {
+	manages, err := p.base.TeamManagedBy(ctx, sqlcgen.TeamManagedByParams{TeamID: teamID, PersonID: personID})
 	if err != nil {
-		return false, fmt.Errorf("check operator of team %d: %w", teamID, err)
+		return false, fmt.Errorf("check manager of team %d: %w", teamID, err)
 	}
-	return operates, nil
+	return manages, nil
 }

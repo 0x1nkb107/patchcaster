@@ -261,8 +261,8 @@ export interface SigningTokenRequest {
 export interface Team {
   id: number;
   name: string;
-  /** The ids of the people who operate the team. */
-  operators: number[];
+  /** The ids of the team's Routing Managers, the people who route its sources into its sinks. */
+  managers: number[];
   /** The ids of the sources the team owns. */
   sources: number[];
   /** The ids of the sinks the team owns. */
@@ -291,7 +291,7 @@ export interface TeamUpdate {
      * @maxLength 100
      */
   name: string;
-  operators: number[];
+  managers: number[];
   sources: number[];
   sinks: number[];
 }

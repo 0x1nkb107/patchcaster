@@ -100,10 +100,10 @@ func (r *routing) addSink(t *testing.T, chat *apiv1.Connection, name, channel st
 	}
 	sinks := append(append([]int64{}, r.team.Sinks...), sink.ID)
 	updated, err := admin.UpdateTeam(ctx, &apiv1.TeamUpdate{
-		Name:      r.team.Name,
-		Operators: []int64{},
-		Sources:   []int64{r.source.ID},
-		Sinks:     sinks,
+		Name:     r.team.Name,
+		Managers: []int64{},
+		Sources:  []int64{r.source.ID},
+		Sinks:    sinks,
 	}, apiv1.UpdateTeamParams{ID: r.team.ID, IfMatch: r.team.Etag})
 	require.NoError(t, err)
 	r.team = &updated.Response

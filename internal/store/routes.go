@@ -123,7 +123,7 @@ func (p *Postgres) Route(ctx context.Context, id int64) (*Route, error) {
 }
 
 // Routes pages through the routes of the teams the person with visibleTo
-// operates, or through all routes when visibleTo is zero. A teamID other
+// manages, or through all routes when visibleTo is zero. A teamID other
 // than zero narrows the list to that team.
 func (p *Postgres) Routes(ctx context.Context, visibleTo, teamID, afterID int64, limit int) ([]Route, error) {
 	rows, err := p.base.RouteList(ctx, sqlcgen.RouteListParams{

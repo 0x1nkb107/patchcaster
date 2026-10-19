@@ -227,7 +227,7 @@ type Team struct {
 	Version   int64
 }
 
-type TeamOperator struct {
+type TeamManager struct {
 	TeamID   int64
 	PersonID int64
 }

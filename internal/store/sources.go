@@ -182,7 +182,7 @@ func (p *Postgres) Source(ctx context.Context, id int64) (*Source, error) {
 }
 
 // Sources pages through the sources of the teams the person with visibleTo
-// operates, or through all sources when visibleTo is zero.
+// manages, or through all sources when visibleTo is zero.
 func (p *Postgres) Sources(ctx context.Context, visibleTo, afterID int64, limit int) ([]Source, error) {
 	rows, err := p.base.SourceList(ctx, sqlcgen.SourceListParams{
 		VisibleTo: visibleTo,
@@ -300,7 +300,7 @@ func (p *Postgres) Sink(ctx context.Context, id int64) (*Sink, error) {
 }
 
 // Sinks pages through the sinks of the teams the person with visibleTo
-// operates, or through all sinks when visibleTo is zero.
+// manages, or through all sinks when visibleTo is zero.
 func (p *Postgres) Sinks(ctx context.Context, visibleTo, afterID int64, limit int) ([]Sink, error) {
 	rows, err := p.base.SinkList(ctx, sqlcgen.SinkListParams{
 		VisibleTo: visibleTo,

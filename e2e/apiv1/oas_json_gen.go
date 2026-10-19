@@ -6049,9 +6049,9 @@ func (s *Team) encodeFields(e *jx.Encoder) {
 		e.Str(s.Name)
 	}
 	{
-		e.FieldStart("operators")
+		e.FieldStart("managers")
 		e.ArrStart()
-		for _, elem := range s.Operators {
+		for _, elem := range s.Managers {
 			e.Int64(elem)
 		}
 		e.ArrEnd()
@@ -6081,7 +6081,7 @@ func (s *Team) encodeFields(e *jx.Encoder) {
 var jsonFieldsNameOfTeam = [6]string{
 	0: "id",
 	1: "name",
-	2: "operators",
+	2: "managers",
 	3: "sources",
 	4: "sinks",
 	5: "etag",
@@ -6120,10 +6120,10 @@ func (s *Team) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"name\"")
 			}
-		case "operators":
+		case "managers":
 			requiredBitSet[0] |= 1 << 2
 			if err := func() error {
-				s.Operators = make([]int64, 0)
+				s.Managers = make([]int64, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
 					var elem int64
 					v, err := d.Int64()
@@ -6131,14 +6131,14 @@ func (s *Team) Decode(d *jx.Decoder) error {
 					if err != nil {
 						return err
 					}
-					s.Operators = append(s.Operators, elem)
+					s.Managers = append(s.Managers, elem)
 					return nil
 				}); err != nil {
 					return err
 				}
 				return nil
 			}(); err != nil {
-				return errors.Wrap(err, "decode field \"operators\"")
+				return errors.Wrap(err, "decode field \"managers\"")
 			}
 		case "sources":
 			requiredBitSet[0] |= 1 << 3
@@ -6672,9 +6672,9 @@ func (s *TeamUpdate) encodeFields(e *jx.Encoder) {
 		e.Str(s.Name)
 	}
 	{
-		e.FieldStart("operators")
+		e.FieldStart("managers")
 		e.ArrStart()
-		for _, elem := range s.Operators {
+		for _, elem := range s.Managers {
 			e.Int64(elem)
 		}
 		e.ArrEnd()
@@ -6699,7 +6699,7 @@ func (s *TeamUpdate) encodeFields(e *jx.Encoder) {
 
 var jsonFieldsNameOfTeamUpdate = [4]string{
 	0: "name",
-	1: "operators",
+	1: "managers",
 	2: "sources",
 	3: "sinks",
 }
@@ -6725,10 +6725,10 @@ func (s *TeamUpdate) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"name\"")
 			}
-		case "operators":
+		case "managers":
 			requiredBitSet[0] |= 1 << 1
 			if err := func() error {
-				s.Operators = make([]int64, 0)
+				s.Managers = make([]int64, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
 					var elem int64
 					v, err := d.Int64()
@@ -6736,14 +6736,14 @@ func (s *TeamUpdate) Decode(d *jx.Decoder) error {
 					if err != nil {
 						return err
 					}
-					s.Operators = append(s.Operators, elem)
+					s.Managers = append(s.Managers, elem)
 					return nil
 				}); err != nil {
 					return err
 				}
 				return nil
 			}(); err != nil {
-				return errors.Wrap(err, "decode field \"operators\"")
+				return errors.Wrap(err, "decode field \"managers\"")
 			}
 		case "sources":
 			requiredBitSet[0] |= 1 << 2

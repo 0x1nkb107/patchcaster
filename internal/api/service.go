@@ -53,7 +53,7 @@ type Store interface {
 	Teams(ctx context.Context, visibleTo, afterID int64, limit int) ([]store.Team, error)
 	UpdateTeam(ctx context.Context, actor store.Actor, t store.Team, now time.Time) (*store.Team, error)
 	DeleteTeam(ctx context.Context, actor store.Actor, id, version int64, now time.Time) error
-	OperatesTeam(ctx context.Context, personID, teamID int64) (bool, error)
+	ManagesTeam(ctx context.Context, personID, teamID int64) (bool, error)
 	CreateSource(ctx context.Context, actor store.Actor, s store.Source, now time.Time) (*store.Source, error)
 	Source(ctx context.Context, id int64) (*store.Source, error)
 	Sources(ctx context.Context, visibleTo, afterID int64, limit int) ([]store.Source, error)

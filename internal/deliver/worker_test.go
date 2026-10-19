@@ -118,6 +118,8 @@ type fakeStore struct {
 	sinkGone    bool // the sink was removed after the job was queued
 	health      []healthRec
 	errHealth   error
+	routes      map[int64][]store.RouteTemplate // the templates of each route that exists
+	errRoutes   error
 	settledCh   chan struct{} // pinged on every settle when non-nil
 	idleCh      chan struct{} // pinged when a claim finds nothing, when non-nil
 }
@@ -164,6 +166,11 @@ func (f *fakeStore) OpenThread(_ context.Context, mrRef string, _ int64, channel
 		f.thread = &store.Thread{ChannelID: channelID, RootPostID: rootPostID, Open: true, RouteID: routeID}
 	}
 	return nil
+}
+
+func (f *fakeStore) RouteTemplatesFor(_ context.Context, routeID int64) ([]store.RouteTemplate, bool, error) {
+	templates, exists := f.routes[routeID]
+	return templates, exists, f.errRoutes
 }
 
 func (f *fakeStore) CloseThread(_ context.Context, mrRef string, _ int64, _ time.Time) error {

@@ -3,7 +3,9 @@ package e2e
 import (
 	"context"
 	"net/http"
+	"slices"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -138,4 +140,62 @@ func TestADraftIsPreviewedForMattermost(t *testing.T) {
 	require.NotEmpty(t, preview.Samples)
 	assert.Equal(t, "an open merge request", preview.Samples[0].Description)
 	assert.Equal(t, "**!12 Add flux capacitor** by ada", preview.Samples[0].Mattermost)
+}
+
+// setTemplate gives route its own template of kind and returns the route's
+// new ETag.
+func setTemplate(t *testing.T, admin *browser, routeID int64, etag string, kind apiv1.MessageKind, text string) string {
+	t.Helper()
+	set, err := admin.api(t).SetRouteTemplate(context.Background(), &apiv1.RouteTemplateUpdate{Version: 1, Text: apiv1.TemplateText(text)},
+		apiv1.SetRouteTemplateParams{ID: routeID, Kind: kind, IfMatch: etag})
+	require.NoError(t, err)
+	return set.Response.Etag
+}
+
+// Of two routes into one sink, the narrower one writes the thread with its
+// templates, though the broader route is older (SYSREQ-049).
+func TestTheNarrowestRoutesTemplatesReachMattermost(t *testing.T) {
+	// arrange: a group route that is older and broader, and a repository
+	// route that is newer and narrower, both into the suite's channel.
+	ctx := context.Background()
+	mattermost := newFakeMattermost(t)
+	freshDatabase(t)
+	svc, r, _ := startRouted(t, serviceConfig{}, mattermost)
+	admin := r.admin.api(t)
+	group, err := admin.CreateSource(ctx, &apiv1.SourceRequest{
+		ConnectionID: r.forge.ID,
+		Name:         "the whole group",
+		Scope:        apiv1.SourceScope{Kind: apiv1.SourceScopeKindGroup, Path: apiv1.NewOptString("group")},
+	})
+	require.NoError(t, err)
+	team, err := admin.UpdateTeam(ctx, &apiv1.TeamUpdate{
+		Name:     r.team.Name,
+		Managers: []int64{},
+		Sources:  []int64{r.source.ID, group.ID},
+		Sinks:    r.team.Sinks,
+	}, apiv1.UpdateTeamParams{ID: r.team.ID, IfMatch: r.team.Etag})
+	require.NoError(t, err)
+	require.NoError(t, admin.DeleteRoute(ctx, apiv1.DeleteRouteParams{ID: r.route.ID, IfMatch: r.route.Etag}))
+	broad, err := admin.CreateRoute(ctx, &apiv1.RouteRequest{TeamID: team.Response.ID, SourceID: group.ID, SinkID: r.sink.ID})
+	require.NoError(t, err)
+	setTemplate(t, r.admin, broad.ID, broad.Etag, apiv1.MessageKindRoot, "Group: {{.MergeRequest.Title}}")
+	narrow, err := admin.CreateRoute(ctx, &apiv1.RouteRequest{TeamID: team.Response.ID, SourceID: r.source.ID, SinkID: r.sink.ID})
+	require.NoError(t, err)
+	etag := setTemplate(t, r.admin, narrow.ID, narrow.Etag, apiv1.MessageKindRoot, "Repository: {{.MergeRequest.Title}} ({{.Status.Comments}})")
+	setTemplate(t, r.admin, narrow.ID, etag, apiv1.MessageKindComment, "{{.Event.Actor}} wrote on !{{.MergeRequest.Number}}")
+
+	// act
+	require.Equal(t, http.StatusOK, svc.gitlab.deliver(t, mergeRequestOpened(t, firstMR)))
+	eventually(t, 10*time.Second, "the root", func() bool { return len(postsIn(mattermost, channelID)) == 1 })
+	root := postsIn(mattermost, channelID)[0]
+	require.Equal(t, http.StatusOK, svc.gitlab.deliver(t, commentCreated(t, firstMR, 501)))
+
+	// assert
+	eventually(t, 10*time.Second, "the reply and the refresh", func() bool {
+		return len(postsIn(mattermost, channelID)) == 2 && slices.Contains(mattermost.updatedPosts(), root.ID)
+	})
+	assert.Equal(t, "Repository: Add token refresh (0)", root.Message, "one root, from the narrower route")
+	reply := postsIn(mattermost, channelID)[1]
+	assert.Equal(t, root.ID, reply.RootID)
+	assert.Equal(t, "bob wrote on !7", reply.Message)
 }

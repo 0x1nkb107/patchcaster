@@ -1,7 +1,10 @@
 package deliver
 
 import (
+	"regexp"
+	"strings"
 	"testing"
+	"unicode"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -157,5 +160,47 @@ func TestRenderer_NoticeEscapesActor(t *testing.T) {
 
 	// assert: a user-controlled name may not ping the channel (SYSREQ-003).
 	require.NoError(t, err)
-	assert.Equal(t, `💬 \@here \*sponsored\* commented`, got)
+	assert.Equal(t, "💬 @\u2060here \\*sponsored\\* commented", got)
+}
+
+// inMentionWord reports whether Mattermost keeps c inside a word when it
+// looks for mentions. Every other character ends the word.
+func inMentionWord(c rune) bool {
+	return c == ':' || c == '.' || c == '-' || c == '_' || c == '@' || unicode.IsLetter(c) || unicode.IsNumber(c)
+}
+
+// mattermostMentions returns the words that Mattermost's server would read
+// as mentions in text. It decodes backslash escapes as Mattermost's Markdown
+// parser does, then splits words as ProcessText in
+// server/channels/app/mention_parser_standard.go of mattermost/mattermost.
+func mattermostMentions(text string) []string {
+	decoded := regexp.MustCompile(`\\([!-/:-@\[-\x60{-~])`).ReplaceAllString(text, "$1")
+	words := strings.FieldsFunc(decoded, func(c rune) bool { return !inMentionWord(c) })
+	var mentions []string
+	for _, word := range words {
+		word = strings.TrimLeft(word, ":.-_")
+		if len(word) > 1 && word[0] == '@' {
+			mentions = append(mentions, word)
+		}
+	}
+	return mentions
+}
+
+func TestRendererLetsNoForgeTextMention(t *testing.T) {
+	attempts := []string{"@here", "@channel", "@ALL", "@ada", "hi @here!", "\\@here", "(@channel)"}
+	for _, attempt := range attempts {
+		t.Run(attempt, func(t *testing.T) {
+			board := baseBoard()
+			board.Title = attempt
+
+			root, rootErr := mustRenderer(t).Root(board)
+			notice, noticeErr := mustRenderer(t).Notice(plan.Comment, &event.Event{MRRef: "1", Actor: attempt})
+
+			require.NoError(t, rootErr)
+			require.NoError(t, noticeErr)
+			// The root's own header and author mention are the template's.
+			assert.Equal(t, []string{"@here", "@ada"}, mattermostMentions(root))
+			assert.Empty(t, mattermostMentions(notice))
+		})
+	}
 }

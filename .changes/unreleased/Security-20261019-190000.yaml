@@ -1,0 +1,3 @@
+kind: Security
+body: 'Forge text such as a merge request title or a user name can no longer mention a person or the whole channel in Mattermost. Mattermost reads an escaped @ as a mention, so PatchCaster now puts an invisible word joiner after every @ that comes from the forge.'
+time: 2026-10-19T19:00:00.000000000+02:00

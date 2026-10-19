@@ -20,6 +20,11 @@ type Version int
 // Version1 is the first version of the data model.
 const Version1 Version = 1
 
+// Known reports whether the data model has version v.
+func (v Version) Known() bool {
+	return v == Version1
+}
+
 // Kind names a message that a template writes: the root of a thread, or
 // one kind of notice in it.
 type Kind string

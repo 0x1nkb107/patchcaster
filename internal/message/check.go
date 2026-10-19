@@ -20,10 +20,12 @@ const (
 	longestAddress = 2048
 )
 
-// sample is a set of facts that every template must render.
+// sample is a set of facts that every template must render. A sample for
+// the size check only is no example for people.
 type sample struct {
 	description string
 	facts       Facts
+	sizeOnly    bool
 }
 
 // sampleBoard is an open merge request without any status yet.
@@ -61,22 +63,22 @@ func longestBoard() *store.State {
 // pipeline state, with and without reviews and counts, open and closed,
 // without an address, and with the longest values.
 func sampleBoards() []sample {
-	samples := []sample{{"an open merge request", Facts{Board: sampleBoard()}}}
+	samples := []sample{{"an open merge request", Facts{Board: sampleBoard()}, false}}
 	for _, status := range []string{"running", "success", "failed", "pending", "canceled", "skipped", "unheard-of"} {
 		board := sampleBoard()
 		board.PipelineStatus = status
 		board.ReviewersDone, board.ReviewersRequired = 1, 2
 		board.Comments, board.Edits = 3, 1
-		samples = append(samples, sample{fmt.Sprintf("a pipeline %s", pipelineState(status)), Facts{Board: board}})
+		samples = append(samples, sample{fmt.Sprintf("a pipeline %s", pipelineState(status)), Facts{Board: board}, false})
 	}
 	closed := sampleBoard()
 	closed.Open = false
 	withoutAddress := sampleBoard()
 	withoutAddress.URL = ""
 	return append(samples,
-		sample{"a closed merge request", Facts{Board: closed}},
-		sample{"a merge request without an address", Facts{Board: withoutAddress}},
-		sample{"the longest values", Facts{Board: longestBoard()}},
+		sample{"a closed merge request", Facts{Board: closed}, false},
+		sample{"a merge request without an address", Facts{Board: withoutAddress}, false},
+		sample{"the longest values", Facts{Board: longestBoard()}, true},
 	)
 }
 
@@ -92,12 +94,12 @@ func samplesOf(kind Kind) []sample {
 	var samples []sample
 	for _, board := range boards {
 		actor := "bob"
-		if board.description == "the longest values" {
+		if board.sizeOnly {
 			actor = strings.Repeat("&", longestName)
 		}
 		samples = append(samples,
-			sample{board.description, Facts{Board: board.facts.Board, Event: &event.Event{Actor: actor}}},
-			sample{board.description + " and a commit count", Facts{Board: board.facts.Board, Event: &event.Event{Actor: actor, PushCount: &commits}}},
+			sample{board.description, Facts{Board: board.facts.Board, Event: &event.Event{Actor: actor}}, board.sizeOnly},
+			sample{board.description + " and a commit count", Facts{Board: board.facts.Board, Event: &event.Event{Actor: actor, PushCount: &commits}}, board.sizeOnly},
 		)
 	}
 	return samples
@@ -128,4 +130,30 @@ func withSample(err error, sample sample) error {
 		return err
 	}
 	return &Error{Line: refusal.Line, Cause: fmt.Sprintf("with %s: %s", sample.description, refusal.Cause)}
+}
+
+// Rendering is the message a template wrote about one sample, as Markdown.
+type Rendering struct {
+	Description string
+	Markdown    string
+}
+
+// Preview checks t and renders the samples that serve as examples: all
+// but those of the size check (SCEN-021).
+func Preview(t *Template) ([]Rendering, error) {
+	if err := Check(t); err != nil {
+		return nil, err
+	}
+	var renderings []Rendering
+	for _, sample := range samplesOf(t.kind) {
+		if sample.sizeOnly {
+			continue
+		}
+		rendered, err := t.Render(sample.facts)
+		if err != nil {
+			return nil, withSample(err, sample)
+		}
+		renderings = append(renderings, Rendering{Description: sample.description, Markdown: rendered})
+	}
+	return renderings, nil
 }

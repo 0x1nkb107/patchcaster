@@ -84,7 +84,7 @@
 		{#if !data.instance.setup_required}
 			<Alert.Root>
 				<Alert.Title>The setup is complete</Alert.Title>
-				<Alert.Description>An administrator exists. Log in from the start page.</Alert.Description>
+				<Alert.Description>An Instance Admin exists. Log in from the start page.</Alert.Description>
 			</Alert.Root>
 		{:else if setupToken === ''}
 			<Alert.Root variant="destructive">

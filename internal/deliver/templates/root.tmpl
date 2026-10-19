@@ -1,5 +1,5 @@
-> @here :bell: \
+> {{mention "here"}} :bell: \
 > **!{{.IID}} {{.Title}}** \
-> by @{{.Author}} • {{.ProjectPath}} • `{{.Source}}` ➜ `{{.Target}}` \
-> {{.URL}}{{with .Status}} \
+> by {{.Author}} • {{.ProjectPath}} • {{code .Source}} ➜ {{code .Target}} \
+> <{{.URL}}>{{with .Status}} \
 > {{.}}{{end}}

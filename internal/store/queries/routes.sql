@@ -3,19 +3,22 @@
 -- team does not own (SYSREQ-046).
 INSERT INTO routes (team_id, source_id, sink_id, muted_replies, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $5, $5)
-RETURNING id, team_id, source_id, sink_id, muted_replies, version;
+RETURNING id, team_id, source_id, sink_id, muted_replies, version, '[]'::jsonb AS custom_templates;
 
 -- name: RouteGet :one
--- RouteGet reads one route.
-SELECT id, team_id, source_id, sink_id, muted_replies, version
-FROM routes
-WHERE id = $1;
+-- RouteGet reads one route, with the kinds of messages it has templates
+-- of its own for.
+SELECT r.id, r.team_id, r.source_id, r.sink_id, r.muted_replies, r.version,
+    (SELECT COALESCE(jsonb_agg(t.kind ORDER BY t.kind), '[]')::jsonb FROM route_templates t WHERE t.route_id = r.id) AS custom_templates
+FROM routes r
+WHERE r.id = $1;
 
 -- name: RouteList :many
 -- RouteList pages through the routes a person may see: every route for an
 -- administrator, whose visible_to is zero, or those of the teams they
 -- manage. A team_id other than zero narrows the list to one team.
-SELECT r.id, r.team_id, r.source_id, r.sink_id, r.muted_replies, r.version
+SELECT r.id, r.team_id, r.source_id, r.sink_id, r.muted_replies, r.version,
+    (SELECT COALESCE(jsonb_agg(t.kind ORDER BY t.kind), '[]')::jsonb FROM route_templates t WHERE t.route_id = r.id) AS custom_templates
 FROM routes r
 WHERE r.id > sqlc.arg(after_id)
   AND (sqlc.arg(team_id)::bigint = 0 OR r.team_id = sqlc.arg(team_id)::bigint)
@@ -29,6 +32,13 @@ LIMIT sqlc.arg(page_size);
 -- read. Its team, source and sink stay.
 UPDATE routes
 SET muted_replies = sqlc.arg(muted_replies), updated_at = sqlc.arg(updated_at), version = version + 1
+WHERE id = sqlc.arg(id) AND version = sqlc.arg(version);
+
+-- name: RouteTouch :execrows
+-- RouteTouch makes a new version of a route at the version the caller
+-- read, for a change to one of its templates.
+UPDATE routes
+SET updated_at = sqlc.arg(updated_at), version = version + 1
 WHERE id = sqlc.arg(id) AND version = sqlc.arg(version);
 
 -- name: RouteDelete :execrows

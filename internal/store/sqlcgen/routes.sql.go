@@ -14,7 +14,7 @@ import (
 const routeCreate = `-- name: RouteCreate :one
 INSERT INTO routes (team_id, source_id, sink_id, muted_replies, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $5, $5)
-RETURNING id, team_id, source_id, sink_id, muted_replies, version
+RETURNING id, team_id, source_id, sink_id, muted_replies, version, '[]'::jsonb AS custom_templates
 `
 
 type RouteCreateParams struct {
@@ -26,12 +26,13 @@ type RouteCreateParams struct {
 }
 
 type RouteCreateRow struct {
-	ID           int64
-	TeamID       int64
-	SourceID     int64
-	SinkID       int64
-	MutedReplies json.RawMessage
-	Version      int64
+	ID              int64
+	TeamID          int64
+	SourceID        int64
+	SinkID          int64
+	MutedReplies    json.RawMessage
+	Version         int64
+	CustomTemplates json.RawMessage
 }
 
 // RouteCreate stores a new route. The database refuses a source or sink the
@@ -52,6 +53,7 @@ func (q *Queries) RouteCreate(ctx context.Context, arg RouteCreateParams) (Route
 		&i.SinkID,
 		&i.MutedReplies,
 		&i.Version,
+		&i.CustomTemplates,
 	)
 	return i, err
 }
@@ -75,21 +77,24 @@ func (q *Queries) RouteDelete(ctx context.Context, arg RouteDeleteParams) (int64
 }
 
 const routeGet = `-- name: RouteGet :one
-SELECT id, team_id, source_id, sink_id, muted_replies, version
-FROM routes
-WHERE id = $1
+SELECT r.id, r.team_id, r.source_id, r.sink_id, r.muted_replies, r.version,
+    (SELECT COALESCE(jsonb_agg(t.kind ORDER BY t.kind), '[]')::jsonb FROM route_templates t WHERE t.route_id = r.id) AS custom_templates
+FROM routes r
+WHERE r.id = $1
 `
 
 type RouteGetRow struct {
-	ID           int64
-	TeamID       int64
-	SourceID     int64
-	SinkID       int64
-	MutedReplies json.RawMessage
-	Version      int64
+	ID              int64
+	TeamID          int64
+	SourceID        int64
+	SinkID          int64
+	MutedReplies    json.RawMessage
+	Version         int64
+	CustomTemplates json.RawMessage
 }
 
-// RouteGet reads one route.
+// RouteGet reads one route, with the kinds of messages it has templates
+// of its own for.
 func (q *Queries) RouteGet(ctx context.Context, id int64) (RouteGetRow, error) {
 	row := q.db.QueryRowContext(ctx, routeGet, id)
 	var i RouteGetRow
@@ -100,12 +105,14 @@ func (q *Queries) RouteGet(ctx context.Context, id int64) (RouteGetRow, error) {
 		&i.SinkID,
 		&i.MutedReplies,
 		&i.Version,
+		&i.CustomTemplates,
 	)
 	return i, err
 }
 
 const routeList = `-- name: RouteList :many
-SELECT r.id, r.team_id, r.source_id, r.sink_id, r.muted_replies, r.version
+SELECT r.id, r.team_id, r.source_id, r.sink_id, r.muted_replies, r.version,
+    (SELECT COALESCE(jsonb_agg(t.kind ORDER BY t.kind), '[]')::jsonb FROM route_templates t WHERE t.route_id = r.id) AS custom_templates
 FROM routes r
 WHERE r.id > $1
   AND ($2::bigint = 0 OR r.team_id = $2::bigint)
@@ -123,12 +130,13 @@ type RouteListParams struct {
 }
 
 type RouteListRow struct {
-	ID           int64
-	TeamID       int64
-	SourceID     int64
-	SinkID       int64
-	MutedReplies json.RawMessage
-	Version      int64
+	ID              int64
+	TeamID          int64
+	SourceID        int64
+	SinkID          int64
+	MutedReplies    json.RawMessage
+	Version         int64
+	CustomTemplates json.RawMessage
 }
 
 // RouteList pages through the routes a person may see: every route for an
@@ -155,6 +163,7 @@ func (q *Queries) RouteList(ctx context.Context, arg RouteListParams) ([]RouteLi
 			&i.SinkID,
 			&i.MutedReplies,
 			&i.Version,
+			&i.CustomTemplates,
 		); err != nil {
 			return nil, err
 		}
@@ -167,6 +176,28 @@ func (q *Queries) RouteList(ctx context.Context, arg RouteListParams) ([]RouteLi
 		return nil, err
 	}
 	return items, nil
+}
+
+const routeTouch = `-- name: RouteTouch :execrows
+UPDATE routes
+SET updated_at = $1, version = version + 1
+WHERE id = $2 AND version = $3
+`
+
+type RouteTouchParams struct {
+	UpdatedAt time.Time
+	ID        int64
+	Version   int64
+}
+
+// RouteTouch makes a new version of a route at the version the caller
+// read, for a change to one of its templates.
+func (q *Queries) RouteTouch(ctx context.Context, arg RouteTouchParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, routeTouch, arg.UpdatedAt, arg.ID, arg.Version)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const routeUpdate = `-- name: RouteUpdate :execrows

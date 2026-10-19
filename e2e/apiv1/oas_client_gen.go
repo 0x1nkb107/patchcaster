@@ -82,6 +82,13 @@ type Invoker interface {
 	//
 	// DELETE /api/v1/routes/{id}
 	DeleteRoute(ctx context.Context, params DeleteRouteParams) error
+	// DeleteRouteTemplate invokes deleteRouteTemplate operation.
+	//
+	// If-Match holds the route's ETag, and the change makes a new version of the route, whose ETag the
+	// answer carries.
+	//
+	// DELETE /api/v1/routes/{id}/templates/{kind}
+	DeleteRouteTemplate(ctx context.Context, params DeleteRouteTemplateParams) (*DeleteRouteTemplateNoContent, error)
 	// DeleteSink invokes deleteSink operation.
 	//
 	// A sink a route uses cannot go. It leaves its teams with it.
@@ -130,6 +137,12 @@ type Invoker interface {
 	//
 	// GET /api/v1/routes/{id}
 	GetRoute(ctx context.Context, params GetRouteParams) (*TeamRouteHeaders, error)
+	// GetRouteTemplate invokes getRouteTemplate operation.
+	//
+	// A kind without a template of its own answers 404, and its messages use the built-in template.
+	//
+	// GET /api/v1/routes/{id}/templates/{kind}
+	GetRouteTemplate(ctx context.Context, params GetRouteTemplateParams) (*RouteTemplateHeaders, error)
 	// GetSession invokes getSession operation.
 	//
 	// Describe the person this session belongs to.
@@ -208,6 +221,12 @@ type Invoker interface {
 	//
 	// GET /api/v1/tokens
 	ListTokens(ctx context.Context, params ListTokensParams) (*ApiTokenPage, error)
+	// PreviewTemplate invokes previewTemplate operation.
+	//
+	// A template that fails is refused with 422, naming the line and the cause, as storing it would be.
+	//
+	// POST /api/v1/templates/preview
+	PreviewTemplate(ctx context.Context, request *TemplateDraft) (*TemplatePreview, error)
 	// PutLoginSettings invokes putLoginSettings operation.
 	//
 	// Change the identity provider settings, for Instance Admins.
@@ -232,6 +251,14 @@ type Invoker interface {
 	//
 	// DELETE /api/v1/tokens/{id}
 	RevokeToken(ctx context.Context, params RevokeTokenParams) error
+	// SetRouteTemplate invokes setRouteTemplate operation.
+	//
+	// The template replaces the built-in one, or the route's previous one. It must render every sample
+	// merge request first: a template that does not is refused with 422, naming the line and the cause.
+	// If-Match holds the route's ETag, and the change makes a new version of the route.
+	//
+	// PUT /api/v1/routes/{id}/templates/{kind}
+	SetRouteTemplate(ctx context.Context, request *RouteTemplateUpdate, params SetRouteTemplateParams) (*RouteTemplateHeaders, error)
 	// SetUp invokes setUp operation.
 	//
 	// Takes the setup link's token from the bootstrap command, checks that the provider answers, and
@@ -1209,6 +1236,145 @@ func (c *Client) sendDeleteRoute(ctx context.Context, params DeleteRouteParams) 
 	return result, nil
 }
 
+// DeleteRouteTemplate invokes deleteRouteTemplate operation.
+//
+// If-Match holds the route's ETag, and the change makes a new version of the route, whose ETag the
+// answer carries.
+//
+// DELETE /api/v1/routes/{id}/templates/{kind}
+func (c *Client) DeleteRouteTemplate(ctx context.Context, params DeleteRouteTemplateParams) (*DeleteRouteTemplateNoContent, error) {
+	res, err := c.sendDeleteRouteTemplate(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendDeleteRouteTemplate(ctx context.Context, params DeleteRouteTemplateParams) (res *DeleteRouteTemplateNoContent, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [4]string
+	pathParts[0] = "/api/v1/routes/"
+	{
+		// Encode "id" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "id",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.Int64ToString(params.ID))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/templates/"
+	{
+		// Encode "kind" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "kind",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(string(params.Kind)))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[3] = encoded
+	}
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "DELETE", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	h := uri.NewHeaderEncoder(r.Header)
+	{
+		cfg := uri.HeaderParameterEncodingConfig{
+			Name:    "If-Match",
+			Explode: false,
+		}
+		if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeValue(conv.StringToString(params.IfMatch))
+		}); err != nil {
+			return res, errors.Wrap(err, "encode header")
+		}
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securitySession(ctx, DeleteRouteTemplateOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"Session\"")
+			}
+		}
+		{
+
+			switch err := c.securityToken(ctx, DeleteRouteTemplateOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 1
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"Token\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+				{0b00000010},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	result, err := decodeDeleteRouteTemplateResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // DeleteSink invokes deleteSink operation.
 //
 // A sink a route uses cannot go. It leaves its teams with it.
@@ -1978,6 +2144,131 @@ func (c *Client) sendGetRoute(ctx context.Context, params GetRouteParams) (res *
 	}()
 
 	result, err := decodeGetRouteResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// GetRouteTemplate invokes getRouteTemplate operation.
+//
+// A kind without a template of its own answers 404, and its messages use the built-in template.
+//
+// GET /api/v1/routes/{id}/templates/{kind}
+func (c *Client) GetRouteTemplate(ctx context.Context, params GetRouteTemplateParams) (*RouteTemplateHeaders, error) {
+	res, err := c.sendGetRouteTemplate(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendGetRouteTemplate(ctx context.Context, params GetRouteTemplateParams) (res *RouteTemplateHeaders, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [4]string
+	pathParts[0] = "/api/v1/routes/"
+	{
+		// Encode "id" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "id",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.Int64ToString(params.ID))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/templates/"
+	{
+		// Encode "kind" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "kind",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(string(params.Kind)))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[3] = encoded
+	}
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securitySession(ctx, GetRouteTemplateOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"Session\"")
+			}
+		}
+		{
+
+			switch err := c.securityToken(ctx, GetRouteTemplateOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 1
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"Token\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+				{0b00000010},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	result, err := decodeGetRouteTemplateResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}
@@ -3540,6 +3831,97 @@ func (c *Client) sendListTokens(ctx context.Context, params ListTokensParams) (r
 	return result, nil
 }
 
+// PreviewTemplate invokes previewTemplate operation.
+//
+// A template that fails is refused with 422, naming the line and the cause, as storing it would be.
+//
+// POST /api/v1/templates/preview
+func (c *Client) PreviewTemplate(ctx context.Context, request *TemplateDraft) (*TemplatePreview, error) {
+	res, err := c.sendPreviewTemplate(ctx, request)
+	return res, err
+}
+
+func (c *Client) sendPreviewTemplate(ctx context.Context, request *TemplateDraft) (res *TemplatePreview, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/api/v1/templates/preview"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodePreviewTemplateRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securitySession(ctx, PreviewTemplateOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"Session\"")
+			}
+		}
+		{
+
+			switch err := c.securityToken(ctx, PreviewTemplateOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 1
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"Token\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+				{0b00000010},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	result, err := decodePreviewTemplateResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // PutLoginSettings invokes putLoginSettings operation.
 //
 // Change the identity provider settings, for Instance Admins.
@@ -3963,6 +4345,149 @@ func (c *Client) sendRevokeToken(ctx context.Context, params RevokeTokenParams) 
 	}()
 
 	result, err := decodeRevokeTokenResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// SetRouteTemplate invokes setRouteTemplate operation.
+//
+// The template replaces the built-in one, or the route's previous one. It must render every sample
+// merge request first: a template that does not is refused with 422, naming the line and the cause.
+// If-Match holds the route's ETag, and the change makes a new version of the route.
+//
+// PUT /api/v1/routes/{id}/templates/{kind}
+func (c *Client) SetRouteTemplate(ctx context.Context, request *RouteTemplateUpdate, params SetRouteTemplateParams) (*RouteTemplateHeaders, error) {
+	res, err := c.sendSetRouteTemplate(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendSetRouteTemplate(ctx context.Context, request *RouteTemplateUpdate, params SetRouteTemplateParams) (res *RouteTemplateHeaders, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [4]string
+	pathParts[0] = "/api/v1/routes/"
+	{
+		// Encode "id" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "id",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.Int64ToString(params.ID))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/templates/"
+	{
+		// Encode "kind" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "kind",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(string(params.Kind)))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[3] = encoded
+	}
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "PUT", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeSetRouteTemplateRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	h := uri.NewHeaderEncoder(r.Header)
+	{
+		cfg := uri.HeaderParameterEncodingConfig{
+			Name:    "If-Match",
+			Explode: false,
+		}
+		if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeValue(conv.StringToString(params.IfMatch))
+		}); err != nil {
+			return res, errors.Wrap(err, "encode header")
+		}
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securitySession(ctx, SetRouteTemplateOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"Session\"")
+			}
+		}
+		{
+
+			switch err := c.securityToken(ctx, SetRouteTemplateOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 1
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"Token\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+				{0b00000010},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	result, err := decodeSetRouteTemplateResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}

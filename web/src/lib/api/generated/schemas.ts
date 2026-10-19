@@ -868,6 +868,7 @@ export const ListRoutesResponse = zod.object({
   "source_id": zod.int(),
   "sink_id": zod.int(),
   "muted_replies": zod.array(zod.enum(['comment', 'review', 'pipeline', 'push', 'merge', 'close']).describe('A kind of thread reply: comments, review verdicts, pipeline results, new commits, merges and closes.')).describe('The replies the route does not post. The board still shows every change.'),
+  "custom_templates": zod.array(zod.enum(['root', 'comment', 'pipeline_passed', 'pipeline_failed', 'reviewed', 'changes_requested', 'approved', 'pushed', 'merged', 'closed']).describe('A kind of message: the root that starts a merge request\'s thread, or one kind of notice in it.')).describe('The kinds of messages the route has templates of its own for. The others use the built-in templates.'),
   "etag": zod.string().describe('The route\'s current version, for If-Match on a change.')
 })),
   "next_cursor": zod.string().optional().describe('Absent on the last page.')
@@ -891,6 +892,7 @@ export const CreateRouteResponse = zod.object({
   "source_id": zod.int(),
   "sink_id": zod.int(),
   "muted_replies": zod.array(zod.enum(['comment', 'review', 'pipeline', 'push', 'merge', 'close']).describe('A kind of thread reply: comments, review verdicts, pipeline results, new commits, merges and closes.')).describe('The replies the route does not post. The board still shows every change.'),
+  "custom_templates": zod.array(zod.enum(['root', 'comment', 'pipeline_passed', 'pipeline_failed', 'reviewed', 'changes_requested', 'approved', 'pushed', 'merged', 'closed']).describe('A kind of message: the root that starts a merge request\'s thread, or one kind of notice in it.')).describe('The kinds of messages the route has templates of its own for. The others use the built-in templates.'),
   "etag": zod.string().describe('The route\'s current version, for If-Match on a change.')
 })
 
@@ -908,6 +910,7 @@ export const GetRouteResponse = zod.object({
   "source_id": zod.int(),
   "sink_id": zod.int(),
   "muted_replies": zod.array(zod.enum(['comment', 'review', 'pipeline', 'push', 'merge', 'close']).describe('A kind of thread reply: comments, review verdicts, pipeline results, new commits, merges and closes.')).describe('The replies the route does not post. The board still shows every change.'),
+  "custom_templates": zod.array(zod.enum(['root', 'comment', 'pipeline_passed', 'pipeline_failed', 'reviewed', 'changes_requested', 'approved', 'pushed', 'merged', 'closed']).describe('A kind of message: the root that starts a merge request\'s thread, or one kind of notice in it.')).describe('The kinds of messages the route has templates of its own for. The others use the built-in templates.'),
   "etag": zod.string().describe('The route\'s current version, for If-Match on a change.')
 })
 
@@ -934,6 +937,7 @@ export const UpdateRouteResponse = zod.object({
   "source_id": zod.int(),
   "sink_id": zod.int(),
   "muted_replies": zod.array(zod.enum(['comment', 'review', 'pipeline', 'push', 'merge', 'close']).describe('A kind of thread reply: comments, review verdicts, pipeline results, new commits, merges and closes.')).describe('The replies the route does not post. The board still shows every change.'),
+  "custom_templates": zod.array(zod.enum(['root', 'comment', 'pipeline_passed', 'pipeline_failed', 'reviewed', 'changes_requested', 'approved', 'pushed', 'merged', 'closed']).describe('A kind of message: the root that starts a merge request\'s thread, or one kind of notice in it.')).describe('The kinds of messages the route has templates of its own for. The others use the built-in templates.'),
   "etag": zod.string().describe('The route\'s current version, for If-Match on a change.')
 })
 
@@ -951,6 +955,103 @@ export const DeleteRouteHeader = zod.object({
 })
 
 export const DeleteRouteResponse = zod.void()
+
+
+/**
+ * A kind without a template of its own answers 404, and its messages use the built-in template.
+ * @summary Read a route's own template for one kind of message. Routing Managers read only those of the teams they manage.
+ */
+export const GetRouteTemplateParams = zod.object({
+  "id": zod.int(),
+  "kind": zod.enum(['root', 'comment', 'pipeline_passed', 'pipeline_failed', 'reviewed', 'changes_requested', 'approved', 'pushed', 'merged', 'closed'])
+})
+
+
+export const getRouteTemplateResponseTextMax = 16384;
+
+
+
+export const GetRouteTemplateResponse = zod.object({
+  "kind": zod.enum(['root', 'comment', 'pipeline_passed', 'pipeline_failed', 'reviewed', 'changes_requested', 'approved', 'pushed', 'merged', 'closed']).describe('A kind of message: the root that starts a merge request\'s thread, or one kind of notice in it.'),
+  "version": zod.int().min(1).describe('The version of the data model the template reads. Version 1 is the only one so far.'),
+  "text": zod.string().max(getRouteTemplateResponseTextMax).describe('A Go text/template that writes Markdown. The guide on message templates documents what it can read and call.'),
+  "etag": zod.string().describe('The route\'s current version, for If-Match on a change.')
+})
+
+
+/**
+ * The template replaces the built-in one, or the route's previous one. It must render every sample merge request first: a template that does not is refused with 422, naming the line and the cause. If-Match holds the route's ETag, and the change makes a new version of the route.
+ * @summary Give a route its own template for one kind of message, for the team's Routing Managers and Instance Admins.
+ */
+export const SetRouteTemplateParams = zod.object({
+  "id": zod.int(),
+  "kind": zod.enum(['root', 'comment', 'pipeline_passed', 'pipeline_failed', 'reviewed', 'changes_requested', 'approved', 'pushed', 'merged', 'closed'])
+})
+
+export const SetRouteTemplateHeader = zod.object({
+  "If-Match": zod.string().describe('The ETag of the resource as last read. A change without it, or with an old one, is refused.')
+})
+
+
+export const setRouteTemplateBodyTextMax = 16384;
+
+
+
+export const SetRouteTemplateBody = zod.object({
+  "version": zod.int().min(1).describe('The version of the data model the template reads. Version 1 is the only one so far.'),
+  "text": zod.string().max(setRouteTemplateBodyTextMax).describe('A Go text/template that writes Markdown. The guide on message templates documents what it can read and call.')
+})
+
+
+export const setRouteTemplateResponseTextMax = 16384;
+
+
+
+export const SetRouteTemplateResponse = zod.object({
+  "kind": zod.enum(['root', 'comment', 'pipeline_passed', 'pipeline_failed', 'reviewed', 'changes_requested', 'approved', 'pushed', 'merged', 'closed']).describe('A kind of message: the root that starts a merge request\'s thread, or one kind of notice in it.'),
+  "version": zod.int().min(1).describe('The version of the data model the template reads. Version 1 is the only one so far.'),
+  "text": zod.string().max(setRouteTemplateResponseTextMax).describe('A Go text/template that writes Markdown. The guide on message templates documents what it can read and call.'),
+  "etag": zod.string().describe('The route\'s current version, for If-Match on a change.')
+})
+
+
+/**
+ * If-Match holds the route's ETag, and the change makes a new version of the route, whose ETag the answer carries.
+ * @summary Return a route to the built-in template for one kind of message, for the team's Routing Managers and Instance Admins.
+ */
+export const DeleteRouteTemplateParams = zod.object({
+  "id": zod.int(),
+  "kind": zod.enum(['root', 'comment', 'pipeline_passed', 'pipeline_failed', 'reviewed', 'changes_requested', 'approved', 'pushed', 'merged', 'closed'])
+})
+
+export const DeleteRouteTemplateHeader = zod.object({
+  "If-Match": zod.string().describe('The ETag of the resource as last read. A change without it, or with an old one, is refused.')
+})
+
+export const DeleteRouteTemplateResponse = zod.void()
+
+
+/**
+ * A template that fails is refused with 422, naming the line and the cause, as storing it would be.
+ * @summary Render a draft template against sample merge requests, for each chat platform, without storing it.
+ */
+
+export const previewTemplateBodyTextMax = 16384;
+
+
+
+export const PreviewTemplateBody = zod.object({
+  "kind": zod.enum(['root', 'comment', 'pipeline_passed', 'pipeline_failed', 'reviewed', 'changes_requested', 'approved', 'pushed', 'merged', 'closed']).describe('A kind of message: the root that starts a merge request\'s thread, or one kind of notice in it.'),
+  "version": zod.int().min(1).describe('The version of the data model the template reads. Version 1 is the only one so far.'),
+  "text": zod.string().max(previewTemplateBodyTextMax).describe('A Go text/template that writes Markdown. The guide on message templates documents what it can read and call.')
+})
+
+export const PreviewTemplateResponse = zod.object({
+  "samples": zod.array(zod.object({
+  "description": zod.string().describe('The sample merge request, such as "a closed merge request".'),
+  "mattermost": zod.string().describe('The message as PatchCaster would post it to Mattermost.')
+}))
+})
 
 
 /**

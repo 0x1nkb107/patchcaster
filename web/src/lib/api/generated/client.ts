@@ -458,6 +458,25 @@ export const ReplyKind = {
   close: 'close',
 } as const;
 
+/**
+ * A kind of message: the root that starts a merge request's thread, or one kind of notice in it.
+ */
+export type MessageKind = typeof MessageKind[keyof typeof MessageKind];
+
+
+export const MessageKind = {
+  root: 'root',
+  comment: 'comment',
+  pipeline_passed: 'pipeline_passed',
+  pipeline_failed: 'pipeline_failed',
+  reviewed: 'reviewed',
+  changes_requested: 'changes_requested',
+  approved: 'approved',
+  pushed: 'pushed',
+  merged: 'merged',
+  closed: 'closed',
+} as const;
+
 export interface Route {
   id: number;
   team_id: number;
@@ -465,6 +484,8 @@ export interface Route {
   sink_id: number;
   /** The replies the route does not post. The board still shows every change. */
   muted_replies: ReplyKind[];
+  /** The kinds of messages the route has templates of its own for. The others use the built-in templates. */
+  custom_templates: MessageKind[];
   /** The route's current version, for If-Match on a change. */
   etag: string;
 }
@@ -487,6 +508,48 @@ export interface RouteRequest {
 
 export interface RouteUpdate {
   muted_replies: ReplyKind[];
+}
+
+/**
+ * The version of the data model the template reads. Version 1 is the only one so far.
+ * @minimum 1
+ */
+export type TemplateVersion = number;
+
+/**
+ * A Go text/template that writes Markdown. The guide on message templates documents what it can read and call.
+ * @maxLength 16384
+ */
+export type TemplateText = string;
+
+export interface RouteTemplate {
+  kind: MessageKind;
+  version: TemplateVersion;
+  text: TemplateText;
+  /** The route's current version, for If-Match on a change. */
+  etag: string;
+}
+
+export interface RouteTemplateUpdate {
+  version: TemplateVersion;
+  text: TemplateText;
+}
+
+export interface TemplateDraft {
+  kind: MessageKind;
+  version: TemplateVersion;
+  text: TemplateText;
+}
+
+export interface TemplateSample {
+  /** The sample merge request, such as "a closed merge request". */
+  description: string;
+  /** The message as PatchCaster would post it to Mattermost. */
+  mattermost: string;
+}
+
+export interface TemplatePreview {
+  samples: TemplateSample[];
 }
 
 export interface AuditPage {
@@ -2583,6 +2646,217 @@ export const deleteRoute = async (id: number, options?: Parameters<typeof apiFet
     method: 'DELETE'
 
 
+  }
+);}
+
+
+
+export type getRouteTemplateResponse200 = {
+  data: RouteTemplate
+  status: 200
+}
+
+export type getRouteTemplateResponseDefault = {
+  data: ProblemResponse
+  status: Exclude<HTTPStatusCodes, 200>
+}
+
+export type getRouteTemplateResponseSuccess = (getRouteTemplateResponse200) & {
+  headers: Headers;
+};
+export type getRouteTemplateResponseError = (getRouteTemplateResponseDefault) & {
+  headers: Headers;
+};
+
+export type getRouteTemplateResponse = (getRouteTemplateResponseSuccess | getRouteTemplateResponseError)
+
+export const getGetRouteTemplateUrl = (id: number,
+    kind: MessageKind,) => {
+
+
+
+
+  return `/api/v1/routes/${id}/templates/${kind}`
+}
+
+/**
+ * A kind without a template of its own answers 404, and its messages use the built-in template.
+ * @summary Read a route's own template for one kind of message. Routing Managers read only those of the teams they manage.
+ */
+export const getRouteTemplate = async (id: number,
+    kind: MessageKind, options?: Parameters<typeof apiFetch>[1]): Promise<getRouteTemplateResponse> => {
+
+  return apiFetch<getRouteTemplateResponse>(getGetRouteTemplateUrl(id,kind),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+export type setRouteTemplateResponse200 = {
+  data: RouteTemplate
+  status: 200
+}
+
+export type setRouteTemplateResponseDefault = {
+  data: ProblemResponse
+  status: Exclude<HTTPStatusCodes, 200>
+}
+
+export type setRouteTemplateResponseSuccess = (setRouteTemplateResponse200) & {
+  headers: Headers;
+};
+export type setRouteTemplateResponseError = (setRouteTemplateResponseDefault) & {
+  headers: Headers;
+};
+
+export type setRouteTemplateResponse = (setRouteTemplateResponseSuccess | setRouteTemplateResponseError)
+
+export const getSetRouteTemplateUrl = (id: number,
+    kind: MessageKind,) => {
+
+
+
+
+  return `/api/v1/routes/${id}/templates/${kind}`
+}
+
+/**
+ * The template replaces the built-in one, or the route's previous one. It must render every sample merge request first: a template that does not is refused with 422, naming the line and the cause. If-Match holds the route's ETag, and the change makes a new version of the route.
+ * @summary Give a route its own template for one kind of message, for the team's Routing Managers and Instance Admins.
+ */
+export const setRouteTemplate = async (id: number,
+    kind: MessageKind,
+    routeTemplateUpdate: RouteTemplateUpdate, options?: Parameters<typeof apiFetch>[1]): Promise<setRouteTemplateResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<setRouteTemplateResponse>(getSetRouteTemplateUrl(id,kind),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(routeTemplateUpdate)
+  }
+);}
+
+
+
+export type deleteRouteTemplateResponse204 = {
+  data: void
+  status: 204
+}
+
+export type deleteRouteTemplateResponseDefault = {
+  data: ProblemResponse
+  status: Exclude<HTTPStatusCodes, 204>
+}
+
+export type deleteRouteTemplateResponseSuccess = (deleteRouteTemplateResponse204) & {
+  headers: Headers;
+};
+export type deleteRouteTemplateResponseError = (deleteRouteTemplateResponseDefault) & {
+  headers: Headers;
+};
+
+export type deleteRouteTemplateResponse = (deleteRouteTemplateResponseSuccess | deleteRouteTemplateResponseError)
+
+export const getDeleteRouteTemplateUrl = (id: number,
+    kind: MessageKind,) => {
+
+
+
+
+  return `/api/v1/routes/${id}/templates/${kind}`
+}
+
+/**
+ * If-Match holds the route's ETag, and the change makes a new version of the route, whose ETag the answer carries.
+ * @summary Return a route to the built-in template for one kind of message, for the team's Routing Managers and Instance Admins.
+ */
+export const deleteRouteTemplate = async (id: number,
+    kind: MessageKind, options?: Parameters<typeof apiFetch>[1]): Promise<deleteRouteTemplateResponse> => {
+
+  return apiFetch<deleteRouteTemplateResponse>(getDeleteRouteTemplateUrl(id,kind),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+export type previewTemplateResponse200 = {
+  data: TemplatePreview
+  status: 200
+}
+
+export type previewTemplateResponseDefault = {
+  data: ProblemResponse
+  status: Exclude<HTTPStatusCodes, 200>
+}
+
+export type previewTemplateResponseSuccess = (previewTemplateResponse200) & {
+  headers: Headers;
+};
+export type previewTemplateResponseError = (previewTemplateResponseDefault) & {
+  headers: Headers;
+};
+
+export type previewTemplateResponse = (previewTemplateResponseSuccess | previewTemplateResponseError)
+
+export const getPreviewTemplateUrl = () => {
+
+
+
+
+  return `/api/v1/templates/preview`
+}
+
+/**
+ * A template that fails is refused with 422, naming the line and the cause, as storing it would be.
+ * @summary Render a draft template against sample merge requests, for each chat platform, without storing it.
+ */
+export const previewTemplate = async (templateDraft: TemplateDraft, options?: Parameters<typeof apiFetch>[1]): Promise<previewTemplateResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<previewTemplateResponse>(getPreviewTemplateUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(templateDraft)
   }
 );}
 

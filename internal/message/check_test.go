@@ -50,3 +50,27 @@ func TestCheckAcceptsAMessageJustShortEnough(t *testing.T) {
 
 	assert.NoError(t, Check(template))
 }
+
+func TestPreviewShowsTheExamplesButNotTheSizeCheck(t *testing.T) {
+	template, err := Parse(Closed, Version1, "{{.Event.Actor}} closed !{{.MergeRequest.Number}}{{with .Event.Commits}} after {{.}} commits{{end}}")
+	require.NoError(t, err)
+
+	renderings, err := Preview(template)
+
+	require.NoError(t, err)
+	require.NotEmpty(t, renderings)
+	assert.Equal(t, Rendering{Description: "an open merge request", Markdown: "bob closed !12"}, renderings[0])
+	assert.Equal(t, Rendering{Description: "an open merge request and a commit count", Markdown: "bob closed !12 after 3 commits"}, renderings[1])
+	for _, rendering := range renderings {
+		assert.NotContains(t, rendering.Description, "longest")
+	}
+}
+
+func TestPreviewRefusesWhatCheckRefuses(t *testing.T) {
+	template, err := Parse(Root, Version1, strings.Repeat("{{.MergeRequest.Title}}", 13))
+	require.NoError(t, err)
+
+	_, err = Preview(template)
+
+	requireRefusal(t, err, 0, "more than the 16383 that Mattermost accepts")
+}

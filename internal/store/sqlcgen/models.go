@@ -163,6 +163,13 @@ type Route struct {
 	Version      int64
 }
 
+type RouteTemplate struct {
+	RouteID     int64
+	Kind        string
+	DataVersion int32
+	Text        string
+}
+
 type SeenWebhook struct {
 	WebhookID string
 	Outcome   string

@@ -301,6 +301,18 @@ func (f *fakeStore) DeleteRoute(context.Context, store.Actor, int64, int64, time
 	return errNotInTest
 }
 
+func (f *fakeStore) RouteTemplate(context.Context, int64, string) (*store.RouteTemplate, error) {
+	return nil, errNotInTest
+}
+
+func (f *fakeStore) SetRouteTemplate(context.Context, store.Actor, store.RouteTemplate, int64, time.Time) (*store.Route, error) {
+	return nil, errNotInTest
+}
+
+func (f *fakeStore) DeleteRouteTemplate(context.Context, store.Actor, int64, string, int64, time.Time) (*store.Route, error) {
+	return nil, errNotInTest
+}
+
 // fakePlatforms answers every check with err, or with the account "bot".
 type fakePlatforms struct {
 	err     error

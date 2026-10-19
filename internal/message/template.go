@@ -61,7 +61,7 @@ type Template struct {
 // It refuses text that does not parse, and text that calls a function
 // outside the documented set.
 func Parse(kind Kind, version Version, text string) (*Template, error) {
-	if version != Version1 {
+	if !version.Known() {
 		return nil, &Error{Cause: fmt.Sprintf("data model version %d does not exist", version)}
 	}
 	parsed, err := template.New(string(kind)).Funcs(functions).Parse(text)

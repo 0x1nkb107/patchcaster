@@ -173,12 +173,13 @@ func routeOf(r *store.Route) v1gen.TeamRoute {
 		muted = append(muted, v1gen.ReplyKind(kind))
 	}
 	return v1gen.TeamRoute{
-		ID:           r.ID,
-		TeamID:       r.TeamID,
-		SourceID:     r.SourceID,
-		SinkID:       r.SinkID,
-		MutedReplies: muted,
-		Etag:         etagOf(r.Version),
+		ID:              r.ID,
+		TeamID:          r.TeamID,
+		SourceID:        r.SourceID,
+		SinkID:          r.SinkID,
+		MutedReplies:    muted,
+		CustomTemplates: customTemplates(r.CustomTemplates),
+		Etag:            etagOf(r.Version),
 	}
 }
 

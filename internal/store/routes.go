@@ -29,14 +29,17 @@ var (
 
 // Route forwards a team's source into one of its sinks (SYSREQ-046).
 // MutedReplies names the reply kinds it does not post. The board updates
-// whatever they are (SYSREQ-047).
+// whatever they are (SYSREQ-047). CustomTemplates names the kinds of
+// messages it has templates of its own for (SYSREQ-049). A change to its
+// templates makes a new version of the route.
 type Route struct {
-	ID           int64
-	TeamID       int64
-	SourceID     int64
-	SinkID       int64
-	MutedReplies []string
-	Version      int64
+	ID              int64
+	TeamID          int64
+	SourceID        int64
+	SinkID          int64
+	MutedReplies    []string
+	CustomTemplates []string
+	Version         int64
 }
 
 func routeFrom(row sqlcgen.RouteGetRow) (*Route, error) {
@@ -50,15 +53,19 @@ func routeFrom(row sqlcgen.RouteGetRow) (*Route, error) {
 	if err := json.Unmarshal(row.MutedReplies, &route.MutedReplies); err != nil {
 		return nil, fmt.Errorf("decode muted replies of route %d: %w", row.ID, err)
 	}
+	if err := json.Unmarshal(row.CustomTemplates, &route.CustomTemplates); err != nil {
+		return nil, fmt.Errorf("decode template kinds of route %d: %w", row.ID, err)
+	}
 	return route, nil
 }
 
 func routeTarget(r *Route) map[string]any {
 	return map[string]any{
-		"team_id":       r.TeamID,
-		"source_id":     r.SourceID,
-		"sink_id":       r.SinkID,
-		"muted_replies": replyList(r.MutedReplies),
+		"team_id":          r.TeamID,
+		"source_id":        r.SourceID,
+		"sink_id":          r.SinkID,
+		"muted_replies":    replyList(r.MutedReplies),
+		"custom_templates": r.CustomTemplates,
 	}
 }
 
@@ -204,4 +211,135 @@ func (p *Postgres) DeleteRoute(ctx context.Context, actor Actor, id, version int
 			before:     routeTarget(before),
 		})
 	})
+}
+
+// RouteTemplate is a route's own template for one kind of message
+// (SYSREQ-049). DataVersion names the version of the data model it reads
+// (ADR-038).
+type RouteTemplate struct {
+	RouteID     int64
+	Kind        string
+	DataVersion int
+	Text        string
+}
+
+func routeTemplateFrom(row sqlcgen.RouteTemplate) *RouteTemplate {
+	return &RouteTemplate{
+		RouteID:     row.RouteID,
+		Kind:        row.Kind,
+		DataVersion: int(row.DataVersion),
+		Text:        row.Text,
+	}
+}
+
+func routeTemplateTarget(t *RouteTemplate) map[string]any {
+	return map[string]any{
+		"kind":         t.Kind,
+		"data_version": t.DataVersion,
+		"text":         t.Text,
+	}
+}
+
+func readRouteTemplate(ctx context.Context, q *sqlcgen.Queries, routeID int64, kind string) (*RouteTemplate, error) {
+	row, err := q.RouteTemplateGet(ctx, sqlcgen.RouteTemplateGetParams{RouteID: routeID, Kind: kind})
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read %s template of route %d: %w", kind, routeID, err)
+	}
+	return routeTemplateFrom(row), nil
+}
+
+// touchRoute makes a new version of a route at the version the caller read.
+func touchRoute(ctx context.Context, q *sqlcgen.Queries, routeID, version int64, now time.Time) error {
+	n, err := q.RouteTouch(ctx, sqlcgen.RouteTouchParams{ID: routeID, Version: version, UpdatedAt: now})
+	if err != nil {
+		return fmt.Errorf("touch route %d: %w", routeID, err)
+	}
+	if n == 0 {
+		return ErrVersionMismatch
+	}
+	return nil
+}
+
+// RouteTemplate reads a route's template for one kind of message, or
+// returns ErrNotFound when the route has none of its own.
+func (p *Postgres) RouteTemplate(ctx context.Context, routeID int64, kind string) (*RouteTemplate, error) {
+	return readRouteTemplate(ctx, p.base, routeID, kind)
+}
+
+// SetRouteTemplate stores a route's template for one kind of message, at
+// the route's version the caller read, and returns the route at its new
+// version. The audit entry shows the template before and after
+// (SCEN-016).
+func (p *Postgres) SetRouteTemplate(ctx context.Context, actor Actor, t RouteTemplate, routeVersion int64, now time.Time) (*Route, error) {
+	var updated *Route
+	err := p.inTx(ctx, func(q *sqlcgen.Queries) error {
+		if _, err := readRoute(ctx, q, t.RouteID); err != nil {
+			return err
+		}
+		var before any
+		previous, err := readRouteTemplate(ctx, q, t.RouteID, t.Kind)
+		switch {
+		case err == nil:
+			before = routeTemplateTarget(previous)
+		case !errors.Is(err, ErrNotFound):
+			return err
+		}
+		if err := touchRoute(ctx, q, t.RouteID, routeVersion, now); err != nil {
+			return err
+		}
+		err = q.RouteTemplateSet(ctx, sqlcgen.RouteTemplateSetParams{
+			RouteID:     t.RouteID,
+			Kind:        t.Kind,
+			DataVersion: int32(t.DataVersion),
+			Text:        t.Text,
+		})
+		if err != nil {
+			return fmt.Errorf("store %s template of route %d: %w", t.Kind, t.RouteID, err)
+		}
+		updated, err = readRoute(ctx, q, t.RouteID)
+		if err != nil {
+			return err
+		}
+		return audit(ctx, q, actor, now, change{
+			action:     "route.template_set",
+			targetKind: "route",
+			targetID:   itemID(t.RouteID),
+			before:     before,
+			after:      routeTemplateTarget(&t),
+		})
+	})
+	return updated, err
+}
+
+// DeleteRouteTemplate removes a route's template for one kind of message,
+// at the route's version the caller read, and returns the route at its new
+// version. The kind falls back to its built-in template.
+func (p *Postgres) DeleteRouteTemplate(ctx context.Context, actor Actor, routeID int64, kind string, routeVersion int64, now time.Time) (*Route, error) {
+	var updated *Route
+	err := p.inTx(ctx, func(q *sqlcgen.Queries) error {
+		before, err := readRouteTemplate(ctx, q, routeID, kind)
+		if err != nil {
+			return err
+		}
+		if err := touchRoute(ctx, q, routeID, routeVersion, now); err != nil {
+			return err
+		}
+		if _, err := q.RouteTemplateDelete(ctx, sqlcgen.RouteTemplateDeleteParams{RouteID: routeID, Kind: kind}); err != nil {
+			return fmt.Errorf("delete %s template of route %d: %w", kind, routeID, err)
+		}
+		updated, err = readRoute(ctx, q, routeID)
+		if err != nil {
+			return err
+		}
+		return audit(ctx, q, actor, now, change{
+			action:     "route.template_delete",
+			targetKind: "route",
+			targetID:   itemID(routeID),
+			before:     routeTemplateTarget(before),
+		})
+	})
+	return updated, err
 }

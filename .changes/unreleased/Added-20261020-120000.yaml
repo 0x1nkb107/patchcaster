@@ -1,0 +1,3 @@
+kind: Added
+body: 'A route can replace the built-in template of each kind of message with its own, through /api/v1/routes/{id}/templates/{kind}. Templates are checked against sample merge requests before they are stored, and /api/v1/templates/preview shows a draft as Mattermost would receive it. When several routes reach one channel, the route with the narrowest source writes its messages, and a template that fails at delivery gives way to the built-in one, counted in patchcaster_template_fallbacks_total.'
+time: 2026-10-20T12:00:00.000000000+02:00

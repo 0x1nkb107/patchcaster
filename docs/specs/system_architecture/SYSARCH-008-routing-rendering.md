@@ -21,13 +21,13 @@ Normative: routing decides per sink at acceptance, and rendering turns a version
 
 ## Technical Strategy
 
-At acceptance, ingest resolves the routes of the matched sources. For each distinct sink it decides the delivery plan: whether to reply, which is the only part a filter changes, and to refresh the board (ADR-014). It enqueues one message per sink. The queue's ordering holdback and the thread mapping are keyed by merge request and sink (SYSREQ-048).
+At acceptance, ingest resolves the routes of the matched sources. For each distinct sink it decides the delivery plan: whether to reply, which is the only part a filter changes, and to refresh the board (ADR-014). It enqueues one message per sink, which names the route with the narrowest source as the one whose templates write it. The queue's ordering holdback and the thread mapping are keyed by merge request and sink (SYSREQ-048), and the thread keeps the route of its root.
 
 At delivery, the worker builds the view model, with every forge value already escaped (SYSREQ-051). It applies the route's template with `text/template` (ADR-009, ADR-038) and parses the Markdown result with goldmark v2. The sink platform's renderer then produces the platform format (ADR-037). Mentions are nodes in the document, resolved against identity links when the message is delivered (SYSREQ-054).
 
 ## Static View (Structure)
 
-- **Router**: matched sources to routes to sinks, de-duplicated per sink.
+- **Router**: matched sources to routes to sinks, de-duplicated per sink, with the narrowest route as the writer of each sink's message.
 - **Planner**: the delivery plan per sink, with filters applied to replies only.
 - **ViewModel**: one versioned data model per template version.
 - **Escaper**: forge values to Markdown-safe text.

@@ -40,6 +40,7 @@ The [local demo](demo/README.md) does not work with the stored configuration yet
 | [GitLab](docs/integrations/gitlab.md) | webhook, signing token, required triggers |
 | [Mattermost](docs/integrations/mattermost.md) | bot account, channel membership, channel ids |
 | [Operations](docs/operations.md) | probes, metrics, drain, upgrades, delivery guarantees |
+| [Message templates](docs/templates.md) | the messages, their data model, and the templates of a route |
 | [Changelog](CHANGELOG.md) | what changed in each release |
 | [Development](docs/development.md) | building, testing, sending changes upstream |
 

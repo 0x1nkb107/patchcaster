@@ -4,7 +4,6 @@ type: system_requirement
 name: "One organization per instance"
 description: "An instance and its database serve exactly one organization."
 specification: "The service SHALL serve exactly one organization per instance and database, and SHALL hold no data of any other organization."
-status: proposed
 derives_from:
   - "SCEN-029"
 ---

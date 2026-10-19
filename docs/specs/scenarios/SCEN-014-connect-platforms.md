@@ -3,12 +3,13 @@ id: "SCEN-014"
 type: scenario
 name: "An administrator connects a forge and a chat platform"
 description: "An administrator adds a Forgejo instance and a Matrix homeserver as connections. Their credentials are checked, stored encrypted and never shown again."
-status: proposed
 refines:
   - "UC-004"
 ---
 
 # Scenario: An administrator connects a forge and a chat platform
+
+Accepted in part on 2026-10-18, with increment 1 (SOL-001). Still planned, and not normative until their increment is accepted: the Matrix connection with its recovery key and trigger word, with increment 4, and the registration of the `/patchcaster` command, with increment 5. Until the Forgejo adapter exists, the scenario holds for GitLab.
 
 ## Overview
 

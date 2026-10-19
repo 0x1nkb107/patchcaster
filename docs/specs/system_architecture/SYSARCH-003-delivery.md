@@ -38,16 +38,17 @@ Components: `Renderer` (named `text/template` templates over the escaped view mo
 SYSREQ-025, ADR-009), `MattermostClient`
 (API v4 posts: create and update only), `Worker` (claim loop, backoff policy from SYSREQ-016),
 `Wakeup` (supervises the listening session, reconnects with backoff, and turns notifications
-into coalesced wake-ups for the worker), `Store` repository (SYSARCH-002). Configuration supplies site URL and bot token (SYSREQ-022); the
-token reaches the client only, never the renderer or logging path.
+into coalesced wake-ups for the worker), `Store` repository (SYSARCH-002). Each message's chat connection supplies the platform's address and
+the bot token, read and opened from the database for every message (SYSREQ-034); the token
+reaches the client only, never the renderer or logging path.
 
 ## Dynamic View (Behavior)
 
 Each claim pass, started by a wake-up or a poll tick, claims due rows one after another until
 none is due. A listening session counts only once a probe notification it sent to itself comes
 back, and each such session wakes the worker once to cover rows committed while nobody listened.
-Worker claims a due row, resolves `mr_thread` (root vs. reply decision → SYSREQ-002,
-SYSREQ-005): no mapping skips the row with a log (SYSREQ-007), a closed thread skips it likewise,
+Worker claims a due row, resolves the `mr_thread` of its merge request and sink (root vs. reply
+decision → SYSREQ-002, SYSREQ-005): no mapping skips the row with a log (SYSREQ-007), a closed thread skips it likewise,
 and Mattermost's missing-root answer parks the row and closes the thread (SYSREQ-026). A delivery
 then runs as two idempotent phases over current `mr_state`: the notice reply `POST` — skipped
 when the row's phase flag marks it posted — followed by the root status `PUT` (SYSREQ-028);
@@ -55,4 +56,7 @@ failures at either phase retry under the same ladder without re-running the comp
 the merge delivery's final root update may settle, after which the mapping closes.
 Otherwise it posts, then settles the row: `sent`, rescheduled with backoff or
 `RateLimit-Reset` deferral (SYSREQ-016), or `parked` after the attempt budget. Drain (SYSREQ-023)
-stops claiming and lets in-flight attempts finish.
+stops claiming and lets in-flight attempts finish. A message whose sink or connection was removed
+after it was queued is skipped.
+
+Generalized on 2026-10-18 by SYSARCH-007: Mattermost is the first chat adapter, and each sink keeps its own thread, order and retries (SYSREQ-048). The rendering stays as described here until increment 2 brings SYSARCH-008's.

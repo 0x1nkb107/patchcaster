@@ -3,7 +3,6 @@ id: "SCEN-019"
 type: scenario
 name: "One merge request fans out into two sinks"
 description: "A source is routed into a Mattermost channel and a Matrix room. Each sink gets its own thread, and an outage of one delays nothing in the other."
-status: proposed
 refines:
   - "UC-005"
 ---

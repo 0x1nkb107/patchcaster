@@ -3,12 +3,13 @@ id: "UC-005"
 type: use_case
 name: "Team routing and message design"
 description: "Operators decide which of their team's sources announce into which of their team's sinks, which events reach the threads, and how the messages read."
-status: proposed
 refines:
   - "SOL-001"
 ---
 
 # Use Case: Team routing and message design
+
+Accepted in part on 2026-10-18, with increment 1 (SOL-001). Still planned, and not normative until their increment is accepted: templates per route, written in Markdown and previewed (SYSREQ-049 to SYSREQ-051), with increment 2.
 
 ## Actor(s)
 
@@ -38,4 +39,4 @@ Out of scope:
 ## Post-conditions
 
 - A routing change applies to events accepted after it. Queued messages keep the destination resolved when they were accepted (SYSREQ-024).
-- On acceptance this use case replaces the file-driven routing of UC-002.
+- This use case replaces the file-driven routing of UC-002 (2026-10-18).

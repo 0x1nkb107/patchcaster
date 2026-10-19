@@ -4,12 +4,13 @@ type: system_requirement
 name: "Management listener"
 description: "The web interface and the management API are served on a listener of their own."
 specification: "The service SHALL serve its web interface and management API on a listener separate from the webhook listener and the internal listener."
-status: proposed
 derives_from:
   - "SCEN-014"
 ---
 
 # System Requirement: Management listener
+
+Accepted in part on 2026-10-18, with increment 1 (SOL-001). Still planned, and not normative until their increment is accepted: the chat-command paths, the Mattermost command callback and the linking links, with increment 5.
 
 ## Requirement Specification
 

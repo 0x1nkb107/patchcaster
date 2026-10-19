@@ -3,7 +3,6 @@ id: "SYSARCH-007"
 type: system_architecture
 name: "Forge and chat adapters"
 description: "Each forge and each chat platform sits behind an adapter: forges verify and translate webhooks, chat platforms deliver, edit and receive commands."
-status: proposed
 satisfies:
   - "SYSREQ-044"
   - "SYSREQ-045"
@@ -20,7 +19,9 @@ satisfies:
 
 # System Architecture: Forge and chat adapters
 
-Normative once accepted: everything specific to a forge or a chat platform lives in that platform's adapter. The core sees only neutral events, sinks and capabilities (ADR-036).
+Accepted in part on 2026-10-18, with increment 1 (SOL-001). Still planned, and not normative until their increment is accepted: the Forgejo adapter, with increment 3, the Matrix adapter, with increment 4, and chat commands, with increment 5.
+
+Normative: everything specific to a forge or a chat platform lives in that platform's adapter. The core sees only neutral events, sinks and capabilities (ADR-036).
 
 ## Technical Strategy
 
@@ -41,4 +42,4 @@ Inbound, a forge delivery arrives at its connection's endpoint. The adapter veri
 
 ## Notes
 
-Proposed on 2026-10-15. On acceptance this generalizes SYSARCH-001 and SYSARCH-003.
+Accepted in part on 2026-10-18. It generalizes SYSARCH-001 and SYSARCH-003.

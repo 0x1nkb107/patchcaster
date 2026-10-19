@@ -21,6 +21,7 @@ Two goreleaser builds of the same commit produced different archives and checksu
 - The build sets `mod_timestamp` to the commit timestamp, so the binary carries the commit's time. `-trimpath` already keeps local paths out of it.
 - The archive pins every entry's metadata: owner and group `root`, mode `0755` for the binary and `0644` for `LICENSE`, and the commit date as modification time.
 - Any file added to the archives later needs the same pinned metadata.
+- (Amended on 2026-10-18 by ADR-032 and ADR-044: the binary embeds the web interface, whose bundle and SBOM are reproducible too. SvelteKit names the build after the commit, `web/.nvmrc` names the exact Node version, and the release rehearsal builds the bundle twice and compares the bytes.)
 
 ## Consequences
 

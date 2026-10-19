@@ -3,7 +3,6 @@ id: "SCEN-022"
 type: scenario
 name: "Automation manages routes through the API"
 description: "A CI job applies a team's routes through the management API with an operator's token, within the operator's permissions."
-status: proposed
 refines:
   - "UC-005"
 ---

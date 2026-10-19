@@ -3,7 +3,6 @@ id: "SCEN-017"
 type: scenario
 name: "An upgrade from v0.1 starts from an empty database"
 description: "v0.2 is an incompatible upgrade. A v0.1 deployment moves to it with a new, empty database and sets up its connections again. The v0.1 threads are abandoned."
-status: proposed
 refines:
   - "UC-004"
 ---

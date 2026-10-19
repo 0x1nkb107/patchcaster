@@ -3,7 +3,6 @@ id: "SYSARCH-008"
 type: system_architecture
 name: "Routing and rendering core"
 description: "Accepted events fan out along routes into per-sink queues, and messages render from operator templates into Markdown, then into each platform's format."
-status: proposed
 satisfies:
   - "SYSREQ-046"
   - "SYSREQ-047"
@@ -16,7 +15,9 @@ satisfies:
 
 # System Architecture: Routing and rendering core
 
-Normative once accepted: routing decides per sink at acceptance, and rendering turns a versioned view model into Markdown and then into each platform's native format.
+Accepted in part on 2026-10-18, with increment 1 (SOL-001). Still planned, and not normative until their increment is accepted: rendering through Markdown from a versioned view model (ADR-037, ADR-038), with increment 2, its HTML form for Matrix, with increment 4, and mentions, with increment 5. Until then, the templates of SYSARCH-003 render the messages.
+
+Normative: routing decides per sink at acceptance, and rendering turns a versioned view model into Markdown and then into each platform's native format.
 
 ## Technical Strategy
 
@@ -40,4 +41,4 @@ One accepted event becomes up to one queued message per sink. Each message rende
 
 ## Notes
 
-Proposed on 2026-10-15. On acceptance this changes SYSARCH-002's keys and SYSARCH-003's rendering.
+Accepted in part on 2026-10-18. It changed SYSARCH-002's keys. SYSARCH-003's rendering changes with increment 2.

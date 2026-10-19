@@ -4,7 +4,6 @@ type: system_requirement
 name: "Configuration audit log"
 description: "Every configuration change is recorded with who made it, when and how, and administrators can read the record."
 specification: "The service SHALL record every configuration change with the acting person and token, the time, the item and the change itself, with secret values redacted, in the same transaction as the change, and SHALL let administrators read the record but not alter it."
-status: proposed
 derives_from:
   - "SCEN-016"
 ---

@@ -4,7 +4,6 @@ type: system_requirement
 name: "Routes from sources to sinks"
 description: "Each accepted event reaches every sink a route connects to its source: one source to many sinks, many sources to one sink."
 specification: "The service SHALL forward each accepted event to every sink that a route connects to a source the event matched."
-status: proposed
 derives_from:
   - "SCEN-018"
   - "SCEN-019"
@@ -36,4 +35,4 @@ Routes replace the routing table. They allow fan-out into several sinks as well 
 
 ## Notes
 
-On acceptance this replaces SYSREQ-009 and generalizes SYSREQ-011.
+Since its acceptance on 2026-10-18, this replaces SYSREQ-009 and generalizes SYSREQ-011.

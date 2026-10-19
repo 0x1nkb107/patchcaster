@@ -30,11 +30,12 @@ structs and repository interfaces (owner directive, 2026-10-10), which is what k
 
 ## Static View (Structure)
 
-Four relations: `mr_thread` (project id + merge request id → root post id, channel id, thread
-state open/closed per SYSREQ-026), `mr_state` (one row per merge request: pipeline status, human
+Four relations: `mr_thread` (merge request and sink → root post id, channel id, thread state
+open/closed per SYSREQ-026, SYSREQ-048), `mr_state` (one row per merge request, keyed by its
+forge connection and the forge's id (ADR-036): pipeline status, human
 comment count, edit count, reviewer tally, source branch and open flag for push attribution, last
 attributed push count — SYSREQ-027/030), `seen_webhook` (webhook id, first-seen time; pruned past
-retention per SYSREQ-014), `outbox` (payload, resolved destination channel per SYSREQ-024, state
+retention per SYSREQ-014), `outbox` (payload, resolved sink, chat connection and channel per SYSREQ-024, state
 `pending|parked|sent`, attempt count, next attempt time, claim lease, plus per-delivery phase
 flags marking which Mattermost operations of a delivery already succeeded — SYSREQ-028). Four
 repository interfaces — thread, state, dedupe, outbox — consumed by ingest (enqueue, seen-check,
@@ -50,12 +51,15 @@ notifies the `patchcaster_outbox` channel with an empty payload; PostgreSQL deli
 notification only on commit, so it wakes listening workers for rows they can already see
 (ADR-019). Ingest is the only writer of derived
 state, which is what makes counts exactly-once: delivery workers only read state to render. Workers claim due rows with a lease (`claimed_at` + expiry, so a
-crashed worker's rows come back), claiming in an order that serializes each merge request to one
+crashed worker's rows come back), claiming in an order that serializes each merge request and sink to one
 worker at a time, which is what preserves SYSREQ-002's exactly-one-root under the worker pool:
-a row is claimable only while no older row of its merge request is pending or claimed, so a
+a row is claimable only while no older row of its merge request and sink is pending or claimed, so a
 delivery that waits for a retry holds back the later ones instead of being overtaken by them.
 Parked and skipped rows are settled and hold nothing back.
-A periodic task prunes `seen_webhook` past retention. Readiness is a pool ping against a writable
+A periodic task prunes `seen_webhook` past retention. The configuration and the health of
+connections and sinks live in the same database, in the relations of SYSARCH-006. Amended on
+2026-10-18 by SYSARCH-008 and SYSREQ-048: threads, queue order and retries are per merge
+request and sink. Readiness is a pool ping against a writable
 store (SYSREQ-018): database unavailability fails readiness, never liveness (SCEN-008). v1
 deploys a single replica; the lease design is the groundwork, not the promise, of any future
 multi-replica increment.

@@ -4,7 +4,6 @@ type: system_requirement
 name: "Route filters act on replies only"
 description: "A route's filter decides which events reply in the thread. The root board still follows every event."
 specification: "The service SHALL apply a route's event filter only to thread replies, so that a filtered event still updates the root post in that route's sink."
-status: proposed
 derives_from:
   - "SCEN-020"
 depends_on:

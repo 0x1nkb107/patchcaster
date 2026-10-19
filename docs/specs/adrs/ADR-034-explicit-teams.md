@@ -3,7 +3,7 @@ id: "ADR-034"
 type: architecture_decision_record
 name: "Explicit teams scope operators"
 description: "Administrators create teams, assign them sources, sinks and operators, and operators route only within their teams."
-status: proposed
+status: accepted
 deciders:
   - "Project owner"
 justifies:

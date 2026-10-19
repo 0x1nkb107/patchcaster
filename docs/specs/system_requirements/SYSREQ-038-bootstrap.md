@@ -4,7 +4,6 @@ type: system_requirement
 name: "Bootstrap and recovery"
 description: "A one-time setup link creates the first administrator. A recovery command restores administrator access."
 specification: "The service SHALL offer a command that, while no administrator exists, issues a single-use setup link that expires, and a recovery command that grants the administrator role to a named OpenID Connect identity, and SHALL record both in the audit log."
-status: proposed
 derives_from:
   - "SCEN-013"
 ---

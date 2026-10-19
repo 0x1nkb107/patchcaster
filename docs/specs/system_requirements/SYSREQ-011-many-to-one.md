@@ -3,7 +3,7 @@ id: "SYSREQ-011"
 type: system_requirement
 name: "Many projects to one channel"
 description: "The routing model allows several projects to share a channel."
-specification: "The routing configuration SHALL permit several GitLab projects to share the same Mattermost channel."
+specification: "Routes SHALL permit several repositories to share the same sink."
 derives_from:
   - "SCEN-006"
 ---
@@ -12,7 +12,7 @@ derives_from:
 
 ## Requirement Specification
 
-> The routing configuration SHALL permit several GitLab projects to share the same Mattermost channel.
+> Routes SHALL permit several repositories to share the same sink.
 
 ## Rationale
 
@@ -21,8 +21,8 @@ must not assume project-to-channel bijectivity anywhere.
 
 ## Acceptance Criteria
 
-- A routing table where several entries name the same channel loads without error.
-- Events from each of those projects produce independent threads in the shared channel
+- Several routes may lead into the same sink, from one source or from several.
+- Events from each of those repositories produce independent threads in the shared sink
   (SCEN-006), and root messages name their project (SYSREQ-003).
 
 ## Verification Plan
@@ -32,4 +32,4 @@ must not assume project-to-channel bijectivity anywhere.
 
 ## Notes
 
-None.
+Generalized on 2026-10-18 by SYSREQ-046: routes stored in the database replace the routing table.

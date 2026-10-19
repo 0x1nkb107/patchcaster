@@ -4,13 +4,14 @@ type: system_requirement
 name: "Sinks"
 description: "A sink names one chat connection and one channel or room, and PatchCaster checks it can post there."
 specification: "The service SHALL deliver to sinks that each name one chat connection and one channel or room, and SHALL verify when a sink is created that the bot can post into it."
-status: proposed
 derives_from:
   - "SCEN-015"
   - "SCEN-028"
 ---
 
 # System Requirement: Sinks
+
+Accepted in part on 2026-10-18, with increment 1 (SOL-001). Still planned, and not normative until their increment is accepted: Matrix rooms as sinks, with increment 4.
 
 ## Requirement Specification
 

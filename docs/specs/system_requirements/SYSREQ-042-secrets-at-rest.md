@@ -4,7 +4,6 @@ type: system_requirement
 name: "Secrets encrypted at rest"
 description: "Every secret in the database is encrypted with the instance key and is never shown again once stored."
 specification: "The service SHALL store every secret it holds encrypted with the instance encryption key, and SHALL never return a stored secret through the web interface or the API."
-status: proposed
 derives_from:
   - "SCEN-014"
 depends_on:
@@ -25,7 +24,7 @@ Moving configuration into the database moves forge tokens, chat credentials and 
 
 - Secrets include forge tokens and OAuth client secrets, chat credentials, webhook secrets, the OpenID Connect client secret, and the Matrix recovery key and encryption state.
 - A database dump without the key reveals no secret.
-- The interface lets a secret be replaced, never read. The one exception is a new webhook secret, shown once for manual registration (SCEN-014).
+- The interface lets a secret be replaced, never read. For a hook registered by hand, the forge generates the signing token and shows it, never PatchCaster (owner decision 2026-10-17, SCEN-014).
 - A missing or wrong key stops the service at startup with a message that names the problem, not the key.
 - Rotating the key re-encrypts every secret without downtime.
 

@@ -4,7 +4,6 @@ type: system_requirement
 name: "Threads and ordering per merge request and sink"
 description: "Each sink has its own thread per merge request, and an outage of one sink delays no other."
 specification: "The service SHALL keep one thread per merge request and sink, and SHALL order and retry deliveries per merge request and sink, so that a failing sink delays no delivery to any other sink."
-status: proposed
 derives_from:
   - "SCEN-019"
 depends_on:
@@ -35,4 +34,4 @@ v0.1 keys threads and the queue's ordering holdback by merge request alone. With
 
 ## Notes
 
-On acceptance this extends SYSREQ-006 and SYSREQ-017 from the merge request to the pair of merge request and sink.
+Since its acceptance on 2026-10-18, this extends SYSREQ-006 and SYSREQ-017 from the merge request to the pair of merge request and sink.

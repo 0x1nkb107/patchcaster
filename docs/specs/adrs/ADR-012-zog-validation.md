@@ -56,7 +56,9 @@ at once. The dependency is pinned (v0.23.0 at adoption) and exercised by the
 lint/test gates on every bump. A second owner directive of the same day extends
 the tool to the decoded routing table (`internal/routing`): per-row `Required`
 fields plus a whole-document custom schema for project uniqueness, so every
-broken row is named with its index in one startup error.
+broken row is named with its index in one startup error. (Amended on 2026-10-18
+by ADR-030: zog validates only the startup and operating settings. The signing
+secrets and the routing table left the command line for the database.)
 
 ### Positive Consequences
 

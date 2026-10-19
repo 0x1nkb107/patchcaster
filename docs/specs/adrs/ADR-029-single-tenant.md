@@ -3,7 +3,7 @@ id: "ADR-029"
 type: architecture_decision_record
 name: "One instance and one database per organization"
 description: "Each PatchCaster instance serves exactly one organization from a database of its own."
-status: proposed
+status: accepted
 deciders:
   - "Project owner"
 justifies:

@@ -41,7 +41,8 @@ curl -s -H "Authorization: Bearer $BOT_TOKEN" \
 * **Missing membership or a bad token**: Mattermost refuses the post, and
   PatchCaster retries with backoff before parking the message
   (`patchcaster_messages_parked_total{cause="attempt_budget"}`); the refusal
-  is kept in the outbox row's `last_error`. See
+  is kept in the outbox row's `last_error`, and the sink's
+  [health](../operations.md#connection-and-sink-health) shows it. See
   [delivery guarantees](../operations.md#delivery-guarantees).
 * **A deleted root post** counts as an intentional removal: work for that
   thread parks with `cause="thread_gone"`, and PatchCaster does not post the

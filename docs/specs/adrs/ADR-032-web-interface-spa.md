@@ -3,7 +3,7 @@ id: "ADR-032"
 type: architecture_decision_record
 name: "A single-page web interface in strict TypeScript with SvelteKit"
 description: "The web interface is a SvelteKit single-page application in strict TypeScript with Bits UI and shadcn-svelte, bundled by Vite, embedded in the binary, and talking only to the management API."
-status: proposed
+status: accepted
 deciders:
   - "Project owner"
 justifies:

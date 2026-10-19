@@ -7,9 +7,12 @@ specification: "The service SHALL resolve the destination Mattermost channel for
 derives_from:
   - "SCEN-006"
   - "SCEN-007"
+status: retired
 ---
 
 # System Requirement: Routing table resolution
+
+> **Retired on 2026-10-18.** SYSREQ-046 replaces it: the routes stored in the database decide the sinks of every event (SYSREQ-034).
 
 ## Requirement Specification
 

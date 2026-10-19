@@ -3,7 +3,7 @@ id: "ADR-043"
 type: architecture_decision_record
 name: "Conventions of the management API"
 description: "The management API versions in its path, reports errors as problem details with field paths that form libraries understand, pages with cursors, and refuses conflicting writes."
-status: proposed
+status: accepted
 deciders:
   - "Project owner"
 justifies:

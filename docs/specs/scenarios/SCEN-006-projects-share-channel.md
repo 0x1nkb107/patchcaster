@@ -4,7 +4,7 @@ type: scenario
 name: "Several projects share one channel"
 description: "Two configured projects report into the same channel without their threads interfering."
 refines:
-  - "UC-002"
+  - "UC-005"
 ---
 
 # Scenario: Several projects share one channel
@@ -16,7 +16,7 @@ conversations never cross.
 
 ## Initial State
 
-- The routing table maps `group/alpha` and `group/beta` to the same channel identifier.
+- Routes send `group/alpha` and `group/beta` into the same sink.
 
 ## Trigger
 
@@ -25,7 +25,7 @@ both receive subsequent updates.
 
 ## Step-by-Step Flow
 
-1. Each delivery resolves to the shared channel via its own routing entry.
+1. Each delivery resolves to the shared sink through the routes of its sources.
 2. Each `open` creates its own root post; each update replies within its own root.
 
 ## Expected Outcome

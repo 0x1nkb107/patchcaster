@@ -2,7 +2,7 @@
 id: "ADR-013"
 type: architecture_decision_record
 name: "YAML-org go-yaml (go.yaml.in) for YAML"
-status: accepted
+status: superseded
 deciders:
   - "Project owner"
 justifies:
@@ -10,6 +10,8 @@ justifies:
 ---
 
 # Architecture Decision: YAML-org go-yaml (go.yaml.in) for YAML
+
+> **Superseded by ADR-030 (2026-10-18).** The routing file, the only YAML that PatchCaster read, is gone with the configuration's move into the database.
 
 ## Context and problem statement
 

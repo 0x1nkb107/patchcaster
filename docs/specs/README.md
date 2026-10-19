@@ -12,3 +12,7 @@ architecture choices. An absent `status` on an item means `active`.
 Each item lives in the directory of its type, in a file named after its id and a short lowercase slug, for example `adrs/ADR-001-sqlite-state.md`. A directory listing then sorts by number.
 
 Any item may carry `status: proposed`. A proposed item describes planned behaviour that is not built yet, and it is not normative until the owner accepts it. Until then, the active items it would change stay in force, and the proposed item names them. Accepting a proposal removes its `status` line, or sets an ADR's status to `accepted`, and amends or retires the items it replaces. Proposals are accepted increment by increment, in the pull request that implements them, and SOL-001 lists the increments.
+
+An item that spans several increments is accepted in part with the first increment that builds part of it. A note below its title names the parts still planned and the increment that brings each, and SOL-001 lists them. Those parts are not normative until their increment is accepted, and the item's links to proposed items lead to them.
+
+An item that a newer one replaces carries `status: retired` and a note that names its successor. It stays for history and traceability, and it is not normative. A replaced ADR is `superseded` instead, as SARA defines it, and the ADR that replaces it names it under `supersedes`.

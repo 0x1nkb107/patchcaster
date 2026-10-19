@@ -179,11 +179,11 @@ is first written to the `outbox` table, and a worker posts from there.
 
 Failed Mattermost attempts retry with exponential backoff (1 s, doubling;
 a rate limit's reset time wins when it is later). After 8 failed attempts the
-message parks. Parked messages (`patchcaster_messages_parked_total`) surface
+message parks. Each sink retries on its own, and its [health](#connection-and-sink-health) shows the last failure with Mattermost's answer. Parked messages (`patchcaster_messages_parked_total`) surface
 store reasons and stay in the `outbox` table for operator triage:
 
 ```sql
-SELECT id, mr_ref, dest_channel, attempts, settled_reason, last_error, settled_at
+SELECT id, mr_ref, sink_id, dest_channel, attempts, settled_reason, last_error, settled_at
 FROM outbox
 WHERE state = 'parked'
 ORDER BY settled_at DESC;

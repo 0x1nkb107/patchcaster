@@ -4,7 +4,6 @@ type: system_requirement
 name: "Management API with an OpenAPI description"
 description: "Every configuration operation of the web interface is available through an HTTP API, which the service describes in OpenAPI."
 specification: "The service SHALL offer every configuration operation of its web interface through an HTTP API, SHALL publish that API's OpenAPI description at a fixed path, and SHALL answer requests that do not conform to the description with HTTP 400."
-status: proposed
 derives_from:
   - "SCEN-022"
 ---

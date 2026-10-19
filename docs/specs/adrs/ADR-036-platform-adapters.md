@@ -3,7 +3,7 @@ id: "ADR-036"
 type: architecture_decision_record
 name: "Forges and chat platforms sit behind adapters"
 description: "A neutral core handles merge requests, routes and threads. Everything platform-specific lives in one forge or chat adapter each."
-status: proposed
+status: accepted
 deciders:
   - "Project owner"
 justifies:
@@ -30,5 +30,5 @@ v0.1 has one parser for GitLab's payloads (`internal/event`) and one client for 
 
 - Good: a new platform touches one adapter and its tests, not the core.
 - Good: existing behaviour stays guarded by the e2e suite while the code moves (ADR-025).
-- Bad: v0.1's threads cannot carry over, because they hold GitLab's global merge request id instead of the new identity. v0.2 therefore starts from an empty database (SYSREQ-043).
-- On acceptance, ADR-014's plan is decided per sink, and SYSARCH-001 and SYSARCH-003 generalize into SYSARCH-007.
+- Bad: v0.1's threads cannot carry over, because their keys name no connection and they have no sink. v0.2 therefore starts from an empty database (SYSREQ-043).
+- With its acceptance on 2026-10-18, ADR-014's plan is decided per sink, and SYSARCH-007 generalizes SYSARCH-001 and SYSARCH-003.

@@ -3,7 +3,7 @@ id: "ADR-044"
 type: architecture_decision_record
 name: "The web bundle lists its packages for licence notices and an SBOM"
 description: "A Vite plugin of the project lists the npm packages whose code the browser bundle holds. The interface serves their licence notices, and the release attaches a CycloneDX SBOM of them that the signed checksums cover."
-status: proposed
+status: accepted
 deciders:
   - "Project owner"
 justifies:

@@ -3,7 +3,6 @@ id: "SCEN-029"
 type: scenario
 name: "Each organization runs an instance of its own"
 description: "A second organization that wants PatchCaster gets its own instance and database, so no database holds the data of two organizations."
-status: proposed
 refines:
   - "UC-003"
 ---

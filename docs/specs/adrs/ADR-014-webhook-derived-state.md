@@ -56,6 +56,8 @@ push notices carry a commit count only when the matching push delivery was appli
 recomputed from every merge-request payload (never incremented), so approval resets and revoking
 pushes self-heal on the next MR event even though `unapproval` deliveries post no notice.
 
+(Amended on 2026-10-18 by ADR-036 and SYSREQ-048: the plan is decided per sink at acceptance. Each sink an event reaches gets a queued message of its own, with the replies its routes allow (SYSREQ-047), and the phase flags belong to that message. The state application still happens once per event. Hook registration uses the GitLab API, outside the delivery path (ADR-045).)
+
 ### Positive Consequences
 
 - Counters cannot double-count, and Mattermost outages never roll back or re-apply state.

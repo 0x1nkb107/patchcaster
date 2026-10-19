@@ -4,7 +4,6 @@ type: system_requirement
 name: "API tokens"
 description: "API clients authenticate with personal tokens that act with their owner's permissions."
 specification: "The service SHALL authenticate API clients by personal access tokens that act with no more than their owner's role and team scope, expire, can be revoked, and are stored only as hashes."
-status: proposed
 derives_from:
   - "SCEN-022"
 ---

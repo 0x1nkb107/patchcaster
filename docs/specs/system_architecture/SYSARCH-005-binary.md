@@ -20,7 +20,9 @@ configured through its kong-parsed command line.
 
 One `main` package, `cmd/patchcaster`, wiring `internal/` packages: `ingest`, `store`, `deliver`,
 `ops`. The kong-parsed configuration structs live in the `main` package itself — the command line
-is the command's own surface, parsed and validated there (owner directive 2026-10-10). The
+is the command's own surface, parsed and validated there (owner directive 2026-10-10). Since
+2026-10-18 they hold only the startup and operating settings; connections, routes and their
+secrets live in the database (SYSARCH-006). The
 `go.mod` `go` directive pins the exact toolchain (currently
 `1.27.1`) for reproducible builds; CGO stays off (pure-Go pgx driver, ADR-010) so the binary is
 static. Images are assembled by one COPY-only distroless Dockerfile around binaries compiled by
@@ -31,7 +33,9 @@ with `lint` running the version-pinned `golangci-lint` gate (ADR-011). Release a
 by the version-pinned goreleaser pipeline of ADR-015 (`just release-publish`), which
 cross-builds both claimed architectures and publishes the images and GitHub release of
 SYSREQ-031, signing images and archives keylessly per ADR-016 (SYSREQ-032), with release notes
-taken from the changie changelog (ADR-018). The Helm chart of SYSREQ-033 ships out-of-band
+taken from the changie changelog (ADR-018). The binary embeds the web interface, whose bundle the release pipeline builds first and
+reproducibly (ADR-032), and the release attaches an SBOM of the bundle's JavaScript packages
+(ADR-044). The Helm chart of SYSREQ-033 ships out-of-band
 from the sibling charts repository, signed under that repository's own workflow identity
 (ADR-017).
 

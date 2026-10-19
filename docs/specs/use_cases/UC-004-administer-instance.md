@@ -3,7 +3,6 @@ id: "UC-004"
 type: use_case
 name: "Instance administration"
 description: "The organization's IT department sets up and governs one PatchCaster instance: login, connections to forges and chat platforms, teams with their sources, sinks and operators."
-status: proposed
 refines:
   - "SOL-001"
 ---

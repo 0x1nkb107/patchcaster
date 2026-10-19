@@ -5,9 +5,12 @@ name: "Configuration-driven channel routing"
 description: "An operator declares which GitLab projects report into which Mattermost channels, including many projects sharing one channel."
 refines:
   - "SOL-001"
+status: retired
 ---
 
 # Use Case: Configuration-driven channel routing
+
+> **Retired on 2026-10-18.** UC-005 replaces it: teams route their sources into their sinks through the web interface and the API, and the routing file is gone (ADR-030).
 
 ## Actor(s)
 

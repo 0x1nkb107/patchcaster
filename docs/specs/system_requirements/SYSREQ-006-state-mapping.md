@@ -3,7 +3,7 @@ id: "SYSREQ-006"
 type: system_requirement
 name: "Durable merge request to thread mapping"
 description: "The merge request to root post mapping is stored durably."
-specification: "The service SHALL persistently store the mapping from merge request identity to root post identifier so that thread continuity survives process restarts."
+specification: "The service SHALL persistently store the mapping from each merge request and sink to its root post identifier so that thread continuity survives process restarts."
 derives_from:
   - "SCEN-002"
 ---
@@ -12,7 +12,7 @@ derives_from:
 
 ## Requirement Specification
 
-> The service SHALL persistently store the mapping from merge request identity to root post identifier so that thread continuity survives process restarts.
+> The service SHALL persistently store the mapping from each merge request and sink to its root post identifier so that thread continuity survives process restarts.
 
 ## Rationale
 
@@ -22,8 +22,7 @@ quality collapses precisely during rollouts. The mapping is also the join key th
 
 ## Acceptance Criteria
 
-- After a root post is accepted by Mattermost, a mapping from merge request identity (project
-  identifier + merge request identifier) to root post identifier is written durably.
+- After a root post is accepted by the sink's chat platform, a mapping from the merge request (its forge connection and the forge's identifier, ADR-036) and the sink to the root post identifier is written durably.
 - Stopping the process and starting it again against the same database still routes later events
   into the original thread.
 
@@ -36,4 +35,4 @@ quality collapses precisely during rollouts. The mapping is also the join key th
 
 ## Notes
 
-Storage technology is decided in ADR-001; this item is deliberately technology-neutral.
+Storage technology is decided in ADR-001; this item is deliberately technology-neutral. Amended on 2026-10-18 by SYSREQ-048: one mapping per merge request and sink.

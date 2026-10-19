@@ -4,7 +4,6 @@ type: system_requirement
 name: "No upgrade of v0.1 state"
 description: "v0.2 refuses to start on a database that still holds v0.1 state, and it imports nothing from v0.1."
 specification: "The service SHALL refuse to start on a database that holds the state of a v0.1 release, naming the reason and the remedy, and SHALL import no configuration, thread or queued message of a v0.1 release."
-status: proposed
 derives_from:
   - "SCEN-017"
 ---

@@ -108,8 +108,36 @@ func encodeCreateTokenRequest(
 	return nil
 }
 
+func encodePreviewTemplateRequest(
+	req *TemplateDraft,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
 func encodePutLoginSettingsRequest(
 	req *LoginSettingsUpdate,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
+func encodeSetRouteTemplateRequest(
+	req *RouteTemplateUpdate,
 	r *http.Request,
 ) error {
 	const contentType = "application/json"

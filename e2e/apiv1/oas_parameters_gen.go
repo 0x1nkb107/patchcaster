@@ -21,6 +21,14 @@ type DeleteRouteParams struct {
 	IfMatch string
 }
 
+// DeleteRouteTemplateParams is parameters of deleteRouteTemplate operation.
+type DeleteRouteTemplateParams struct {
+	// The ETag of the resource as last read. A change without it, or with an old one, is refused.
+	IfMatch string
+	ID      int64
+	Kind    MessageKind
+}
+
 // DeleteSinkParams is parameters of deleteSink operation.
 type DeleteSinkParams struct {
 	ID int64
@@ -50,6 +58,12 @@ type GetConnectionParams struct {
 // GetRouteParams is parameters of getRoute operation.
 type GetRouteParams struct {
 	ID int64
+}
+
+// GetRouteTemplateParams is parameters of getRouteTemplate operation.
+type GetRouteTemplateParams struct {
+	ID   int64
+	Kind MessageKind
 }
 
 // GetSinkParams is parameters of getSink operation.
@@ -162,6 +176,14 @@ type RevokeAccessParams struct {
 // RevokeTokenParams is parameters of revokeToken operation.
 type RevokeTokenParams struct {
 	ID int64
+}
+
+// SetRouteTemplateParams is parameters of setRouteTemplate operation.
+type SetRouteTemplateParams struct {
+	// The ETag of the resource as last read. A change without it, or with an old one, is refused.
+	IfMatch string
+	ID      int64
+	Kind    MessageKind
 }
 
 // UpdateConnectionParams is parameters of updateConnection operation.

@@ -69,6 +69,9 @@ type Store interface {
 	Routes(ctx context.Context, visibleTo, teamID, afterID int64, limit int) ([]store.Route, error)
 	UpdateRoute(ctx context.Context, actor store.Actor, r store.Route, now time.Time) (*store.Route, error)
 	DeleteRoute(ctx context.Context, actor store.Actor, id, version int64, now time.Time) error
+	RouteTemplate(ctx context.Context, routeID int64, kind string) (*store.RouteTemplate, error)
+	SetRouteTemplate(ctx context.Context, actor store.Actor, t store.RouteTemplate, routeVersion int64, now time.Time) (*store.Route, error)
+	DeleteRouteTemplate(ctx context.Context, actor store.Actor, routeID int64, kind string, routeVersion int64, now time.Time) (*store.Route, error)
 }
 
 // Login is what the v1 operations need from the login flow.

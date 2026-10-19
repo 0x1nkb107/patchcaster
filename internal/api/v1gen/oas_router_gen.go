@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	rn25AllowedHeaders = map[string]string{
+	rn27AllowedHeaders = map[string]string{
 		"GET": "Authorization",
 	}
 	rn4AllowedHeaders = map[string]string{
@@ -27,16 +27,16 @@ var (
 		"GET":  "Authorization",
 		"POST": "Authorization,Content-Type",
 	}
-	rn28AllowedHeaders = map[string]string{
+	rn32AllowedHeaders = map[string]string{
 		"DELETE": "Authorization",
 	}
-	rn26AllowedHeaders = map[string]string{
+	rn28AllowedHeaders = map[string]string{
 		"GET": "Authorization",
 	}
-	rn30AllowedHeaders = map[string]string{
+	rn34AllowedHeaders = map[string]string{
 		"PATCH": "Authorization,Content-Type,If-Match",
 	}
-	rn31AllowedHeaders = map[string]string{
+	rn35AllowedHeaders = map[string]string{
 		"POST": "Authorization",
 	}
 	rn6AllowedHeaders = map[string]string{
@@ -48,26 +48,22 @@ var (
 		"GET":    "Authorization",
 		"PUT":    "Authorization,Content-Type,If-Match",
 	}
-	rn21AllowedHeaders = map[string]string{
-		"GET": "Authorization",
-	}
-	rn24AllowedHeaders = map[string]string{
-		"GET": "Authorization",
-		"PUT": "Authorization,Content-Type,If-Match",
-	}
-	rn35AllowedHeaders = map[string]string{
-		"POST": "Content-Type",
-	}
-	rn7AllowedHeaders = map[string]string{
-		"GET":  "Authorization",
-		"POST": "Authorization,Content-Type",
-	}
 	rn16AllowedHeaders = map[string]string{
 		"DELETE": "Authorization,If-Match",
 		"GET":    "Authorization",
 		"PUT":    "Authorization,Content-Type,If-Match",
 	}
-	rn9AllowedHeaders = map[string]string{
+	rn23AllowedHeaders = map[string]string{
+		"GET": "Authorization",
+	}
+	rn26AllowedHeaders = map[string]string{
+		"GET": "Authorization",
+		"PUT": "Authorization,Content-Type,If-Match",
+	}
+	rn39AllowedHeaders = map[string]string{
+		"POST": "Content-Type",
+	}
+	rn7AllowedHeaders = map[string]string{
 		"GET":  "Authorization",
 		"POST": "Authorization,Content-Type",
 	}
@@ -76,7 +72,7 @@ var (
 		"GET":    "Authorization",
 		"PUT":    "Authorization,Content-Type,If-Match",
 	}
-	rn10AllowedHeaders = map[string]string{
+	rn9AllowedHeaders = map[string]string{
 		"GET":  "Authorization",
 		"POST": "Authorization,Content-Type",
 	}
@@ -84,6 +80,18 @@ var (
 		"DELETE": "Authorization,If-Match",
 		"GET":    "Authorization",
 		"PUT":    "Authorization,Content-Type,If-Match",
+	}
+	rn10AllowedHeaders = map[string]string{
+		"GET":  "Authorization",
+		"POST": "Authorization,Content-Type",
+	}
+	rn22AllowedHeaders = map[string]string{
+		"DELETE": "Authorization,If-Match",
+		"GET":    "Authorization",
+		"PUT":    "Authorization,Content-Type,If-Match",
+	}
+	rn30AllowedHeaders = map[string]string{
+		"POST": "Authorization,Content-Type",
 	}
 	rn12AllowedHeaders = map[string]string{
 		"POST": "Content-Type",
@@ -157,7 +165,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					default:
 						s.notAllowed(w, r, notAllowedParams{
 							allowedMethods: "GET",
-							allowedHeaders: rn25AllowedHeaders,
+							allowedHeaders: rn27AllowedHeaders,
 							acceptPost:     "",
 							acceptPatch:    "",
 						})
@@ -293,7 +301,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 								default:
 									s.notAllowed(w, r, notAllowedParams{
 										allowedMethods: "DELETE",
-										allowedHeaders: rn28AllowedHeaders,
+										allowedHeaders: rn32AllowedHeaders,
 										acceptPost:     "",
 										acceptPatch:    "",
 									})
@@ -348,7 +356,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					default:
 						s.notAllowed(w, r, notAllowedParams{
 							allowedMethods: "GET",
-							allowedHeaders: rn26AllowedHeaders,
+							allowedHeaders: rn28AllowedHeaders,
 							acceptPost:     "",
 							acceptPatch:    "",
 						})
@@ -383,7 +391,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 						default:
 							s.notAllowed(w, r, notAllowedParams{
 								allowedMethods: "PATCH",
-								allowedHeaders: rn30AllowedHeaders,
+								allowedHeaders: rn34AllowedHeaders,
 								acceptPost:     "",
 								acceptPatch:    "application/json",
 							})
@@ -410,7 +418,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 							default:
 								s.notAllowed(w, r, notAllowedParams{
 									allowedMethods: "POST",
-									allowedHeaders: rn31AllowedHeaders,
+									allowedHeaders: rn35AllowedHeaders,
 									acceptPost:     "",
 									acceptPatch:    "",
 								})
@@ -458,16 +466,15 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					}
 
 					// Param: "id"
-					// Leaf parameter, slashes are prohibited
+					// Match until "/"
 					idx := strings.IndexByte(elem, '/')
-					if idx >= 0 {
-						break
+					if idx < 0 {
+						idx = len(elem)
 					}
-					args[0] = elem
-					elem = ""
+					args[0] = elem[:idx]
+					elem = elem[idx:]
 
 					if len(elem) == 0 {
-						// Leaf node.
 						switch r.Method {
 						case "DELETE":
 							s.handleDeleteRouteRequest([1]string{
@@ -491,6 +498,55 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 						}
 
 						return
+					}
+					switch elem[0] {
+					case '/': // Prefix: "/templates/"
+
+						if l := len("/templates/"); len(elem) >= l && elem[0:l] == "/templates/" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						// Param: "kind"
+						// Leaf parameter, slashes are prohibited
+						idx := strings.IndexByte(elem, '/')
+						if idx >= 0 {
+							break
+						}
+						args[1] = elem
+						elem = ""
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch r.Method {
+							case "DELETE":
+								s.handleDeleteRouteTemplateRequest([2]string{
+									args[0],
+									args[1],
+								}, elemIsEscaped, w, r)
+							case "GET":
+								s.handleGetRouteTemplateRequest([2]string{
+									args[0],
+									args[1],
+								}, elemIsEscaped, w, r)
+							case "PUT":
+								s.handleSetRouteTemplateRequest([2]string{
+									args[0],
+									args[1],
+								}, elemIsEscaped, w, r)
+							default:
+								s.notAllowed(w, r, notAllowedParams{
+									allowedMethods: "DELETE,GET,PUT",
+									allowedHeaders: rn16AllowedHeaders,
+									acceptPost:     "",
+									acceptPatch:    "",
+								})
+							}
+
+							return
+						}
+
 					}
 
 				}
@@ -537,7 +593,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 							default:
 								s.notAllowed(w, r, notAllowedParams{
 									allowedMethods: "DELETE,GET",
-									allowedHeaders: rn21AllowedHeaders,
+									allowedHeaders: rn23AllowedHeaders,
 									acceptPost:     "",
 									acceptPatch:    "",
 								})
@@ -576,7 +632,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 								default:
 									s.notAllowed(w, r, notAllowedParams{
 										allowedMethods: "GET,PUT",
-										allowedHeaders: rn24AllowedHeaders,
+										allowedHeaders: rn26AllowedHeaders,
 										acceptPost:     "",
 										acceptPatch:    "",
 									})
@@ -601,7 +657,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 								default:
 									s.notAllowed(w, r, notAllowedParams{
 										allowedMethods: "POST",
-										allowedHeaders: rn35AllowedHeaders,
+										allowedHeaders: rn39AllowedHeaders,
 										acceptPost:     "application/json",
 										acceptPatch:    "",
 									})
@@ -675,7 +731,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 							default:
 								s.notAllowed(w, r, notAllowedParams{
 									allowedMethods: "DELETE,GET,PUT",
-									allowedHeaders: rn16AllowedHeaders,
+									allowedHeaders: rn18AllowedHeaders,
 									acceptPost:     "",
 									acceptPatch:    "",
 								})
@@ -747,7 +803,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 							default:
 								s.notAllowed(w, r, notAllowedParams{
 									allowedMethods: "DELETE,GET,PUT",
-									allowedHeaders: rn18AllowedHeaders,
+									allowedHeaders: rn20AllowedHeaders,
 									acceptPost:     "",
 									acceptPatch:    "",
 								})
@@ -772,69 +828,108 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					break
 				}
 				switch elem[0] {
-				case 'e': // Prefix: "eams"
+				case 'e': // Prefix: "e"
 
-					if l := len("eams"); len(elem) >= l && elem[0:l] == "eams" {
+					if l := len("e"); len(elem) >= l && elem[0:l] == "e" {
 						elem = elem[l:]
 					} else {
 						break
 					}
 
 					if len(elem) == 0 {
-						switch r.Method {
-						case "GET":
-							s.handleListTeamsRequest([0]string{}, elemIsEscaped, w, r)
-						case "POST":
-							s.handleCreateTeamRequest([0]string{}, elemIsEscaped, w, r)
-						default:
-							s.notAllowed(w, r, notAllowedParams{
-								allowedMethods: "GET,POST",
-								allowedHeaders: rn10AllowedHeaders,
-								acceptPost:     "application/json",
-								acceptPatch:    "",
-							})
-						}
-
-						return
+						break
 					}
 					switch elem[0] {
-					case '/': // Prefix: "/"
+					case 'a': // Prefix: "ams"
 
-						if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+						if l := len("ams"); len(elem) >= l && elem[0:l] == "ams" {
 							elem = elem[l:]
 						} else {
 							break
 						}
 
-						// Param: "id"
-						// Leaf parameter, slashes are prohibited
-						idx := strings.IndexByte(elem, '/')
-						if idx >= 0 {
+						if len(elem) == 0 {
+							switch r.Method {
+							case "GET":
+								s.handleListTeamsRequest([0]string{}, elemIsEscaped, w, r)
+							case "POST":
+								s.handleCreateTeamRequest([0]string{}, elemIsEscaped, w, r)
+							default:
+								s.notAllowed(w, r, notAllowedParams{
+									allowedMethods: "GET,POST",
+									allowedHeaders: rn10AllowedHeaders,
+									acceptPost:     "application/json",
+									acceptPatch:    "",
+								})
+							}
+
+							return
+						}
+						switch elem[0] {
+						case '/': // Prefix: "/"
+
+							if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							// Param: "id"
+							// Leaf parameter, slashes are prohibited
+							idx := strings.IndexByte(elem, '/')
+							if idx >= 0 {
+								break
+							}
+							args[0] = elem
+							elem = ""
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch r.Method {
+								case "DELETE":
+									s.handleDeleteTeamRequest([1]string{
+										args[0],
+									}, elemIsEscaped, w, r)
+								case "GET":
+									s.handleGetTeamRequest([1]string{
+										args[0],
+									}, elemIsEscaped, w, r)
+								case "PUT":
+									s.handleUpdateTeamRequest([1]string{
+										args[0],
+									}, elemIsEscaped, w, r)
+								default:
+									s.notAllowed(w, r, notAllowedParams{
+										allowedMethods: "DELETE,GET,PUT",
+										allowedHeaders: rn22AllowedHeaders,
+										acceptPost:     "",
+										acceptPatch:    "",
+									})
+								}
+
+								return
+							}
+
+						}
+
+					case 'm': // Prefix: "mplates/preview"
+
+						if l := len("mplates/preview"); len(elem) >= l && elem[0:l] == "mplates/preview" {
+							elem = elem[l:]
+						} else {
 							break
 						}
-						args[0] = elem
-						elem = ""
 
 						if len(elem) == 0 {
 							// Leaf node.
 							switch r.Method {
-							case "DELETE":
-								s.handleDeleteTeamRequest([1]string{
-									args[0],
-								}, elemIsEscaped, w, r)
-							case "GET":
-								s.handleGetTeamRequest([1]string{
-									args[0],
-								}, elemIsEscaped, w, r)
-							case "PUT":
-								s.handleUpdateTeamRequest([1]string{
-									args[0],
-								}, elemIsEscaped, w, r)
+							case "POST":
+								s.handlePreviewTemplateRequest([0]string{}, elemIsEscaped, w, r)
 							default:
 								s.notAllowed(w, r, notAllowedParams{
-									allowedMethods: "DELETE,GET,PUT",
-									allowedHeaders: rn20AllowedHeaders,
-									acceptPost:     "",
+									allowedMethods: "POST",
+									allowedHeaders: rn30AllowedHeaders,
+									acceptPost:     "application/json",
 									acceptPatch:    "",
 								})
 							}
@@ -1345,16 +1440,15 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 					}
 
 					// Param: "id"
-					// Leaf parameter, slashes are prohibited
+					// Match until "/"
 					idx := strings.IndexByte(elem, '/')
-					if idx >= 0 {
-						break
+					if idx < 0 {
+						idx = len(elem)
 					}
-					args[0] = elem
-					elem = ""
+					args[0] = elem[:idx]
+					elem = elem[idx:]
 
 					if len(elem) == 0 {
-						// Leaf node.
 						switch method {
 						case "DELETE":
 							r.name = DeleteRouteOperation
@@ -1386,6 +1480,60 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 						default:
 							return
 						}
+					}
+					switch elem[0] {
+					case '/': // Prefix: "/templates/"
+
+						if l := len("/templates/"); len(elem) >= l && elem[0:l] == "/templates/" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						// Param: "kind"
+						// Leaf parameter, slashes are prohibited
+						idx := strings.IndexByte(elem, '/')
+						if idx >= 0 {
+							break
+						}
+						args[1] = elem
+						elem = ""
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch method {
+							case "DELETE":
+								r.name = DeleteRouteTemplateOperation
+								r.summary = "Return a route to the built-in template for one kind of message, for the team's Routing Managers and Instance Admins."
+								r.operationID = "deleteRouteTemplate"
+								r.operationGroup = ""
+								r.pathPattern = "/api/v1/routes/{id}/templates/{kind}"
+								r.args = args
+								r.count = 2
+								return r, true
+							case "GET":
+								r.name = GetRouteTemplateOperation
+								r.summary = "Read a route's own template for one kind of message. Routing Managers read only those of the teams they manage."
+								r.operationID = "getRouteTemplate"
+								r.operationGroup = ""
+								r.pathPattern = "/api/v1/routes/{id}/templates/{kind}"
+								r.args = args
+								r.count = 2
+								return r, true
+							case "PUT":
+								r.name = SetRouteTemplateOperation
+								r.summary = "Give a route its own template for one kind of message, for the team's Routing Managers and Instance Admins."
+								r.operationID = "setRouteTemplate"
+								r.operationGroup = ""
+								r.pathPattern = "/api/v1/routes/{id}/templates/{kind}"
+								r.args = args
+								r.count = 2
+								return r, true
+							default:
+								return
+							}
+						}
+
 					}
 
 				}
@@ -1711,85 +1859,124 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 					break
 				}
 				switch elem[0] {
-				case 'e': // Prefix: "eams"
+				case 'e': // Prefix: "e"
 
-					if l := len("eams"); len(elem) >= l && elem[0:l] == "eams" {
+					if l := len("e"); len(elem) >= l && elem[0:l] == "e" {
 						elem = elem[l:]
 					} else {
 						break
 					}
 
 					if len(elem) == 0 {
-						switch method {
-						case "GET":
-							r.name = ListTeamsOperation
-							r.summary = "List teams. Instance Admins see all of them, Routing Managers the ones they manage."
-							r.operationID = "listTeams"
-							r.operationGroup = ""
-							r.pathPattern = "/api/v1/teams"
-							r.args = args
-							r.count = 0
-							return r, true
-						case "POST":
-							r.name = CreateTeamOperation
-							r.summary = "Create a team, for Instance Admins."
-							r.operationID = "createTeam"
-							r.operationGroup = ""
-							r.pathPattern = "/api/v1/teams"
-							r.args = args
-							r.count = 0
-							return r, true
-						default:
-							return
-						}
+						break
 					}
 					switch elem[0] {
-					case '/': // Prefix: "/"
+					case 'a': // Prefix: "ams"
 
-						if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+						if l := len("ams"); len(elem) >= l && elem[0:l] == "ams" {
 							elem = elem[l:]
 						} else {
 							break
 						}
 
-						// Param: "id"
-						// Leaf parameter, slashes are prohibited
-						idx := strings.IndexByte(elem, '/')
-						if idx >= 0 {
+						if len(elem) == 0 {
+							switch method {
+							case "GET":
+								r.name = ListTeamsOperation
+								r.summary = "List teams. Instance Admins see all of them, Routing Managers the ones they manage."
+								r.operationID = "listTeams"
+								r.operationGroup = ""
+								r.pathPattern = "/api/v1/teams"
+								r.args = args
+								r.count = 0
+								return r, true
+							case "POST":
+								r.name = CreateTeamOperation
+								r.summary = "Create a team, for Instance Admins."
+								r.operationID = "createTeam"
+								r.operationGroup = ""
+								r.pathPattern = "/api/v1/teams"
+								r.args = args
+								r.count = 0
+								return r, true
+							default:
+								return
+							}
+						}
+						switch elem[0] {
+						case '/': // Prefix: "/"
+
+							if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							// Param: "id"
+							// Leaf parameter, slashes are prohibited
+							idx := strings.IndexByte(elem, '/')
+							if idx >= 0 {
+								break
+							}
+							args[0] = elem
+							elem = ""
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch method {
+								case "DELETE":
+									r.name = DeleteTeamOperation
+									r.summary = "Remove a team, for Instance Admins."
+									r.operationID = "deleteTeam"
+									r.operationGroup = ""
+									r.pathPattern = "/api/v1/teams/{id}"
+									r.args = args
+									r.count = 1
+									return r, true
+								case "GET":
+									r.name = GetTeamOperation
+									r.summary = "Read a team. Routing Managers read only the teams they manage."
+									r.operationID = "getTeam"
+									r.operationGroup = ""
+									r.pathPattern = "/api/v1/teams/{id}"
+									r.args = args
+									r.count = 1
+									return r, true
+								case "PUT":
+									r.name = UpdateTeamOperation
+									r.summary = "Change a team, for Instance Admins."
+									r.operationID = "updateTeam"
+									r.operationGroup = ""
+									r.pathPattern = "/api/v1/teams/{id}"
+									r.args = args
+									r.count = 1
+									return r, true
+								default:
+									return
+								}
+							}
+
+						}
+
+					case 'm': // Prefix: "mplates/preview"
+
+						if l := len("mplates/preview"); len(elem) >= l && elem[0:l] == "mplates/preview" {
+							elem = elem[l:]
+						} else {
 							break
 						}
-						args[0] = elem
-						elem = ""
 
 						if len(elem) == 0 {
 							// Leaf node.
 							switch method {
-							case "DELETE":
-								r.name = DeleteTeamOperation
-								r.summary = "Remove a team, for Instance Admins."
-								r.operationID = "deleteTeam"
+							case "POST":
+								r.name = PreviewTemplateOperation
+								r.summary = "Render a draft template against sample merge requests, for each chat platform, without storing it."
+								r.operationID = "previewTemplate"
 								r.operationGroup = ""
-								r.pathPattern = "/api/v1/teams/{id}"
+								r.pathPattern = "/api/v1/templates/preview"
 								r.args = args
-								r.count = 1
-								return r, true
-							case "GET":
-								r.name = GetTeamOperation
-								r.summary = "Read a team. Routing Managers read only the teams they manage."
-								r.operationID = "getTeam"
-								r.operationGroup = ""
-								r.pathPattern = "/api/v1/teams/{id}"
-								r.args = args
-								r.count = 1
-								return r, true
-							case "PUT":
-								r.name = UpdateTeamOperation
-								r.summary = "Change a team, for Instance Admins."
-								r.operationID = "updateTeam"
-								r.operationGroup = ""
-								r.pathPattern = "/api/v1/teams/{id}"
-								r.args = args
-								r.count = 1
+								r.count = 0
 								return r, true
 							default:
 								return

@@ -68,6 +68,13 @@ type Handler interface {
 	//
 	// DELETE /api/v1/routes/{id}
 	DeleteRoute(ctx context.Context, params DeleteRouteParams) error
+	// DeleteRouteTemplate implements deleteRouteTemplate operation.
+	//
+	// If-Match holds the route's ETag, and the change makes a new version of the route, whose ETag the
+	// answer carries.
+	//
+	// DELETE /api/v1/routes/{id}/templates/{kind}
+	DeleteRouteTemplate(ctx context.Context, params DeleteRouteTemplateParams) (*DeleteRouteTemplateNoContent, error)
 	// DeleteSink implements deleteSink operation.
 	//
 	// A sink a route uses cannot go. It leaves its teams with it.
@@ -116,6 +123,12 @@ type Handler interface {
 	//
 	// GET /api/v1/routes/{id}
 	GetRoute(ctx context.Context, params GetRouteParams) (*TeamRouteHeaders, error)
+	// GetRouteTemplate implements getRouteTemplate operation.
+	//
+	// A kind without a template of its own answers 404, and its messages use the built-in template.
+	//
+	// GET /api/v1/routes/{id}/templates/{kind}
+	GetRouteTemplate(ctx context.Context, params GetRouteTemplateParams) (*RouteTemplateHeaders, error)
 	// GetSession implements getSession operation.
 	//
 	// Describe the person this session belongs to.
@@ -194,6 +207,12 @@ type Handler interface {
 	//
 	// GET /api/v1/tokens
 	ListTokens(ctx context.Context, params ListTokensParams) (*ApiTokenPage, error)
+	// PreviewTemplate implements previewTemplate operation.
+	//
+	// A template that fails is refused with 422, naming the line and the cause, as storing it would be.
+	//
+	// POST /api/v1/templates/preview
+	PreviewTemplate(ctx context.Context, req *TemplateDraft) (*TemplatePreview, error)
 	// PutLoginSettings implements putLoginSettings operation.
 	//
 	// Change the identity provider settings, for Instance Admins.
@@ -218,6 +237,14 @@ type Handler interface {
 	//
 	// DELETE /api/v1/tokens/{id}
 	RevokeToken(ctx context.Context, params RevokeTokenParams) error
+	// SetRouteTemplate implements setRouteTemplate operation.
+	//
+	// The template replaces the built-in one, or the route's previous one. It must render every sample
+	// merge request first: a template that does not is refused with 422, naming the line and the cause.
+	// If-Match holds the route's ETag, and the change makes a new version of the route.
+	//
+	// PUT /api/v1/routes/{id}/templates/{kind}
+	SetRouteTemplate(ctx context.Context, req *RouteTemplateUpdate, params SetRouteTemplateParams) (*RouteTemplateHeaders, error)
 	// SetUp implements setUp operation.
 	//
 	// Takes the setup link's token from the bootstrap command, checks that the provider answers, and

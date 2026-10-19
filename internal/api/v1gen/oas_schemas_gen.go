@@ -769,6 +769,21 @@ type DeleteConnectionNoContent struct{}
 // DeleteRouteNoContent is response for DeleteRoute operation.
 type DeleteRouteNoContent struct{}
 
+// DeleteRouteTemplateNoContent is response for DeleteRouteTemplate operation.
+type DeleteRouteTemplateNoContent struct {
+	ETag OptString
+}
+
+// GetETag returns the value of ETag.
+func (s *DeleteRouteTemplateNoContent) GetETag() OptString {
+	return s.ETag
+}
+
+// SetETag sets the value of ETag.
+func (s *DeleteRouteTemplateNoContent) SetETag(val OptString) {
+	s.ETag = val
+}
+
 // DeleteSinkNoContent is response for DeleteSink operation.
 type DeleteSinkNoContent struct{}
 
@@ -967,6 +982,105 @@ func (s *LoginSettingsUpdate) SetGroupsClaim(val string) {
 // SetAllowedGroups sets the value of AllowedGroups.
 func (s *LoginSettingsUpdate) SetAllowedGroups(val []string) {
 	s.AllowedGroups = val
+}
+
+// A kind of message: the root that starts a merge request's thread, or one kind of notice in it.
+// Ref: #/components/schemas/MessageKind
+type MessageKind string
+
+const (
+	MessageKindRoot             MessageKind = "root"
+	MessageKindComment          MessageKind = "comment"
+	MessageKindPipelinePassed   MessageKind = "pipeline_passed"
+	MessageKindPipelineFailed   MessageKind = "pipeline_failed"
+	MessageKindReviewed         MessageKind = "reviewed"
+	MessageKindChangesRequested MessageKind = "changes_requested"
+	MessageKindApproved         MessageKind = "approved"
+	MessageKindPushed           MessageKind = "pushed"
+	MessageKindMerged           MessageKind = "merged"
+	MessageKindClosed           MessageKind = "closed"
+)
+
+// AllValues returns all MessageKind values.
+func (MessageKind) AllValues() []MessageKind {
+	return []MessageKind{
+		MessageKindRoot,
+		MessageKindComment,
+		MessageKindPipelinePassed,
+		MessageKindPipelineFailed,
+		MessageKindReviewed,
+		MessageKindChangesRequested,
+		MessageKindApproved,
+		MessageKindPushed,
+		MessageKindMerged,
+		MessageKindClosed,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s MessageKind) MarshalText() ([]byte, error) {
+	switch s {
+	case MessageKindRoot:
+		return []byte(s), nil
+	case MessageKindComment:
+		return []byte(s), nil
+	case MessageKindPipelinePassed:
+		return []byte(s), nil
+	case MessageKindPipelineFailed:
+		return []byte(s), nil
+	case MessageKindReviewed:
+		return []byte(s), nil
+	case MessageKindChangesRequested:
+		return []byte(s), nil
+	case MessageKindApproved:
+		return []byte(s), nil
+	case MessageKindPushed:
+		return []byte(s), nil
+	case MessageKindMerged:
+		return []byte(s), nil
+	case MessageKindClosed:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *MessageKind) UnmarshalText(data []byte) error {
+	switch MessageKind(data) {
+	case MessageKindRoot:
+		*s = MessageKindRoot
+		return nil
+	case MessageKindComment:
+		*s = MessageKindComment
+		return nil
+	case MessageKindPipelinePassed:
+		*s = MessageKindPipelinePassed
+		return nil
+	case MessageKindPipelineFailed:
+		*s = MessageKindPipelineFailed
+		return nil
+	case MessageKindReviewed:
+		*s = MessageKindReviewed
+		return nil
+	case MessageKindChangesRequested:
+		*s = MessageKindChangesRequested
+		return nil
+	case MessageKindApproved:
+		*s = MessageKindApproved
+		return nil
+	case MessageKindPushed:
+		*s = MessageKindPushed
+		return nil
+	case MessageKindMerged:
+		*s = MessageKindMerged
+		return nil
+	case MessageKindClosed:
+		*s = MessageKindClosed
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
 }
 
 // NewOptConnectionHealthLastRejection returns new OptConnectionHealthLastRejection with value set to v.
@@ -1642,6 +1756,107 @@ func (s *RouteRequest) SetSinkID(val int64) {
 // SetMutedReplies sets the value of MutedReplies.
 func (s *RouteRequest) SetMutedReplies(val []ReplyKind) {
 	s.MutedReplies = val
+}
+
+// Ref: #/components/schemas/RouteTemplate
+type RouteTemplate struct {
+	Kind    MessageKind     `json:"kind"`
+	Version TemplateVersion `json:"version"`
+	Text    TemplateText    `json:"text"`
+	// The route's current version, for If-Match on a change.
+	Etag string `json:"etag"`
+}
+
+// GetKind returns the value of Kind.
+func (s *RouteTemplate) GetKind() MessageKind {
+	return s.Kind
+}
+
+// GetVersion returns the value of Version.
+func (s *RouteTemplate) GetVersion() TemplateVersion {
+	return s.Version
+}
+
+// GetText returns the value of Text.
+func (s *RouteTemplate) GetText() TemplateText {
+	return s.Text
+}
+
+// GetEtag returns the value of Etag.
+func (s *RouteTemplate) GetEtag() string {
+	return s.Etag
+}
+
+// SetKind sets the value of Kind.
+func (s *RouteTemplate) SetKind(val MessageKind) {
+	s.Kind = val
+}
+
+// SetVersion sets the value of Version.
+func (s *RouteTemplate) SetVersion(val TemplateVersion) {
+	s.Version = val
+}
+
+// SetText sets the value of Text.
+func (s *RouteTemplate) SetText(val TemplateText) {
+	s.Text = val
+}
+
+// SetEtag sets the value of Etag.
+func (s *RouteTemplate) SetEtag(val string) {
+	s.Etag = val
+}
+
+// RouteTemplateHeaders wraps RouteTemplate with response headers.
+type RouteTemplateHeaders struct {
+	ETag     OptString
+	Response RouteTemplate
+}
+
+// GetETag returns the value of ETag.
+func (s *RouteTemplateHeaders) GetETag() OptString {
+	return s.ETag
+}
+
+// GetResponse returns the value of Response.
+func (s *RouteTemplateHeaders) GetResponse() RouteTemplate {
+	return s.Response
+}
+
+// SetETag sets the value of ETag.
+func (s *RouteTemplateHeaders) SetETag(val OptString) {
+	s.ETag = val
+}
+
+// SetResponse sets the value of Response.
+func (s *RouteTemplateHeaders) SetResponse(val RouteTemplate) {
+	s.Response = val
+}
+
+// Ref: #/components/schemas/RouteTemplateUpdate
+type RouteTemplateUpdate struct {
+	Version TemplateVersion `json:"version"`
+	Text    TemplateText    `json:"text"`
+}
+
+// GetVersion returns the value of Version.
+func (s *RouteTemplateUpdate) GetVersion() TemplateVersion {
+	return s.Version
+}
+
+// GetText returns the value of Text.
+func (s *RouteTemplateUpdate) GetText() TemplateText {
+	return s.Text
+}
+
+// SetVersion sets the value of Version.
+func (s *RouteTemplateUpdate) SetVersion(val TemplateVersion) {
+	s.Version = val
+}
+
+// SetText sets the value of Text.
+func (s *RouteTemplateUpdate) SetText(val TemplateText) {
+	s.Text = val
 }
 
 // Ref: #/components/schemas/RouteUpdate
@@ -2696,6 +2911,8 @@ type TeamRoute struct {
 	SinkID   int64 `json:"sink_id"`
 	// The replies the route does not post. The board still shows every change.
 	MutedReplies []ReplyKind `json:"muted_replies"`
+	// The kinds of messages the route has templates of its own for. The others use the built-in templates.
+	CustomTemplates []MessageKind `json:"custom_templates"`
 	// The route's current version, for If-Match on a change.
 	Etag string `json:"etag"`
 }
@@ -2723,6 +2940,11 @@ func (s *TeamRoute) GetSinkID() int64 {
 // GetMutedReplies returns the value of MutedReplies.
 func (s *TeamRoute) GetMutedReplies() []ReplyKind {
 	return s.MutedReplies
+}
+
+// GetCustomTemplates returns the value of CustomTemplates.
+func (s *TeamRoute) GetCustomTemplates() []MessageKind {
+	return s.CustomTemplates
 }
 
 // GetEtag returns the value of Etag.
@@ -2753,6 +2975,11 @@ func (s *TeamRoute) SetSinkID(val int64) {
 // SetMutedReplies sets the value of MutedReplies.
 func (s *TeamRoute) SetMutedReplies(val []ReplyKind) {
 	s.MutedReplies = val
+}
+
+// SetCustomTemplates sets the value of CustomTemplates.
+func (s *TeamRoute) SetCustomTemplates(val []MessageKind) {
+	s.CustomTemplates = val
 }
 
 // SetEtag sets the value of Etag.
@@ -2833,6 +3060,90 @@ func (s *TeamUpdate) SetSources(val []int64) {
 func (s *TeamUpdate) SetSinks(val []int64) {
 	s.Sinks = val
 }
+
+// Ref: #/components/schemas/TemplateDraft
+type TemplateDraft struct {
+	Kind    MessageKind     `json:"kind"`
+	Version TemplateVersion `json:"version"`
+	Text    TemplateText    `json:"text"`
+}
+
+// GetKind returns the value of Kind.
+func (s *TemplateDraft) GetKind() MessageKind {
+	return s.Kind
+}
+
+// GetVersion returns the value of Version.
+func (s *TemplateDraft) GetVersion() TemplateVersion {
+	return s.Version
+}
+
+// GetText returns the value of Text.
+func (s *TemplateDraft) GetText() TemplateText {
+	return s.Text
+}
+
+// SetKind sets the value of Kind.
+func (s *TemplateDraft) SetKind(val MessageKind) {
+	s.Kind = val
+}
+
+// SetVersion sets the value of Version.
+func (s *TemplateDraft) SetVersion(val TemplateVersion) {
+	s.Version = val
+}
+
+// SetText sets the value of Text.
+func (s *TemplateDraft) SetText(val TemplateText) {
+	s.Text = val
+}
+
+// Ref: #/components/schemas/TemplatePreview
+type TemplatePreview struct {
+	Samples []TemplateSample `json:"samples"`
+}
+
+// GetSamples returns the value of Samples.
+func (s *TemplatePreview) GetSamples() []TemplateSample {
+	return s.Samples
+}
+
+// SetSamples sets the value of Samples.
+func (s *TemplatePreview) SetSamples(val []TemplateSample) {
+	s.Samples = val
+}
+
+// Ref: #/components/schemas/TemplateSample
+type TemplateSample struct {
+	// The sample merge request, such as "a closed merge request".
+	Description string `json:"description"`
+	// The message as PatchCaster would post it to Mattermost.
+	Mattermost string `json:"mattermost"`
+}
+
+// GetDescription returns the value of Description.
+func (s *TemplateSample) GetDescription() string {
+	return s.Description
+}
+
+// GetMattermost returns the value of Mattermost.
+func (s *TemplateSample) GetMattermost() string {
+	return s.Mattermost
+}
+
+// SetDescription sets the value of Description.
+func (s *TemplateSample) SetDescription(val string) {
+	s.Description = val
+}
+
+// SetMattermost sets the value of Mattermost.
+func (s *TemplateSample) SetMattermost(val string) {
+	s.Mattermost = val
+}
+
+type TemplateText string
+
+type TemplateVersion int
 
 type Token struct {
 	Token string

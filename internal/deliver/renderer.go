@@ -30,7 +30,12 @@ var mdReplacer = strings.NewReplacer(
 	"]", "\\]",
 	"<", "&lt;",
 	">", "&gt;",
-	"@", "\\@", // titles demanding "@here" must not ping the channel (SYSREQ-003)
+	// Mattermost looks for mentions in the parsed text, where "\@" is a plain
+	// "@" again, and it ends a word at any character a name cannot hold. A
+	// word joiner after the "@" is such a character, so a title saying
+	// "@here" pings nobody (SYSREQ-003). See ProcessText in
+	// server/channels/app/mention_parser_standard.go of mattermost/mattermost.
+	"@", "@\u2060",
 	"\r", " ",
 	"\n", " ",
 )

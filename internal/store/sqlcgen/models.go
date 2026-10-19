@@ -115,6 +115,7 @@ type MrThread struct {
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 	SinkID     int64
+	RouteID    sql.NullInt64
 }
 
 type Outbox struct {
@@ -137,6 +138,7 @@ type Outbox struct {
 	RootRefreshed bool
 	SinkID        int64
 	ConnectionID  int64
+	RouteID       sql.NullInt64
 }
 
 type Person struct {

@@ -527,6 +527,58 @@ func TestHandler_MergesTheRoutesOfASink(t *testing.T) {
 	}
 }
 
+// Of the routes that reach a sink, the one with the narrowest source
+// writes its message with its templates (SYSREQ-049, owner decision
+// 2026-10-20). Destinations arrive ordered by sink and route, so the first
+// of equal routes is the oldest.
+func TestHandler_TheNarrowestRouteWritesASinksMessage(t *testing.T) {
+	type route struct {
+		id        int64
+		scopeKind string
+		scopePath string
+	}
+	tests := []struct {
+		name   string
+		routes []route
+		want   int64
+	}{
+		{"a repository over a group", []route{{1, "group", "grp"}, {2, "repository", "grp/app"}}, 2},
+		{"a group over the instance", []route{{1, "instance", ""}, {2, "group", "grp"}}, 2},
+		{"a repository over the instance", []route{{1, "repository", "grp/app"}, {2, "instance", ""}}, 1},
+		{"a deeper group over a shallower one", []route{{1, "group", "grp"}, {2, "group", "grp/sub"}, {3, "group", "grp"}}, 2},
+		{"the oldest of equal routes", []route{{1, "group", "grp"}, {2, "group", "grp"}}, 1},
+		{"one route", []route{{5, "instance", ""}}, 5},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// arrange
+			fs := newFakeStore()
+			fs.destinations = nil
+			for _, r := range tc.routes {
+				fs.destinations = append(fs.destinations, store.Destination{
+					RouteID:      r.id,
+					SinkID:       1,
+					ConnectionID: 2,
+					ChannelID:    "chan-1",
+					MutedReplies: []string{},
+					ScopeKind:    r.scopeKind,
+					ScopePath:    r.scopePath,
+				})
+			}
+			h, _ := newHandler(t, fs)
+
+			// act
+			rec := deliver(t, h.Mux(), "msg-c", commentBody(t))
+
+			// assert
+			require.Equal(t, http.StatusOK, rec.Code)
+			require.Len(t, fs.accepted, 1)
+			require.Len(t, fs.accepted[0].deliveries, 1)
+			assert.Equal(t, tc.want, fs.accepted[0].deliveries[0].RouteID)
+		})
+	}
+}
+
 func TestHandler_FansOutToEverySink(t *testing.T) {
 	// arrange
 	fs := newFakeStore()

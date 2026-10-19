@@ -54,7 +54,7 @@ type Store interface {
 	ClaimDue(ctx context.Context, now time.Time, lease time.Duration) (*store.Job, error)
 	Settle(ctx context.Context, jobID int64, now time.Time, s store.Settlement) error
 	Thread(ctx context.Context, mrRef string, sinkID int64) (*store.Thread, error)
-	OpenThread(ctx context.Context, mrRef string, sinkID int64, channelID, rootPostID string, now time.Time) error
+	OpenThread(ctx context.Context, mrRef string, sinkID int64, channelID, rootPostID string, routeID int64, now time.Time) error
 	CloseThread(ctx context.Context, mrRef string, sinkID int64, now time.Time) error
 	CloseState(ctx context.Context, mrRef string, now time.Time) error
 	State(ctx context.Context, mrRef string) (*store.State, error)
@@ -312,7 +312,7 @@ func (w *Worker) deliverRoot(ctx context.Context, d delivery, thread *store.Thre
 	// The post is accepted; recording the mapping is the known at-least-once
 	// window. On failure we leave the row claimed and let the lease reaper
 	// requeue it — a rare duplicate root beats a lost thread mapping.
-	err = w.store.OpenThread(ctx, ev.MRRef, job.SinkID, job.DestChannel, postID, w.now())
+	err = w.store.OpenThread(ctx, ev.MRRef, job.SinkID, job.DestChannel, postID, job.RouteID, w.now())
 	if errors.Is(err, store.ErrNotFound) {
 		w.skipGoneSink(ctx, job, log)
 		return

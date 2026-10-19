@@ -155,13 +155,13 @@ func (f *fakeStore) Thread(context.Context, string, int64) (*store.Thread, error
 // OpenThread mirrors Postgres behavior: after a root is mapped, later claims
 // in the same test run must observe the mapping. A removed sink takes no
 // mapping.
-func (f *fakeStore) OpenThread(_ context.Context, mrRef string, _ int64, channelID, rootPostID string, _ time.Time) error {
+func (f *fakeStore) OpenThread(_ context.Context, mrRef string, _ int64, channelID, rootPostID string, routeID int64, _ time.Time) error {
 	if f.sinkGone {
 		return store.ErrNotFound
 	}
 	f.opened = append(f.opened, mrRef+"|"+channelID+"|"+rootPostID)
 	if f.thread == nil {
-		f.thread = &store.Thread{ChannelID: channelID, RootPostID: rootPostID, Open: true}
+		f.thread = &store.Thread{ChannelID: channelID, RootPostID: rootPostID, Open: true, RouteID: routeID}
 	}
 	return nil
 }

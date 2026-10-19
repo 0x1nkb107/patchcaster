@@ -79,9 +79,11 @@ DELETE FROM sinks WHERE id = $1 AND version = $2;
 -- name: Destinations :many
 -- Destinations lists the routes an event of a forge connection reaches:
 -- those of every source of the connection whose scope holds the event's
--- repository, with the sink each route delivers to (SYSREQ-044,
--- SYSREQ-046). Paths match exactly, and a group holds everything below it.
-SELECT r.sink_id, k.connection_id AS sink_connection_id, k.channel_id, r.muted_replies
+-- repository, with the sink each route delivers to and the scope of its
+-- source (SYSREQ-044, SYSREQ-046). Paths match exactly, and a group holds
+-- everything below it.
+SELECT r.id AS route_id, r.sink_id, k.connection_id AS sink_connection_id, k.channel_id, r.muted_replies,
+    s.scope_kind, s.scope_path
 FROM sources s
 JOIN routes r ON r.source_id = s.id
 JOIN sinks k ON k.id = r.sink_id

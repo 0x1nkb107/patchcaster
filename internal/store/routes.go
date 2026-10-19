@@ -343,3 +343,29 @@ func (p *Postgres) DeleteRouteTemplate(ctx context.Context, actor Actor, routeID
 	})
 	return updated, err
 }
+
+// RouteTemplatesFor reads the templates of a route for delivery. It reports
+// whether the route still exists: a removed route has no templates, and
+// its messages use the built-in ones.
+func (p *Postgres) RouteTemplatesFor(ctx context.Context, routeID int64) ([]RouteTemplate, bool, error) {
+	rows, err := p.base.RouteTemplatesFor(ctx, routeID)
+	if err != nil {
+		return nil, false, fmt.Errorf("read templates of route %d: %w", routeID, err)
+	}
+	if len(rows) == 0 {
+		return nil, false, nil
+	}
+	var templates []RouteTemplate
+	for _, row := range rows {
+		if !row.Kind.Valid {
+			continue
+		}
+		templates = append(templates, RouteTemplate{
+			RouteID:     row.RouteID,
+			Kind:        row.Kind.String,
+			DataVersion: int(row.DataVersion.Int32),
+			Text:        row.Text.String,
+		})
+	}
+	return templates, true, nil
+}

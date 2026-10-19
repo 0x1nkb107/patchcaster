@@ -8,6 +8,7 @@ import (
 	"text/template"
 
 	"github.com/patchcaster-app/patchcaster/internal/event"
+	"github.com/patchcaster-app/patchcaster/internal/markdown"
 	"github.com/patchcaster-app/patchcaster/internal/store"
 )
 
@@ -17,44 +18,10 @@ import (
 //go:embed templates/*.tmpl
 var templateFS embed.FS
 
-// mdReplacer neutralizes Mattermost Markdown structure in field values so a
-// title cannot forge links, mentions, or layout (SYSREQ-003). Backslash
-// escaping is Mattermost's own syntax for emphasis and bracket characters;
-// angle brackets become entities because a bare "\<" is not safe there.
-var mdReplacer = strings.NewReplacer(
-	"`", "'",
-	"*", "\\*",
-	"_", "\\_",
-	"~", "\\~",
-	"[", "\\[",
-	"]", "\\]",
-	"<", "&lt;",
-	">", "&gt;",
-	// Mattermost looks for mentions in the parsed text, where "\@" is a plain
-	// "@" again, and it ends a word at any character a name cannot hold. A
-	// word joiner after the "@" is such a character, so a title saying
-	// "@here" pings nobody (SYSREQ-003). See ProcessText in
-	// server/channels/app/mention_parser_standard.go of mattermost/mattermost.
-	"@", "@\u2060",
-	"\r", " ",
-	"\n", " ",
-)
-
-// safeURL strips characters that could break out of a bare-line URL.
-func safeURL(u string) string {
-	return strings.Map(func(r rune) rune {
-		switch {
-		case r <= ' ', r == 0x7f, r == '<', r == '>':
-			return -1
-		default:
-			return r
-		}
-	}, u)
-}
-
 // RootView is the escaped projection of the board a root message renders
-// from; the status line arrives precomputed (StatusLine). Every field is
-// sanitized at construction, so no template can leak raw payload text.
+// from; the status line arrives precomputed (StatusLine). Every forge value
+// is escaped for Markdown at construction (SYSREQ-051), so no template can
+// leak raw payload text. URL is a link target, empty unless http or https.
 type RootView struct {
 	IID         string
 	Title       string
@@ -70,12 +37,12 @@ type RootView struct {
 func NewRootView(st *store.State) *RootView {
 	return &RootView{
 		IID:         strconv.FormatInt(st.IID, 10),
-		Title:       mdReplacer.Replace(st.Title),
-		Author:      mdReplacer.Replace(st.Author),
-		ProjectPath: mdReplacer.Replace(st.ProjectPath),
-		Source:      mdReplacer.Replace(st.SourceBranch),
-		Target:      mdReplacer.Replace(st.TargetBranch),
-		URL:         safeURL(st.URL),
+		Title:       markdown.Escape(st.Title),
+		Author:      markdown.Escape(st.Author),
+		ProjectPath: markdown.Escape(st.ProjectPath),
+		Source:      markdown.Escape(st.SourceBranch),
+		Target:      markdown.Escape(st.TargetBranch),
+		URL:         markdown.LinkTarget(st.URL),
 		Status:      StatusLine(st),
 	}
 }
@@ -91,7 +58,7 @@ type NoticeView struct {
 // NewNoticeView builds the escaped projection of an event for a notice.
 func NewNoticeView(ev *event.Event) *NoticeView {
 	v := &NoticeView{
-		Actor: mdReplacer.Replace(ev.Actor),
+		Actor: markdown.Escape(ev.Actor),
 		IID:   strconv.FormatInt(ev.IID, 10),
 	}
 	if ev.PushCount != nil && *ev.PushCount > 0 {
@@ -147,8 +114,24 @@ func pipelineSegment(status string) string {
 	case "skipped":
 		return "⚪ Pipeline skipped"
 	default:
-		return "⚪ Pipeline " + mdReplacer.Replace(status)
+		return "⚪ Pipeline " + markdown.Escape(status)
 	}
+}
+
+// templateFuncs are the functions the built-in templates call: mention for
+// the root's channel ping (SYSREQ-003) and code for branch names.
+var templateFuncs = template.FuncMap{
+	"mention": mention,
+	"code":    markdown.Code,
+}
+
+// mention writes the markup of a mention of target.
+func mention(target string) (string, error) {
+	markup, ok := markdown.MentionMarkup(markdown.MentionTarget(target))
+	if !ok {
+		return "", fmt.Errorf("no mention of %q", target)
+	}
+	return markup, nil
 }
 
 // Renderer executes the embedded templates against escaped views.
@@ -160,11 +143,11 @@ type Renderer struct {
 // NewRenderer parses the embedded templates. A failure here is a build-time
 // bug (the inputs are fixed), so callers should treat it as fatal at startup.
 func NewRenderer() (*Renderer, error) {
-	root, err := template.ParseFS(templateFS, "templates/root.tmpl")
+	root, err := template.New("root.tmpl").Funcs(templateFuncs).ParseFS(templateFS, "templates/root.tmpl")
 	if err != nil {
 		return nil, fmt.Errorf("parse root template: %w", err)
 	}
-	notices, err := template.ParseFS(templateFS, "templates/notice_*.tmpl")
+	notices, err := template.New("notices").Funcs(templateFuncs).ParseFS(templateFS, "templates/notice_*.tmpl")
 	if err != nil {
 		return nil, fmt.Errorf("parse notice templates: %w", err)
 	}
@@ -189,10 +172,12 @@ func (r *Renderer) Notice(name string, ev *event.Event) (string, error) {
 	return exec(t, file, NewNoticeView(ev), ev.MRRef)
 }
 
+// exec renders t with view into Markdown, and that into Mattermost's format,
+// the only chat platform so far (ADR-037).
 func exec(t *template.Template, name string, view any, mrRef string) (string, error) {
 	var sb strings.Builder
 	if err := t.Execute(&sb, view); err != nil {
 		return "", fmt.Errorf("execute %s for MR %s: %w", name, mrRef, err)
 	}
-	return strings.TrimRight(sb.String(), "\n"), nil
+	return markdown.Mattermost(markdown.Parse(sb.String())), nil
 }

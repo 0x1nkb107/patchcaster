@@ -781,8 +781,8 @@ func openBoardThread(h *harness) {
 
 const wantRefreshedRoot = "> @here :bell: \\\n" +
 	"> **!12 T** \\\n" +
-	"> by @ada • grp/app • `feat` ➜ `main` \\\n" +
-	"> https://x.example/1 \\\n" +
+	"> by ada • grp/app • `feat` ➜ `main` \\\n" +
+	"> <https://x.example/1> \\\n" +
 	"> 🟢 Pipeline passed • 👀 1/2 reviewers • 💬 3 comments"
 
 func TestWorker_NoticeThenRefreshInOneDelivery(t *testing.T) {

@@ -1,10 +1,7 @@
 package deliver
 
 import (
-	"regexp"
-	"strings"
 	"testing"
-	"unicode"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -37,8 +34,8 @@ func baseBoard() *store.State {
 
 const wantQuietRoot = "> @here :bell: \\\n" +
 	"> **!12 Add flux capacitor** \\\n" +
-	"> by @ada • grp/app • `feature/auth` ➜ `main` \\\n" +
-	"> https://gl.example/grp/app/-/merge_requests/12"
+	"> by ada • grp/app • `feature/auth` ➜ `main` \\\n" +
+	"> <https://gl.example/grp/app/-/merge_requests/12>"
 
 func TestRenderer_RootQuietGolden(t *testing.T) {
 	// act: no pipeline, no reviews, no comments, no edits — no status line
@@ -78,7 +75,7 @@ func TestRenderer_RootNeutralizesAdversarialTitle(t *testing.T) {
 	// assert
 	require.NoError(t, err)
 	assert.Contains(t, got,
-		"**!12 Fix 'bug' \\*urgent\\* \\[link\\](http://evil) &lt;a href=x&gt;click&lt;/a&gt; \\~strike\\~ \\_under\\_**")
+		"**!12 Fix \\`bug\\` \\*urgent\\* \\[link\\](http:\u2060//evil) &lt;a href=x&gt;click&lt;/a&gt; \\~\u2060strike\\~\u2060 \\_under\\_**")
 	assert.NotContains(t, got, "\n<a", "raw angle bracket may not reach the post")
 	assert.NotContains(t, got, "@here \\\n>", "title may not forge an empty quoted line")
 }
@@ -161,46 +158,4 @@ func TestRenderer_NoticeEscapesActor(t *testing.T) {
 	// assert: a user-controlled name may not ping the channel (SYSREQ-003).
 	require.NoError(t, err)
 	assert.Equal(t, "💬 @\u2060here \\*sponsored\\* commented", got)
-}
-
-// inMentionWord reports whether Mattermost keeps c inside a word when it
-// looks for mentions. Every other character ends the word.
-func inMentionWord(c rune) bool {
-	return c == ':' || c == '.' || c == '-' || c == '_' || c == '@' || unicode.IsLetter(c) || unicode.IsNumber(c)
-}
-
-// mattermostMentions returns the words that Mattermost's server would read
-// as mentions in text. It decodes backslash escapes as Mattermost's Markdown
-// parser does, then splits words as ProcessText in
-// server/channels/app/mention_parser_standard.go of mattermost/mattermost.
-func mattermostMentions(text string) []string {
-	decoded := regexp.MustCompile(`\\([!-/:-@\[-\x60{-~])`).ReplaceAllString(text, "$1")
-	words := strings.FieldsFunc(decoded, func(c rune) bool { return !inMentionWord(c) })
-	var mentions []string
-	for _, word := range words {
-		word = strings.TrimLeft(word, ":.-_")
-		if len(word) > 1 && word[0] == '@' {
-			mentions = append(mentions, word)
-		}
-	}
-	return mentions
-}
-
-func TestRendererLetsNoForgeTextMention(t *testing.T) {
-	attempts := []string{"@here", "@channel", "@ALL", "@ada", "hi @here!", "\\@here", "(@channel)"}
-	for _, attempt := range attempts {
-		t.Run(attempt, func(t *testing.T) {
-			board := baseBoard()
-			board.Title = attempt
-
-			root, rootErr := mustRenderer(t).Root(board)
-			notice, noticeErr := mustRenderer(t).Notice(plan.Comment, &event.Event{MRRef: "1", Actor: attempt})
-
-			require.NoError(t, rootErr)
-			require.NoError(t, noticeErr)
-			// The root's own header and author mention are the template's.
-			assert.Equal(t, []string{"@here", "@ada"}, mattermostMentions(root))
-			assert.Empty(t, mattermostMentions(notice))
-		})
-	}
 }

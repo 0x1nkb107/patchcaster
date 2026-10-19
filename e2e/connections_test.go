@@ -126,7 +126,7 @@ func TestARefusedCredentialIsNotStored(t *testing.T) {
 	problem := requireProblem(t, err, http.StatusUnprocessableEntity)
 	require.Len(t, problem.Errors, 1)
 	assert.Equal(t, "credential", problem.Errors[0].Path)
-	assert.Equal(t, []string{"gitlab refused it: 401 Unauthorized"}, problem.Errors[0].Messages)
+	assert.Equal(t, []string{"GitLab refused it: 401 Unauthorized"}, problem.Errors[0].Messages)
 	require.NoError(t, listErr)
 	assert.Empty(t, listed.Items)
 }

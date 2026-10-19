@@ -278,13 +278,13 @@ func (s *Service) checkCredential(ctx context.Context, kind platform.Kind, baseU
 	var refused *platform.RefusedError
 	if errors.As(err, &refused) {
 		return "", fieldProblem(http.StatusUnprocessableEntity, refused.Error(),
-			"credential", fmt.Sprintf("%s refused it: %s", kind, refused.Answer))
+			"credential", fmt.Sprintf("%s refused it: %s", kind.Name(), refused.Answer))
 	}
 	var unreachable *platform.UnreachableError
 	if errors.As(err, &unreachable) {
 		s.log.WarnContext(ctx, "connection check failed", "kind", kind, "base_url", baseURL.String(), "err", err)
 		return "", fieldProblem(http.StatusUnprocessableEntity, unreachable.Error(),
-			"base_url", fmt.Sprintf("no %s answers at this address", kind))
+			"base_url", fmt.Sprintf("no %s answers at this address", kind.Name()))
 	}
 	return account, err
 }

@@ -21,6 +21,7 @@ require (
 	github.com/stretchr/testify v1.12.1
 	github.com/testcontainers/testcontainers-go v0.44.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.44.0
+	github.com/yuin/goldmark/v2 v2.1.6
 	github.com/zitadel/oidc/v3 v3.51.15
 )
 

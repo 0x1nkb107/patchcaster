@@ -1,0 +1,3 @@
+kind: Added
+body: 'Instance Admins see everyone who logged in with their role, make a person an Instance Admin or take the role away, and revoke a person''s access in the web interface. They read the audit log there too, with each change before and after. The settings of the instance gather in an Instance menu.'
+time: 2026-10-21T10:00:00.000000000+02:00

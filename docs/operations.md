@@ -7,7 +7,7 @@ shuts down and upgrades, and what its delivery guarantees mean in practice.
 
 The management listener (`--management-addr`, `:8081` by default) serves the web interface at the interface URL, the management API under `/api/v1/`, and the API's OpenAPI description at `GET /api/v1/openapi.yaml`. It answers nothing else, and the webhook and internal listeners never answer interface or API paths, so each listener can be exposed differently: the webhook listener to the forges, the management listener only to the organization's people and automation. Errors are RFC 9457 problem details (`application/problem+json`). A validation error lists each field at fault by its path, such as `allowed_groups[0]`. Lists page with `limit` and the `next_cursor` of the previous page. Every change sends the `ETag` of what it read in `If-Match`, and fails with `412 Precondition Failed` when the resource changed meanwhile.
 
-The web interface covers the first setup, the login and its settings, the connections with their signing tokens, the teams with their sources and sinks, API tokens and the [health](#connection-and-sink-health) of connections and sinks so far. Everything else goes through the API, which the interface uses too. The interface runs only its own scripts, and no other site may show it in a frame. Every page links to the licences of the third-party packages it contains.
+The web interface covers the first setup, the login and its settings, the connections with their signing tokens, the teams with their sources and sinks, the people and their roles, the audit log, API tokens and the [health](#connection-and-sink-health) of connections and sinks so far. The settings of the instance gather in its Instance menu. Everything else goes through the API, which the interface uses too. The interface runs only its own scripts, and no other site may show it in a frame. Every page links to the licences of the third-party packages it contains.
 
 The management listener also serves the login. People log in through the organization's OpenID Connect provider, and PatchCaster keeps no passwords. A session ends after one hour without activity, twelve hours after login at the latest, or at logout (`DELETE /api/v1/session`). The API refuses any change that a browser sends from another site.
 
@@ -26,7 +26,7 @@ Everyone who logs in later starts as a Regular User. To admit only some of the p
 
 PatchCaster knows three roles, and each may also do what the roles below it may:
 
-- An **Instance Admin** sets up the instance and decides who may do what: the login, the connections, the teams with their sources and sinks, and the roles. An Instance Admin makes another person an Instance Admin with `PATCH /api/v1/persons/{id}`.
+- An **Instance Admin** sets up the instance and decides who may do what: the login, the connections, the teams with their sources and sinks, and the roles. An Instance Admin makes another person an Instance Admin on the People page, or with `PATCH /api/v1/persons/{id}`.
 - A **Routing Manager** routes the sources of their teams into the teams' sinks. An Instance Admin makes a person a Routing Manager by adding them to a team's `managers`.
 - A **Regular User** manages their own API tokens.
 
@@ -68,7 +68,7 @@ Automation authenticates with a personal API token, sent as `Authorization: Bear
 
 Only a login lists (`GET /api/v1/tokens`) and revokes (`DELETE /api/v1/tokens/{id}`) tokens, as the API tokens page does, so a leaked token cannot create its successor. A revoked or expired token answers `401` on its next use.
 
-To cut someone off at once, for example when they leave, an Instance Admin calls `POST /api/v1/persons/{id}/revoke-access`. It revokes all their tokens and ends all their sessions. They can log in again unless the identity provider refuses them, so remove them there too.
+To cut someone off at once, for example when they leave, an Instance Admin revokes their access on the People page, or calls `POST /api/v1/persons/{id}/revoke-access`. It revokes all their tokens and ends all their sessions. They can log in again unless the identity provider refuses them, so remove them there too.
 
 ## Restoring Instance Admin access
 
@@ -76,7 +76,7 @@ When no Instance Admin can log in any more, run `patchcaster admin grant --issue
 
 ## Audit log
 
-Instance Admins read every change to the configuration, every setup step, every grant and every Instance Admin's login at `GET /api/v1/audit`, newest first. Each entry names who acted, with the API token they used, when, and what changed. Secret values never appear: a changed secret shows only as `secret changed`. Nobody can edit or delete entries.
+Instance Admins read every change to the configuration, every setup step, every grant and every Instance Admin's login on the Audit log page, or at `GET /api/v1/audit`, newest first. Each entry names who acted, with the API token they used, when, and what changed. Secret values never appear: a changed secret shows only as `secret changed`. Nobody can edit or delete entries.
 
 ## Probes and metrics
 

@@ -1,7 +1,7 @@
 // How the interface names the role of a person (SYSREQ-039).
 import { error } from '@sveltejs/kit';
 
-import { listTeams, type Person } from '#lib/api/generated/client.js';
+import { listTeams, type Person, type Team } from '#lib/api/generated/client.js';
 import { describe } from '#lib/api/problem.js';
 
 // Role is a person's role by its code name.
@@ -27,4 +27,15 @@ export async function roleOf(person: Person): Promise<Role> {
 		error(teams.status, describe(teams.data));
 	}
 	return teams.data.items.length > 0 ? 'manager' : 'regular';
+}
+
+// roleAmong finds the role of a person from every team, as an Instance
+// Admin sees them: a person a team names among its managers is a Routing
+// Manager.
+export function roleAmong(person: Person, teams: Team[]): Role {
+	if (person.administrator) {
+		return 'administrator';
+	}
+	const manages = teams.some((team) => team.managers.includes(person.id));
+	return manages ? 'manager' : 'regular';
 }

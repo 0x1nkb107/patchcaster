@@ -17,8 +17,8 @@
 	import { describe } from '#lib/api/problem.js';
 	import { ifMatch } from '#lib/api/versions.js';
 	import FormField from '#lib/components/form-field.svelte';
+	import RemoveCard from '#lib/components/remove-card.svelte';
 	import * as Alert from '#lib/components/ui/alert/index.js';
-	import * as AlertDialog from '#lib/components/ui/alert-dialog/index.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import * as Card from '#lib/components/ui/card/index.js';
 	import { Input } from '#lib/components/ui/input/index.js';
@@ -297,37 +297,15 @@
 		</Card.Root>
 	{/if}
 
-	<Card.Root>
-		<Card.Header>
-			<Card.Title>Remove the connection</Card.Title>
-			<Card.Description>
-				A connection that {isForge ? 'sources' : 'sinks'} use stays until they are removed.
-			</Card.Description>
-		</Card.Header>
-		<Card.Content>
-			<AlertDialog.Root>
-				<AlertDialog.Trigger>
-					{#snippet child({ props })}
-						<Button variant="destructive" {...props}>Remove</Button>
-					{/snippet}
-				</AlertDialog.Trigger>
-				<AlertDialog.Content>
-					<AlertDialog.Header>
-						<AlertDialog.Title>Remove {connection.name}?</AlertDialog.Title>
-						<AlertDialog.Description>
-							PatchCaster forgets the connection and its credential{isForge
-								? ', and its signing tokens'
-								: ''}.
-						</AlertDialog.Description>
-					</AlertDialog.Header>
-					<AlertDialog.Footer>
-						<AlertDialog.Cancel>Keep it</AlertDialog.Cancel>
-						<AlertDialog.Action variant="destructive" onclick={removeConnection}>
-							Remove
-						</AlertDialog.Action>
-					</AlertDialog.Footer>
-				</AlertDialog.Content>
-			</AlertDialog.Root>
-		</Card.Content>
-	</Card.Root>
+	<RemoveCard
+		title="Remove the connection"
+		description="A connection that {isForge
+			? 'sources'
+			: 'sinks'} use stays until they are removed."
+		question="Remove {connection.name}?"
+		consequence="PatchCaster forgets the connection and its credential{isForge
+			? ', and its signing tokens'
+			: ''}."
+		onRemove={removeConnection}
+	/>
 </div>

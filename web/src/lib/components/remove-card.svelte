@@ -25,7 +25,14 @@
 
 	// Why the last removal failed, until one succeeds.
 	let problem: string | null = $state(null);
+
+	// Whether the dialog asks for confirmation. Only its Cancel closes it by
+	// itself, so a removal closes it before it starts, and a failure then
+	// shows on the card.
+	let confirming = $state(false);
+
 	async function remove(): Promise<void> {
+		confirming = false;
 		problem = await onRemove();
 	}
 </script>
@@ -42,7 +49,7 @@
 				<Alert.Description>{problem}</Alert.Description>
 			</Alert.Root>
 		{/if}
-		<AlertDialog.Root>
+		<AlertDialog.Root bind:open={confirming}>
 			<AlertDialog.Trigger>
 				{#snippet child({ props })}
 					<Button variant="destructive" class="w-fit" {...props}>Remove</Button>

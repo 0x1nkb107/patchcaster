@@ -28,6 +28,20 @@
 				<a href={resolve('/health')} class="text-sm text-muted-foreground hover:text-foreground">
 					Health
 				</a>
+				{#if data.person.administrator}
+					<a
+						href={resolve('/connections')}
+						class="text-sm text-muted-foreground hover:text-foreground"
+					>
+						Connections
+					</a>
+					<a
+						href={resolve('/settings/login')}
+						class="text-sm text-muted-foreground hover:text-foreground"
+					>
+						Login
+					</a>
+				{/if}
 				<a href={resolve('/tokens')} class="text-sm text-muted-foreground hover:text-foreground">
 					API tokens
 				</a>

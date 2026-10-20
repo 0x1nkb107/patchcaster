@@ -169,7 +169,7 @@ func TestTheRefusalCarriesThePlatformsAnswer(t *testing.T) {
 	var p problemBody
 	require.NoError(t, json.Unmarshal(result.body, &p))
 	require.Len(t, p.Errors, 1)
-	assert.Equal(t, []string{"gitlab refused it: 401 Unauthorized"}, p.Errors[0].Messages)
+	assert.Equal(t, []string{"GitLab refused it: 401 Unauthorized"}, p.Errors[0].Messages)
 	assert.NotContains(t, string(result.body), "wrong", "the credential is never echoed")
 }
 

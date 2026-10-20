@@ -24,6 +24,21 @@ const (
 	Mattermost Kind = "mattermost"
 )
 
+// names are the platforms' names as they write them.
+var names = map[Kind]string{
+	GitLab:     "GitLab",
+	Mattermost: "Mattermost",
+}
+
+// Name returns the platform's name as it writes it, for messages people
+// read.
+func (k Kind) Name() string {
+	if name, ok := names[k]; ok {
+		return name
+	}
+	return string(k)
+}
+
 // IsForge reports whether the platform sends merge request events, as
 // opposed to receiving messages.
 func (k Kind) IsForge() bool {
@@ -45,7 +60,7 @@ type RefusedError struct {
 }
 
 func (e *RefusedError) Error() string {
-	return fmt.Sprintf("%s refused the credential: %s", e.Platform, e.Answer)
+	return fmt.Sprintf("%s refused the credential: %s", e.Platform.Name(), e.Answer)
 }
 
 // UnreachableError reports a platform that did not answer as one should at
@@ -56,7 +71,7 @@ type UnreachableError struct {
 }
 
 func (e *UnreachableError) Error() string {
-	return fmt.Sprintf("no %s answers at this address: %v", e.Platform, e.Err)
+	return fmt.Sprintf("no %s answers at this address: %v", e.Platform.Name(), e.Err)
 }
 
 func (e *UnreachableError) Unwrap() error { return e.Err }
@@ -103,7 +118,7 @@ type UndeliverableError struct {
 }
 
 func (e *UndeliverableError) Error() string {
-	return fmt.Sprintf("%s cannot deliver there: %s", e.Platform, e.Reason)
+	return fmt.Sprintf("%s cannot deliver there: %s", e.Platform.Name(), e.Reason)
 }
 
 // CheckChannel makes sure that the bot of a chat connection can post into

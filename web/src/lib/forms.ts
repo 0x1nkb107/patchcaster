@@ -41,3 +41,9 @@ export function showProblem<T extends Record<string, unknown>>(
 	const detail = describe(problem);
 	form.message = unplaced.length === 0 ? detail : `${detail}: ${unplaced.join(', ')}`;
 }
+
+// unlessEmpty leaves out a secret field left empty. The API never shows a
+// stored secret, and it keeps the stored one when a change leaves it out.
+export function unlessEmpty(value: string): string | undefined {
+	return value === '' ? undefined : value;
+}

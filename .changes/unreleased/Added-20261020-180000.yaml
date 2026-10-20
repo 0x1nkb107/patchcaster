@@ -1,0 +1,3 @@
+kind: Added
+body: 'Instance Admins connect GitLab and Mattermost, manage the signing tokens of a GitLab connection and change the login settings in the web interface, on its Connections and Login pages.'
+time: 2026-10-20T18:00:00.000000000+02:00

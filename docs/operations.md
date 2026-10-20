@@ -7,7 +7,7 @@ shuts down and upgrades, and what its delivery guarantees mean in practice.
 
 The management listener (`--management-addr`, `:8081` by default) serves the web interface at the interface URL, the management API under `/api/v1/`, and the API's OpenAPI description at `GET /api/v1/openapi.yaml`. It answers nothing else, and the webhook and internal listeners never answer interface or API paths, so each listener can be exposed differently: the webhook listener to the forges, the management listener only to the organization's people and automation. Errors are RFC 9457 problem details (`application/problem+json`). A validation error lists each field at fault by its path, such as `allowed_groups[0]`. Lists page with `limit` and the `next_cursor` of the previous page. Every change sends the `ETag` of what it read in `If-Match`, and fails with `412 Precondition Failed` when the resource changed meanwhile.
 
-The web interface covers the first setup, the login, API tokens and the [health](#connection-and-sink-health) of connections and sinks so far. Everything else goes through the API, which the interface uses too. The interface runs only its own scripts, and no other site may show it in a frame. Every page links to the licences of the third-party packages it contains.
+The web interface covers the first setup, the login and its settings, the connections with their signing tokens, API tokens and the [health](#connection-and-sink-health) of connections and sinks so far. Everything else goes through the API, which the interface uses too. The interface runs only its own scripts, and no other site may show it in a frame. Every page links to the licences of the third-party packages it contains.
 
 The management listener also serves the login. People log in through the organization's OpenID Connect provider, and PatchCaster keeps no passwords. A session ends after one hour without activity, twelve hours after login at the latest, or at logout (`DELETE /api/v1/session`). The API refuses any change that a browser sends from another site.
 
@@ -20,7 +20,7 @@ A new instance has no identity provider and no Instance Admin yet:
 3. Open the setup link in the browser that will log in, and enter the provider's issuer, the client ID and the client secret. PatchCaster checks that a provider answers at the issuer, seals the client secret, and sends the browser on to the login. Without the interface, send the token from the link and the same values to `POST /api/v1/setup` from that browser. It answers with the login address.
 4. Log in in the same browser. You become the first Instance Admin, and the setup link stops working.
 
-Everyone who logs in later starts as a Regular User. To admit only some of the people the provider knows, name the ID token claim that lists a person's groups (`groups_claim`) and the groups that may log in (`allowed_groups`), at setup or later through `PUT /api/v1/settings/login`. A refused login tells the person why.
+Everyone who logs in later starts as a Regular User. To admit only some of the people the provider knows, name the ID token claim that lists a person's groups (`groups_claim`) and the groups that may log in (`allowed_groups`), at setup or later on the interface's Login page or through `PUT /api/v1/settings/login`. A refused login tells the person why.
 
 ## Roles
 
@@ -32,7 +32,7 @@ PatchCaster knows three roles, and each may also do what the roles below it may:
 
 ## Connections
 
-A connection holds what PatchCaster acts with on one platform: GitLab as a forge, Mattermost as a chat platform. Instance Admins manage them at `/api/v1/connections`. A connection's credential is checked against its platform before it is stored, and the connection shows the account the credential acts as. A token the platform refuses is not stored, and the answer names the platform's reason. The credential is stored encrypted and is never shown again: send a new one to replace it.
+A connection holds what PatchCaster acts with on one platform: GitLab as a forge, Mattermost as a chat platform. Instance Admins manage them on the interface's Connections page, or at `/api/v1/connections`. A connection's credential is checked against its platform before it is stored, and the connection shows the account the credential acts as. A token the platform refuses is not stored, and the answer names the platform's reason. The credential is stored encrypted and is never shown again: send a new one to replace it.
 
 - A **Mattermost** connection needs the bot account's token.
 - A **GitLab** connection with an access token gets its hooks from PatchCaster: see [registered hooks](#registered-hooks). Without a token, register the hooks by hand at the connection's `webhook_url`. Then generate a signing token in each hook's form and add it to the connection under `/api/v1/connections/{id}/signing-tokens`, exactly as GitLab shows it. A connection holds several signing tokens at once, so a token rotates without downtime: add the new one, switch the hook over, then remove the old one.

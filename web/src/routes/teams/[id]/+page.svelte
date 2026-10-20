@@ -11,8 +11,9 @@
 	import { ifMatch } from '#lib/api/versions.js';
 	import CheckboxList from '#lib/components/checkbox-list.svelte';
 	import FormField from '#lib/components/form-field.svelte';
+	import FormStatus from '#lib/components/form-status.svelte';
+	import PageHeader from '#lib/components/page-header.svelte';
 	import RemoveCard from '#lib/components/remove-card.svelte';
-	import * as Alert from '#lib/components/ui/alert/index.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import * as Card from '#lib/components/ui/card/index.js';
 	import { Input } from '#lib/components/ui/input/index.js';
@@ -89,16 +90,14 @@
 	});
 	const { form: fields, errors, message, enhance, submitting } = form;
 
-	// Why the removal failed.
-	let removalProblem: string | null = $state(null);
-
-	async function removeTeam(): Promise<void> {
+	// removeTeam returns why the removal failed, or leaves the page.
+	async function removeTeam(): Promise<string | null> {
 		const answer = await deleteTeam(team.id, ifMatch(team.etag));
 		if (answer.status !== 204) {
-			removalProblem = describe(answer.data);
-			return;
+			return describe(answer.data);
 		}
 		await goto(resolve('/teams'));
+		return null;
 	}
 </script>
 
@@ -107,19 +106,7 @@
 </svelte:head>
 
 <div class="grid gap-6">
-	<div>
-		<a href={resolve('/teams')} class="text-sm text-muted-foreground hover:text-foreground">
-			Teams
-		</a>
-		<h1 class="text-lg font-semibold">{team.name}</h1>
-	</div>
-
-	{#if removalProblem}
-		<Alert.Root variant="destructive">
-			<Alert.Title>The team was not removed</Alert.Title>
-			<Alert.Description>{removalProblem}</Alert.Description>
-		</Alert.Root>
-	{/if}
+	<PageHeader back={{ label: 'Teams', route: '/teams' }} title={team.name} />
 
 	<Card.Root>
 		<Card.Header>
@@ -131,15 +118,7 @@
 		</Card.Header>
 		<Card.Content>
 			<form method="POST" use:enhance class="grid gap-8">
-				{#if $message}
-					<Alert.Root variant="destructive">
-						<Alert.Description>{$message}</Alert.Description>
-					</Alert.Root>
-				{:else if saved}
-					<Alert.Root>
-						<Alert.Description>The team is saved.</Alert.Description>
-					</Alert.Root>
-				{/if}
+				<FormStatus message={$message} {saved} savedText="The team is saved." />
 				<FormField id="name" label="Name" errors={$errors.name}>
 					<Input
 						id="name"

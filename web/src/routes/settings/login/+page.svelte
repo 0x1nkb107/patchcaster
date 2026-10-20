@@ -9,7 +9,7 @@
 	import { PutLoginSettingsBody } from '#lib/api/generated/schemas.js';
 	import { ifMatch } from '#lib/api/versions.js';
 	import FormField from '#lib/components/form-field.svelte';
-	import * as Alert from '#lib/components/ui/alert/index.js';
+	import FormStatus from '#lib/components/form-status.svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import * as Card from '#lib/components/ui/card/index.js';
 	import { Input } from '#lib/components/ui/input/index.js';
@@ -101,15 +101,7 @@
 	</Card.Header>
 	<Card.Content>
 		<form method="POST" use:enhance class="grid gap-6">
-			{#if $message}
-				<Alert.Root variant="destructive">
-					<Alert.Description>{$message}</Alert.Description>
-				</Alert.Root>
-			{:else if saved}
-				<Alert.Root>
-					<Alert.Description>The login settings are saved.</Alert.Description>
-				</Alert.Root>
-			{/if}
+			<FormStatus message={$message} {saved} savedText="The login settings are saved." />
 			<FormField id="issuer" label="Issuer" errors={$errors.issuer}>
 				<Input
 					id="issuer"

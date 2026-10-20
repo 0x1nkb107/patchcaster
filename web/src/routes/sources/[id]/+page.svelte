@@ -10,8 +10,9 @@
 	import { describe } from '#lib/api/problem.js';
 	import { ifMatch } from '#lib/api/versions.js';
 	import FormField from '#lib/components/form-field.svelte';
+	import FormStatus from '#lib/components/form-status.svelte';
+	import PageHeader from '#lib/components/page-header.svelte';
 	import RemoveCard from '#lib/components/remove-card.svelte';
-	import * as Alert from '#lib/components/ui/alert/index.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import * as Card from '#lib/components/ui/card/index.js';
 	import { Input } from '#lib/components/ui/input/index.js';
@@ -84,16 +85,14 @@
 	});
 	const { form: fields, errors, message, enhance, submitting } = form;
 
-	// Why the removal failed.
-	let removalProblem: string | null = $state(null);
-
-	async function removeSource(): Promise<void> {
+	// removeSource returns why the removal failed, or leaves the page.
+	async function removeSource(): Promise<string | null> {
 		const answer = await deleteSource(source.id, ifMatch(source.etag));
 		if (answer.status !== 204) {
-			removalProblem = describe(answer.data);
-			return;
+			return describe(answer.data);
 		}
 		await goto(resolve('/sources'));
+		return null;
 	}
 </script>
 
@@ -102,20 +101,11 @@
 </svelte:head>
 
 <div class="grid gap-6">
-	<div>
-		<a href={resolve('/sources')} class="text-sm text-muted-foreground hover:text-foreground">
-			Sources
-		</a>
-		<h1 class="text-lg font-semibold">{source.name}</h1>
-		<p class="text-sm text-muted-foreground">Selects {scopeOf(source.scope)}.</p>
-	</div>
-
-	{#if removalProblem}
-		<Alert.Root variant="destructive">
-			<Alert.Title>The source was not removed</Alert.Title>
-			<Alert.Description>{removalProblem}</Alert.Description>
-		</Alert.Root>
-	{/if}
+	<PageHeader
+		back={{ label: 'Sources', route: '/sources' }}
+		title={source.name}
+		subtitle="Selects {scopeOf(source.scope)}."
+	/>
 
 	<Card.Root>
 		<Card.Header>
@@ -166,15 +156,12 @@
 		</Card.Header>
 		<Card.Content>
 			<form method="POST" use:enhance class="grid gap-6 sm:grid-cols-2">
-				{#if $message}
-					<Alert.Root variant="destructive" class="sm:col-span-2">
-						<Alert.Description>{$message}</Alert.Description>
-					</Alert.Root>
-				{:else if saved}
-					<Alert.Root class="sm:col-span-2">
-						<Alert.Description>The source is saved.</Alert.Description>
-					</Alert.Root>
-				{/if}
+				<FormStatus
+					message={$message}
+					{saved}
+					savedText="The source is saved."
+					class="sm:col-span-2"
+				/>
 				<FormField id="name" label="Name" errors={$errors.name}>
 					<Input
 						id="name"

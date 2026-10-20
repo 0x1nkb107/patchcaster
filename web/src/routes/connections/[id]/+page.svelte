@@ -6,19 +6,15 @@
 
 	import { goto, refreshAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import {
-		addSigningToken,
-		deleteConnection,
-		removeSigningToken,
-		updateConnection,
-		type SigningToken
-	} from '#lib/api/generated/client.js';
-	import { AddSigningTokenBody, UpdateConnectionBody } from '#lib/api/generated/schemas.js';
+	import { deleteConnection, updateConnection } from '#lib/api/generated/client.js';
+	import { UpdateConnectionBody } from '#lib/api/generated/schemas.js';
 	import { describe } from '#lib/api/problem.js';
 	import { ifMatch } from '#lib/api/versions.js';
 	import FormField from '#lib/components/form-field.svelte';
+	import FormStatus from '#lib/components/form-status.svelte';
+	import PageHeader from '#lib/components/page-header.svelte';
 	import RemoveCard from '#lib/components/remove-card.svelte';
-	import * as Alert from '#lib/components/ui/alert/index.js';
+	import SigningTokens from '#lib/components/signing-tokens.svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import * as Card from '#lib/components/ui/card/index.js';
 	import { Input } from '#lib/components/ui/input/index.js';
@@ -76,7 +72,6 @@
 	}));
 
 	const change = superForm(defaults(initialChange, zod4(changeSchema)), {
-		id: 'change',
 		SPA: true,
 		validators: zod4Client(changeSchema),
 		resetForm: false,
@@ -101,58 +96,16 @@
 			await refreshAll();
 		}
 	});
-	const {
-		form: changeFields,
-		errors: changeErrors,
-		message: changeMessage,
-		enhance: changeEnhance,
-		submitting: changing
-	} = change;
+	const { form: fields, errors, message, enhance, submitting } = change;
 
-	const addToken = superForm(defaults(zod4(AddSigningTokenBody)), {
-		id: 'add-token',
-		SPA: true,
-		validators: zod4Client(AddSigningTokenBody),
-		async onUpdate({ form }) {
-			if (!form.valid) {
-				return;
-			}
-			const answer = await addSigningToken(connection.id, form.data);
-			if (answer.status !== 201) {
-				showProblem(form, answer.data);
-				return;
-			}
-			await refreshAll();
-		}
-	});
-	const {
-		form: tokenFields,
-		errors: tokenErrors,
-		message: tokenMessage,
-		enhance: tokenEnhance,
-		submitting: adding
-	} = addToken;
-
-	// Why the last removal failed, until one succeeds.
-	let removalProblem: string | null = $state(null);
-
-	async function removeToken(token: SigningToken): Promise<void> {
-		const answer = await removeSigningToken(connection.id, token.id);
-		removalProblem = answer.status === 204 ? null : describe(answer.data);
-		await refreshAll();
-	}
-
-	async function removeConnection(): Promise<void> {
+	// removeConnection returns why the removal failed, or leaves the page.
+	async function removeConnection(): Promise<string | null> {
 		const answer = await deleteConnection(connection.id, ifMatch(connection.etag));
 		if (answer.status !== 204) {
-			removalProblem = describe(answer.data);
-			return;
+			return describe(answer.data);
 		}
 		await goto(resolve('/connections'));
-	}
-
-	function day(timestamp: string): string {
-		return new Date(timestamp).toLocaleDateString();
+		return null;
 	}
 </script>
 
@@ -161,22 +114,11 @@
 </svelte:head>
 
 <div class="grid gap-6">
-	<div>
-		<a href={resolve('/connections')} class="text-sm text-muted-foreground hover:text-foreground">
-			Connections
-		</a>
-		<h1 class="text-lg font-semibold">{connection.name}</h1>
-		<p class="text-sm text-muted-foreground">
-			{platformNames[connection.kind]} at {connection.base_url}, acting as {actingAs}
-		</p>
-	</div>
-
-	{#if removalProblem}
-		<Alert.Root variant="destructive">
-			<Alert.Title>Nothing was removed</Alert.Title>
-			<Alert.Description>{removalProblem}</Alert.Description>
-		</Alert.Root>
-	{/if}
+	<PageHeader
+		back={{ label: 'Connections', route: '/connections' }}
+		title={connection.name}
+		subtitle="{platformNames[connection.kind]} at {connection.base_url}, acting as {actingAs}"
+	/>
 
 	{#if connection.webhook_url !== undefined}
 		<Card.Root>
@@ -201,121 +143,49 @@
 			</Card.Description>
 		</Card.Header>
 		<Card.Content>
-			<form method="POST" use:changeEnhance class="grid gap-6 sm:grid-cols-2">
-				{#if $changeMessage}
-					<Alert.Root variant="destructive" class="sm:col-span-2">
-						<Alert.Description>{$changeMessage}</Alert.Description>
-					</Alert.Root>
-				{:else if saved}
-					<Alert.Root class="sm:col-span-2">
-						<Alert.Description>The connection is saved.</Alert.Description>
-					</Alert.Root>
-				{/if}
-				<FormField id="name" label="Name" errors={$changeErrors.name}>
+			<form method="POST" use:enhance class="grid gap-6 sm:grid-cols-2">
+				<FormStatus
+					message={$message}
+					{saved}
+					savedText="The connection is saved."
+					class="sm:col-span-2"
+				/>
+				<FormField id="name" label="Name" errors={$errors.name}>
 					<Input
 						id="name"
 						name="name"
-						bind:value={$changeFields.name}
-						aria-invalid={$changeErrors.name ? 'true' : undefined}
+						bind:value={$fields.name}
+						aria-invalid={$errors.name ? 'true' : undefined}
 					/>
 				</FormField>
-				<FormField id="base_url" label="Address" errors={$changeErrors.base_url}>
+				<FormField id="base_url" label="Address" errors={$errors.base_url}>
 					<Input
 						id="base_url"
 						name="base_url"
 						type="url"
-						bind:value={$changeFields.base_url}
-						aria-invalid={$changeErrors.base_url ? 'true' : undefined}
+						bind:value={$fields.base_url}
+						aria-invalid={$errors.base_url ? 'true' : undefined}
 					/>
 				</FormField>
-				<FormField id="credential" label="New credential" errors={$changeErrors.credential}>
+				<FormField id="credential" label="New credential" errors={$errors.credential}>
 					<Input
 						id="credential"
 						name="credential"
 						type="password"
 						autocomplete="off"
-						bind:value={$changeFields.credential}
-						aria-invalid={$changeErrors.credential ? 'true' : undefined}
+						bind:value={$fields.credential}
+						aria-invalid={$errors.credential ? 'true' : undefined}
 					/>
 				</FormField>
 				<div class="sm:col-span-2">
-					<Button type="submit" disabled={$changing}>Save</Button>
+					<Button type="submit" disabled={$submitting}>Save</Button>
 				</div>
 			</form>
 		</Card.Content>
 	</Card.Root>
 
 	{#if isForge}
-		<Card.Root>
-			<Card.Header>
-				<Card.Title>Signing tokens</Card.Title>
-				<Card.Description>
-					Any of these tokens may sign a delivery. To rotate a token, add the new one, switch the
-					hook over, then remove the old one. PatchCaster manages the tokens of the hooks it
-					registers itself.
-				</Card.Description>
-			</Card.Header>
-			<Card.Content class="grid gap-6">
-				{#if data.signingTokens.length === 0}
-					<p class="text-sm text-muted-foreground">The connection has no signing tokens.</p>
-				{:else}
-					<table class="w-full text-sm">
-						<thead class="text-left text-muted-foreground">
-							<tr>
-								<th class="py-2 pr-4 font-medium">Label</th>
-								<th class="py-2 pr-4 font-medium">Added</th>
-								<th></th>
-							</tr>
-						</thead>
-						<tbody>
-							{#each data.signingTokens as token (token.id)}
-								<tr class="border-t">
-									<td class="py-2 pr-4">{token.label}</td>
-									<td class="py-2 pr-4">{day(token.created_at)}</td>
-									<td class="py-2 text-right">
-										<Button variant="destructive" size="sm" onclick={() => removeToken(token)}>
-											Remove
-										</Button>
-									</td>
-								</tr>
-							{/each}
-						</tbody>
-					</table>
-				{/if}
-				<form
-					method="POST"
-					use:tokenEnhance
-					class="grid gap-6 sm:grid-cols-[1fr_1fr_auto] sm:items-end"
-				>
-					{#if $tokenMessage}
-						<Alert.Root variant="destructive" class="sm:col-span-3">
-							<Alert.Description>{$tokenMessage}</Alert.Description>
-						</Alert.Root>
-					{/if}
-					<FormField id="label" label="Label" errors={$tokenErrors.label}>
-						<Input
-							id="label"
-							name="label"
-							placeholder="group payments"
-							bind:value={$tokenFields.label}
-							aria-invalid={$tokenErrors.label ? 'true' : undefined}
-						/>
-					</FormField>
-					<FormField id="token" label="Token" errors={$tokenErrors.token}>
-						<Input
-							id="token"
-							name="token"
-							type="password"
-							autocomplete="off"
-							placeholder="whsec_…"
-							bind:value={$tokenFields.token}
-							aria-invalid={$tokenErrors.token ? 'true' : undefined}
-						/>
-					</FormField>
-					<Button type="submit" disabled={$adding}>Add</Button>
-				</form>
-			</Card.Content>
-		</Card.Root>
+		<SigningTokens connectionID={connection.id} tokens={data.signingTokens} />
 	{/if}
 
 	<RemoveCard

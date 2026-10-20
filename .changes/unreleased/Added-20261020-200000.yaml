@@ -1,0 +1,3 @@
+kind: Added
+body: 'Instance Admins manage sources, sinks and teams in the web interface: they add and change sources and sinks, see how each source''s hook stands and how each sink delivers, and give each team its Routing Managers, sources and sinks.'
+time: 2026-10-20T20:00:00.000000000+02:00

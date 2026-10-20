@@ -22,13 +22,22 @@
 
 <div class="min-h-screen">
 	<header class="border-b">
-		<nav class="mx-auto flex max-w-4xl items-center gap-6 px-4 py-3">
+		<nav class="mx-auto flex max-w-4xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
 			<a href={resolve('/')} class="font-semibold">PatchCaster</a>
 			{#if data.person}
 				<a href={resolve('/health')} class="text-sm text-muted-foreground hover:text-foreground">
 					Health
 				</a>
 				{#if data.person.administrator}
+					<a href={resolve('/teams')} class="text-sm text-muted-foreground hover:text-foreground">
+						Teams
+					</a>
+					<a href={resolve('/sources')} class="text-sm text-muted-foreground hover:text-foreground">
+						Sources
+					</a>
+					<a href={resolve('/sinks')} class="text-sm text-muted-foreground hover:text-foreground">
+						Sinks
+					</a>
 					<a
 						href={resolve('/connections')}
 						class="text-sm text-muted-foreground hover:text-foreground"

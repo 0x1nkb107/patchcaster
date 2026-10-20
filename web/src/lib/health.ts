@@ -38,3 +38,13 @@ export function rejectionOf(cause: ConnectionHealth['last_rejection']): string {
 export function moment(timestamp: string | undefined): string {
 	return timestamp === undefined ? 'never' : new Date(timestamp).toLocaleString();
 }
+
+// waitingOf words the messages that wait for a sink.
+export function waitingOf(health: SinkHealth): string {
+	const count =
+		health.waiting_messages === 1 ? '1 message' : `${String(health.waiting_messages)} messages`;
+	if (health.oldest_waiting_since === undefined) {
+		return `${count} waiting`;
+	}
+	return `${count} waiting since ${moment(health.oldest_waiting_since)}`;
+}

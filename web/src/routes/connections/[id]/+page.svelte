@@ -32,6 +32,32 @@
 	const connection = $derived(data.connection);
 	const isForge = $derived(connection.webhook_url !== undefined);
 
+	// The page's wording depends on the connection: only a forge has
+	// sources, signing tokens and hooks, and only a credential acts as
+	// someone.
+	const actingAs = $derived(
+		connection.account === '' ? 'nobody: it has no credential' : connection.account
+	);
+	const hookRegistration = $derived(
+		connection.has_credential
+			? 'PatchCaster registers its hooks at this address itself.'
+			: 'Register the hooks by hand at this address, and add the signing token of each hook below.'
+	);
+
+	// removalTexts says what removing a connection does, for a forge and
+	// for a chat platform.
+	const removalTexts = {
+		forge: {
+			description: 'A connection that sources use stays until they are removed.',
+			consequence: 'PatchCaster forgets the connection, its credential and its signing tokens.'
+		},
+		chat: {
+			description: 'A connection that sinks use stays until they are removed.',
+			consequence: 'PatchCaster forgets the connection and its credential.'
+		}
+	};
+	const removal = $derived(isForge ? removalTexts.forge : removalTexts.chat);
+
 	// The form takes a new credential as text that may stay empty, which
 	// keeps the stored one.
 	const changeSchema = UpdateConnectionBody.omit({ credential: true }).extend({
@@ -141,10 +167,7 @@
 		</a>
 		<h1 class="text-lg font-semibold">{connection.name}</h1>
 		<p class="text-sm text-muted-foreground">
-			{platformNames[connection.kind]} at {connection.base_url}, acting as {connection.account ===
-			''
-				? 'nobody: it has no credential'
-				: connection.account}
+			{platformNames[connection.kind]} at {connection.base_url}, acting as {actingAs}
 		</p>
 	</div>
 
@@ -160,9 +183,7 @@
 			<Card.Header>
 				<Card.Title>Webhook address</Card.Title>
 				<Card.Description>
-					{connection.has_credential
-						? 'PatchCaster registers its hooks at this address itself.'
-						: 'Register the hooks by hand at this address, and add the signing token of each hook below.'}
+					{hookRegistration}
 				</Card.Description>
 			</Card.Header>
 			<Card.Content>
@@ -299,13 +320,9 @@
 
 	<RemoveCard
 		title="Remove the connection"
-		description="A connection that {isForge
-			? 'sources'
-			: 'sinks'} use stays until they are removed."
+		description={removal.description}
 		question="Remove {connection.name}?"
-		consequence="PatchCaster forgets the connection and its credential{isForge
-			? ', and its signing tokens'
-			: ''}."
+		consequence={removal.consequence}
 		onRemove={removeConnection}
 	/>
 </div>

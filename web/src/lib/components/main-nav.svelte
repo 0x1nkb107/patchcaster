@@ -1,28 +1,59 @@
 <!--
 	The main navigation: the pages the person who is logged in may open, and
-	their logout. Pages for Instance Admins show to them alone.
+	their logout. Pages for Instance Admins show to them alone, and the
+	settings of the instance gather in one menu.
 -->
 <script lang="ts">
+	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
+
 	import { refreshAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { endSession, type Person } from '#lib/api/generated/client.js';
 	import { Button } from '#lib/components/ui/button/index.js';
+	import * as DropdownMenu from '#lib/components/ui/dropdown-menu/index.js';
 
 	let { person }: { person: Person | null } = $props();
 
 	// Route is a page the navigation links to.
 	type Route =
-		'/health' | '/teams' | '/sources' | '/sinks' | '/connections' | '/settings/login' | '/tokens';
+		| '/health'
+		| '/teams'
+		| '/sources'
+		| '/sinks'
+		| '/connections'
+		| '/settings/login'
+		| '/people'
+		| '/audit'
+		| '/tokens';
 
-	// links lists the pages in the order the navigation shows them.
-	const links: { label: string; route: Route; adminOnly?: boolean }[] = [
+	// Link is a page.
+	interface Link {
+		label: string;
+		route: Route;
+	}
+
+	// Entry is what the bar shows: a link, or a menu of links. An entry for
+	// Instance Admins shows to them alone.
+	type Entry = (Link | { label: string; menu: Link[] }) & { adminOnly?: boolean };
+
+	// entries lists the bar in the order it shows them. The settings of the
+	// instance gather in one menu.
+	const entries: Entry[] = [
 		{ label: 'Health', route: '/health' },
 		{ label: 'Teams', route: '/teams', adminOnly: true },
 		{ label: 'Sources', route: '/sources', adminOnly: true },
 		{ label: 'Sinks', route: '/sinks', adminOnly: true },
-		{ label: 'Connections', route: '/connections', adminOnly: true },
-		{ label: 'Login', route: '/settings/login', adminOnly: true },
+		{
+			label: 'Instance',
+			adminOnly: true,
+			menu: [
+				{ label: 'Connections', route: '/connections' },
+				{ label: 'Login', route: '/settings/login' },
+				{ label: 'People', route: '/people' },
+				{ label: 'Audit log', route: '/audit' }
+			]
+		},
 		{ label: 'API tokens', route: '/tokens' }
 	];
 
@@ -32,6 +63,11 @@
 		const href = resolve(route);
 		const path = page.url.pathname;
 		return path === href || path.startsWith(`${href}/`);
+	}
+
+	// holdsCurrent reports whether a menu links to the page shown.
+	function holdsCurrent(menu: Link[]): boolean {
+		return menu.some((link) => isCurrent(link.route));
 	}
 
 	// A failed logout leaves the session as it was, and the refresh then
@@ -49,15 +85,42 @@
 	<a href={resolve('/')} class="font-semibold">PatchCaster</a>
 
 	{#if person}
-		{#each links as link (link.route)}
-			{#if !link.adminOnly || person.administrator}
-				<a
-					href={resolve(link.route)}
-					aria-current={isCurrent(link.route) ? 'page' : undefined}
-					class="text-sm text-muted-foreground hover:text-foreground aria-[current=page]:text-foreground"
-				>
-					{link.label}
-				</a>
+		{#each entries as entry (entry.label)}
+			{#if !entry.adminOnly || person.administrator}
+				{#if 'menu' in entry}
+					<DropdownMenu.Root>
+						<DropdownMenu.Trigger
+							data-current={holdsCurrent(entry.menu) ? 'true' : undefined}
+							class="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground data-current:text-foreground"
+						>
+							{entry.label}
+							<ChevronDownIcon class="size-4" />
+						</DropdownMenu.Trigger>
+						<DropdownMenu.Content align="start">
+							{#each entry.menu as link (link.route)}
+								<DropdownMenu.Item>
+									{#snippet child({ props })}
+										<a
+											href={resolve(link.route)}
+											aria-current={isCurrent(link.route) ? 'page' : undefined}
+											{...props}
+										>
+											{link.label}
+										</a>
+									{/snippet}
+								</DropdownMenu.Item>
+							{/each}
+						</DropdownMenu.Content>
+					</DropdownMenu.Root>
+				{:else}
+					<a
+						href={resolve(entry.route)}
+						aria-current={isCurrent(entry.route) ? 'page' : undefined}
+						class="text-sm text-muted-foreground hover:text-foreground aria-[current=page]:text-foreground"
+					>
+						{entry.label}
+					</a>
+				{/if}
 			{/if}
 		{/each}
 
